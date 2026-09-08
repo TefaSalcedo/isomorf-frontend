@@ -272,6 +272,7 @@ export function createWindow(
 
 export function defaultDesignSettings(): Project['design_settings'] {
   return {
+    unit: 'm',
     seismic_zone: '',
     hail_zone: '',
     wind_zone: '',

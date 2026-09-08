@@ -40,6 +40,11 @@ const STRUCTURE_TOOLS: { id: Tool; label: string; icon: typeof MousePointer2 }[]
   { id: 'beam', label: 'Beam', icon: Minus },
 ];
 
+const TOOL_CATEGORIES = [
+  { id: 'draw' as const, label: 'Draw', tools: DRAW_TOOLS },
+  { id: 'structure' as const, label: 'Structures', tools: STRUCTURE_TOOLS },
+];
+
 export function EditorSidebar({
   state,
   actions,
@@ -50,11 +55,17 @@ export function EditorSidebar({
   const [expanded, setExpanded] = useState(true);
   const { activeSection, tool } = state;
 
-  const tools =
-    activeSection === 'draw' ? DRAW_TOOLS : activeSection === 'structure' ? STRUCTURE_TOOLS : [];
+  const visibleCategories =
+    activeSection === 'draw' || activeSection === 'structure'
+      ? TOOL_CATEGORIES
+      : [];
 
   return (
-    <div className={`flex h-full shrink-0 border-r border-slate-200 bg-white ${expanded ? 'w-60' : 'w-14'}`}>
+    <div
+      className={`flex h-full shrink-0 border-r border-slate-200 bg-white ${
+        expanded ? 'w-64' : 'w-14'
+      }`}
+    >
       <nav className="flex h-full w-14 flex-col items-center border-r border-slate-100 py-3">
         {SECTIONS.map((section) => {
           const Icon = section.icon;
@@ -105,30 +116,41 @@ export function EditorSidebar({
               Open projects
             </a>
           )}
-          {(activeSection === 'draw' || activeSection === 'structure') && (
-            <div className="mt-4 space-y-1">
-              {tools.map((t) => {
-                const Icon = t.icon;
-                const active = tool === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => actions.setTool(t.id)}
-                    className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm ${
-                      active
-                        ? 'bg-slate-100 font-medium text-slate-900'
-                        : 'text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {t.label}
-                  </button>
-                );
-              })}
+          {visibleCategories.length > 0 && (
+            <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
+              {visibleCategories.map((category) => (
+                <div key={category.id} className="min-w-max shrink-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    {category.label}
+                  </p>
+                  <div className="mt-2 flex gap-1.5">
+                    {category.tools.map((t) => {
+                      const Icon = t.icon;
+                      const active = tool === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => actions.setTool(t.id)}
+                          className={`flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm whitespace-nowrap ${
+                            active
+                              ? 'bg-slate-100 font-medium text-slate-900'
+                              : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {t.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
           {activeSection === 'calculations' && (
-            <p className="mt-4 text-sm text-slate-500">Select walls on the canvas to see the calculations panel on the right.</p>
+            <p className="mt-4 text-sm text-slate-500">
+              Select walls on the canvas to see the calculations panel on the right.
+            </p>
           )}
           {activeSection === 'settings' && (
             <p className="mt-4 text-sm text-slate-500">Project settings are in the right-side panel.</p>

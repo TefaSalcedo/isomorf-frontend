@@ -13,7 +13,7 @@ import {
   updateBeamLength,
   defaultDesignSettings,
 } from '@/lib/editor/elements';
-import { snapToNearest, type SnapResult } from '@/lib/editor/snapping';
+import { snapToNearest, snapForColumn, type SnapResult } from '@/lib/editor/snapping';
 import {
   cmToMeters,
   distance,
@@ -206,7 +206,7 @@ function makeElementFromDraft(draft: DraftState, projectId: string): ProjectElem
       start = resolveTJoin(end, hostStart, hostEnd, start, 90);
     }
   }
-  if (distance(start, end) < 0.1) return null;
+  if (draft.tool !== 'column' && distance(start, end) < 0.1) return null;
   switch (draft.tool) {
     case 'wall': {
       const props = draft.host
@@ -220,6 +220,8 @@ function makeElementFromDraft(draft: DraftState, projectId: string): ProjectElem
       return createWindow(id, projectId, start, end);
     case 'beam':
       return createBeam(id, projectId, start, end);
+    case 'column':
+      return createColumn(id, projectId, end);
     default:
       return null;
   }
@@ -284,21 +286,13 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       return { ...state, viewport: { zoom: 1, pan: { x: 0, y: 0 } } };
     case 'beginDraft': {
       if (state.tool === 'select') return state;
-      const snap = state.snapEnabled ? applySnap(action.point, state.elements, state.viewport.zoom) : null;
+      const snap = state.snapEnabled
+        ? (state.tool === 'column'
+            ? snapForColumn(action.point, state.elements, state.viewport.zoom, WORLD_PER_PIXEL)
+            : applySnap(action.point, state.elements, state.viewport.zoom))
+        : null;
       const start = snap ? snap.point : action.point;
       const isStartT = snap?.target.type === 'midpoint';
-      if (state.tool === 'column') {
-        const column = createColumn(crypto.randomUUID(), state.elements[0]?.project_id ?? '', start);
-        return {
-          ...state,
-          elements: [...state.elements, column],
-          selectedIds: [column.id],
-          tool: 'select',
-          dirty: true,
-          past: [...state.past, state.elements],
-          future: [],
-        };
-      }
       return {
         ...state,
         draft: {
@@ -315,6 +309,16 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       if (!state.draft) return state;
       const { draft } = state;
       const raw = action.point;
+
+      if (draft.tool === 'column') {
+        let endSnap = state.snapEnabled
+          ? snapForColumn(raw, state.elements, state.viewport.zoom, WORLD_PER_PIXEL)
+          : null;
+        if (endSnap && pointsEqual(endSnap.point, draft.start)) endSnap = null;
+        const end = endSnap ? endSnap.point : raw;
+        return { ...state, draft: { ...draft, end, snap: endSnap } };
+      }
+
       let endSnap = state.snapEnabled ? applySnap(raw, state.elements, state.viewport.zoom) : null;
       if (endSnap && pointsEqual(endSnap.point, draft.start)) endSnap = null;
       let end = raw;

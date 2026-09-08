@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import type Konva from 'konva';
 import { useEditorState } from '@/hooks/use-editor-state';
 import { CanvasStage } from '@/components/editor/canvas-stage';
@@ -14,12 +15,18 @@ import type { Project, ProjectElement } from '@/types/project';
 import type { ElementPayload } from '@/lib/api-client';
 import { defaultDesignSettings } from '@/lib/editor/elements';
 
+const Model3DPreview = dynamic(
+  () => import('@/components/editor/model-3d-preview').then((mod) => mod.Model3DPreview),
+  { ssr: false },
+);
+
 export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   const { state, actions, selectedElements, summary } = useEditorState(initialProject);
   const [saving, setSaving] = useState(false);
   const [designSettings, setDesignSettings] = useState<Project['design_settings']>(
     initialProject.design_settings ?? defaultDesignSettings(),
   );
+  const [view3D, setView3D] = useState(false);
   const original = useRef(new Map((initialProject.elements ?? []).map((element) => [element.id, element])));
   const stageRef = useRef<Konva.Stage | null>(null);
 
@@ -77,6 +84,10 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     a.click();
   }
 
+  function handleToggle3D() {
+    setView3D((v) => !v);
+  }
+
   function handlePrint() {
     const dataURL = stageRef.current?.toDataURL({ mimeType: 'image/png', pixelRatio: 2 });
     if (!dataURL) return;
@@ -107,6 +118,8 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         projectName={initialProject.name}
         state={state}
         actions={actions}
+        view3D={view3D}
+        onToggle3D={handleToggle3D}
         onSave={save}
         onExport={handleExport}
         onPrint={handlePrint}
@@ -115,7 +128,11 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
       <div className="flex min-h-0 flex-1">
         {!state.cleanMode && <EditorSidebar state={state} actions={actions} />}
         <div className="relative min-h-0 flex-1">
-          <CanvasStage state={state} actions={actions} stageRef={stageRef} />
+          {view3D ? (
+            <Model3DPreview elements={state.elements} />
+          ) : (
+            <CanvasStage state={state} actions={actions} stageRef={stageRef} displayUnit={designSettings.unit ?? 'm'} />
+          )}
         </div>
         {!state.cleanMode && (
           <aside className="w-72 shrink-0 border-l border-slate-200 bg-white">

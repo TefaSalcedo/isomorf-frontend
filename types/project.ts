@@ -7,6 +7,7 @@ export type MaterialConstants = {
 };
 
 export type DesignSettings = {
+  unit?: 'm' | 'ft';
   seismic_zone?: string;
   hail_zone?: string;
   wind_zone?: string;

@@ -14,6 +14,7 @@ import {
   Save,
   Eye,
   EyeOff,
+  Box,
 } from 'lucide-react';
 import { SaveStatus } from '@/components/editor/save-status';
 import type { EditorState, Tool } from '@/hooks/use-editor-state';
@@ -22,6 +23,8 @@ export function EditorToolbar({
   projectName,
   state,
   actions,
+  view3D,
+  onToggle3D,
   onSave,
   onExport,
   onPrint,
@@ -41,6 +44,8 @@ export function EditorToolbar({
     deleteSelection: () => void;
     setTool: (tool: Tool) => void;
   };
+  view3D: boolean;
+  onToggle3D: () => void;
   onSave: () => void;
   onExport: () => void;
   onPrint: () => void;
@@ -80,6 +85,12 @@ export function EditorToolbar({
         <Divider />
         <ToolbarButton onClick={onExport} icon={Download} label="Export PNG" />
         <ToolbarButton onClick={onPrint} icon={Printer} label="Print" />
+        <ToolbarButton
+          onClick={onToggle3D}
+          icon={Box}
+          label="3D view"
+          active={view3D}
+        />
         <ToolbarButton onClick={actions.toggleCleanMode} icon={state.cleanMode ? Eye : EyeOff} label="Clean mode" />
         <Divider />
         <ToolbarButton

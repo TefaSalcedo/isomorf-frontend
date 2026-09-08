@@ -8,16 +8,18 @@ import {
   projectPointOnSegment,
   magnitude,
   sub,
-  unit,
   dot,
   DEFAULT_SNAP_PIXELS,
 } from '@/lib/editor/geometry';
+
+export const COLUMN_WALL_SNAP_PIXELS = 20;
 
 export type SnapTarget =
   | { type: 'start'; elementId: string }
   | { type: 'end'; elementId: string }
   | { type: 'midpoint'; elementId: string }
   | { type: 'intersection'; elementIdA: string; elementIdB: string }
+  | { type: 'wall'; elementId: string }
   | { type: 'center'; elementId: string }
   | { type: 'corner'; elementId: string; index: number };
 
@@ -138,6 +140,84 @@ export function snapToSegmentMidpoint(
     return { point: midpoint(a, b), t: 0.5 };
   }
   return null;
+}
+
+function findWallIntersections(elements: ProjectElement[]): SnapCandidate[] {
+  const result: SnapCandidate[] = [];
+  const walls = elements.filter((el) => el.element_type === 'wall');
+  for (let i = 0; i < walls.length; i += 1) {
+    const a = walls[i];
+    for (let j = i + 1; j < walls.length; j += 1) {
+      const b = walls[j];
+      const p = lineIntersection(
+        { x: a.x1, y: a.y1 },
+        { x: a.x2, y: a.y2 },
+        { x: b.x1, y: b.y1 },
+        { x: b.x2, y: b.y2 },
+      );
+      if (p) {
+        result.push({
+          point: p,
+          target: { type: 'intersection', elementIdA: a.id, elementIdB: b.id },
+        });
+      }
+    }
+  }
+  return result;
+}
+
+function findWallProjections(
+  cursor: { x: number; y: number },
+  elements: ProjectElement[],
+): SnapCandidate[] {
+  const result: SnapCandidate[] = [];
+  for (const el of elements) {
+    if (el.element_type !== 'wall') continue;
+    const a = { x: el.x1, y: el.y1 };
+    const b = { x: el.x2, y: el.y2 };
+    const projected = projectPointOnSegment(cursor, a, b);
+    if (projected.t >= -1e-9 && projected.t <= 1.00000001) {
+      result.push({
+        point: projected.point,
+        target: { type: 'wall', elementId: el.id },
+      });
+    }
+  }
+  return result;
+}
+
+export function snapForColumn(
+  cursor: { x: number; y: number },
+  elements: ProjectElement[],
+  zoom: number,
+  worldPerPixel: number,
+  excludeId?: string,
+): SnapResult | null {
+  const walls = excludeId ? elements.filter((el) => el.id !== excludeId) : elements;
+  const wallIntersections = findWallIntersections(walls);
+  const wallProjections = findWallProjections(cursor, walls);
+
+  const intersectionPixelTolerance = COLUMN_WALL_SNAP_PIXELS;
+  const intersectionWorldTolerance = (intersectionPixelTolerance * worldPerPixel) / Math.max(0.1, zoom);
+  const projectionPixelTolerance = snapPixelsForZoom(zoom);
+  const projectionWorldTolerance = (projectionPixelTolerance * worldPerPixel) / Math.max(0.1, zoom);
+
+  let best: SnapResult | null = null;
+  for (const candidate of wallIntersections) {
+    const d = distance(cursor, candidate.point);
+    if (d <= intersectionWorldTolerance && (!best || d < best.distance)) {
+      best = { ...candidate, distance: d };
+    }
+  }
+  if (best) return best;
+
+  for (const candidate of wallProjections) {
+    const d = distance(cursor, candidate.point);
+    if (d <= projectionWorldTolerance && (!best || d < best.distance)) {
+      best = { ...candidate, distance: d };
+    }
+  }
+  return best;
 }
 
 export function isPointOnWall(

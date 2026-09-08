@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
-import { Stage, Layer, Line, Circle, Rect } from 'react-konva';
+import { Stage, Layer, Line, Circle, Rect, Text } from 'react-konva';
 import type Konva from 'konva';
 import type { EditorState } from '@/hooks/use-editor-state';
 import type { Point } from '@/lib/editor/geometry';
-import { lineIntersection } from '@/lib/editor/geometry';
+import { distance, lineIntersection } from '@/lib/editor/geometry';
+import { cmToDisplay, formatAngle, formatDisplayValue } from '@/lib/editor/units';
 import type { ProjectElement } from '@/types/project';
+import type { DisplayUnit } from '@/lib/editor/units';
+import { COLUMN_DEFAULT_DEPTH, COLUMN_DEFAULT_WIDTH } from '@/lib/editor/elements';
 
 const GRID_STEP = 100;
 const MIN_ZOOM = 0.2;
@@ -86,6 +89,7 @@ function useContainerSize() {
 
 type CanvasStageProps = {
   state: EditorState;
+  displayUnit: DisplayUnit;
   actions: {
     beginDraft: (point: Point) => void;
     updateDraft: (point: Point) => void;
@@ -100,7 +104,7 @@ type CanvasStageProps = {
   stageRef: MutableRefObject<Konva.Stage | null>;
 };
 
-export function CanvasStage({ state, actions, stageRef }: CanvasStageProps) {
+export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasStageProps) {
   const { ref, size } = useContainerSize();
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<Point | null>(null);
@@ -145,7 +149,12 @@ export function CanvasStage({ state, actions, stageRef }: CanvasStageProps) {
       return;
     }
     if (!state.draft) {
-      actions.beginDraft(world);
+      if (state.tool === 'column') {
+        actions.beginDraft(world);
+        actions.commitDraft();
+      } else {
+        actions.beginDraft(world);
+      }
     } else {
       actions.commitDraft();
     }
@@ -159,7 +168,12 @@ export function CanvasStage({ state, actions, stageRef }: CanvasStageProps) {
       setDragEnd(world);
       return;
     }
-    if (!state.draft) return;
+    if (!state.draft) {
+      if (state.tool === 'column') {
+        actions.beginDraft(world);
+      }
+      return;
+    }
     actions.updateDraft(world);
   }
 
@@ -207,6 +221,23 @@ export function CanvasStage({ state, actions, stageRef }: CanvasStageProps) {
       actions.setTool('select');
     }
   }
+
+  const draftMeasurement = useMemo(() => {
+    const draft = state.draft;
+    if (!draft || draft.tool === 'column') return null;
+    const length = distance(draft.start, draft.end);
+    const angle = Math.atan2(draft.end.y - draft.start.y, draft.end.x - draft.start.x);
+    const displayValue = formatDisplayValue(cmToDisplay(length, displayUnit), displayUnit);
+    return { text: `${displayValue}\n${formatAngle(angle)}`, end: draft.end };
+  }, [state.draft, displayUnit]);
+
+  const columnPreview = useMemo(() => {
+    const draft = state.draft;
+    if (!draft || draft.tool !== 'column') return null;
+    const width = COLUMN_DEFAULT_WIDTH * 100;
+    const depth = COLUMN_DEFAULT_DEPTH * 100;
+    return { point: draft.end, snap: draft.snap, width, depth };
+  }, [state.draft]);
 
   return (
     <div ref={ref} className="relative h-full w-full cursor-crosshair bg-white">
@@ -313,7 +344,7 @@ export function CanvasStage({ state, actions, stageRef }: CanvasStageProps) {
                 listening={false}
               />
             ))}
-            {state.draft && (
+            {state.draft && state.draft.tool !== 'column' && (
               <>
                 <Line
                   points={[state.draft.start.x, state.draft.start.y, state.draft.end.x, state.draft.end.y]}
@@ -338,14 +369,49 @@ export function CanvasStage({ state, actions, stageRef }: CanvasStageProps) {
                 />
               </>
             )}
+            {columnPreview && (
+              <>
+                <Rect
+                  x={columnPreview.point.x}
+                  y={columnPreview.point.y}
+                  width={columnPreview.width}
+                  height={columnPreview.depth}
+                  offsetX={columnPreview.width / 2}
+                  offsetY={columnPreview.depth / 2}
+                  fill="rgba(30, 64, 175, 0.15)"
+                  stroke={columnPreview.snap ? '#06b6d4' : '#1e40af'}
+                  strokeWidth={2 / zoom}
+                  listening={false}
+                />
+                <Circle
+                  x={columnPreview.point.x}
+                  y={columnPreview.point.y}
+                  radius={5 / zoom}
+                  fill="#1e40af"
+                  listening={false}
+                />
+              </>
+            )}
             {state.draft?.snap && (
               <Circle
                 x={state.draft.snap.point.x}
                 y={state.draft.snap.point.y}
-                radius={8 / zoom}
+                radius={state.draft.snap.target.type === 'intersection' ? 12 / zoom : 8 / zoom}
                 fill="transparent"
-                stroke="#1e40af"
+                stroke={state.draft.tool === 'column' ? '#06b6d4' : '#1e40af'}
                 strokeWidth={2 / zoom}
+                listening={false}
+              />
+            )}
+            {draftMeasurement && (
+              <Text
+                x={draftMeasurement.end.x + 12 / zoom}
+                y={draftMeasurement.end.y - 28 / zoom}
+                text={draftMeasurement.text}
+                fontSize={12}
+                fill="#1e40af"
+                scaleX={1 / zoom}
+                scaleY={1 / zoom}
                 listening={false}
               />
             )}

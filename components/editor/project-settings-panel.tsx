@@ -15,6 +15,15 @@ export function ProjectSettingsPanel({
     <div className="h-full overflow-y-auto p-5">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Project settings</p>
       <div className="mt-5 space-y-4">
+        <SelectField
+          label="Display unit"
+          value={settings.unit ?? 'm'}
+          options={[
+            { value: 'm', label: 'Meters (m)' },
+            { value: 'ft', label: 'Feet (ft)' },
+          ]}
+          onChange={(v) => onChange({ ...settings, unit: v as 'm' | 'ft' })}
+        />
         <TextField
           label="Seismic zone"
           value={settings.seismic_zone ?? ''}
@@ -95,6 +104,35 @@ function TextField({
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-slate-400"
       />
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block text-sm text-slate-700">
+      <span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-slate-400"
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }
