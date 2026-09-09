@@ -95,6 +95,7 @@ export type ProjectElement =
 
 export type Project = {
   id: string;
+  public_id: string;
   folder_id?: string | null;
   name: string;
   description: string;

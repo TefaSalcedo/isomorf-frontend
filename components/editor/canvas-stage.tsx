@@ -1,15 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { Stage, Layer, Line, Circle, Rect, Text } from 'react-konva';
 import type Konva from 'konva';
 import type { EditorState } from '@/hooks/use-editor-state';
 import type { Point } from '@/lib/editor/geometry';
 import { distance, lineIntersection } from '@/lib/editor/geometry';
-import { cmToDisplay, formatAngle, formatDisplayValue } from '@/lib/editor/units';
+import { cmToDisplay, displayToCm, formatAngle, formatDisplayValue } from '@/lib/editor/units';
 import type { ProjectElement } from '@/types/project';
 import type { DisplayUnit } from '@/lib/editor/units';
 import { COLUMN_DEFAULT_DEPTH, COLUMN_DEFAULT_WIDTH } from '@/lib/editor/elements';
+import { snapForWall, snapToNearest } from '@/lib/editor/snapping';
 
 const GRID_STEP = 100;
 const MIN_ZOOM = 0.2;
@@ -94,9 +95,11 @@ type CanvasStageProps = {
     beginDraft: (point: Point) => void;
     updateDraft: (point: Point) => void;
     commitDraft: () => void;
+    cancelDraft: () => void;
     select: (id: string, add: boolean) => void;
     selectMany: (ids: string[]) => void;
     clearSelection: () => void;
+    updateElement: (id: string, changes: Partial<ProjectElement>) => void;
     setZoom: (zoom: number) => void;
     pan: (delta: Point) => void;
     setTool: (tool: EditorState['tool']) => void;
@@ -110,7 +113,56 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
   const [dragStart, setDragStart] = useState<Point | null>(null);
   const [dragEnd, setDragEnd] = useState<Point | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [lengthInput, setLengthInput] = useState('');
   const { zoom, pan } = state.viewport;
+
+  useEffect(() => {
+    const draft = state.draft;
+    const activeDraft = draft && draft.tool !== 'column' ? draft : null;
+
+    function handleLengthKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setLengthInput('');
+        if (draft) actions.cancelDraft();
+        actions.clearSelection();
+        actions.setTool('select');
+        return;
+      }
+      if (!activeDraft) return;
+      if (/^[0-9.]$/.test(event.key) || event.key === ',') {
+        event.preventDefault();
+        setLengthInput((value) => `${value}${event.key === ',' ? '.' : event.key}`);
+        return;
+      }
+      if (event.key === 'Backspace') {
+        event.preventDefault();
+        setLengthInput((value) => value.slice(0, -1));
+        return;
+      }
+      if (event.key === 'Enter' && lengthInput) {
+        const displayLength = Number(lengthInput);
+        if (!Number.isFinite(displayLength) || displayLength <= 0) return;
+        event.preventDefault();
+        const currentLength = distance(activeDraft.start, activeDraft.end);
+        const angle = currentLength > 0.001
+          ? Math.atan2(activeDraft.end.y - activeDraft.start.y, activeDraft.end.x - activeDraft.start.x)
+          : 0;
+        const length = displayToCm(displayLength, displayUnit);
+        actions.updateDraft({
+          x: activeDraft.start.x + Math.cos(angle) * length,
+          y: activeDraft.start.y + Math.sin(angle) * length,
+        });
+        actions.commitDraft();
+        setLengthInput('');
+      }
+    }
+
+    window.addEventListener('keydown', handleLengthKeyDown);
+    return () => window.removeEventListener('keydown', handleLengthKeyDown);
+  }, [actions, displayUnit, lengthInput, state.draft]);
 
   const intersections = useMemo(() => {
     const lineElements = state.elements.filter((el) => isLineType(el.element_type));
@@ -216,10 +268,39 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
 
   function handleShapeClick(e: any, id: string) {
     e.cancelBubble = true;
-    actions.select(id, e.evt.ctrlKey || e.evt.metaKey);
-    if (state.tool !== 'select') {
-      actions.setTool('select');
+    if (state.tool === 'wall' || state.tool === 'door' || state.tool === 'window' || state.tool === 'beam') {
+      const stage = e.target.getStage();
+      const pos = stage.getPointerPosition() as Point;
+      actions.beginDraft(worldFromScreen(pos, pan, zoom));
+      return;
     }
+    actions.select(id, e.evt.ctrlKey || e.evt.metaKey);
+    if (state.tool !== 'select') actions.setTool('select');
+  }
+
+  function handleElementDragEnd(e: any, element: ProjectElement) {
+    const position = e.target.position();
+    if (!position.x && !position.y) return;
+    actions.updateElement(element.id, {
+      x1: element.x1 + position.x,
+      y1: element.y1 + position.y,
+      x2: element.x2 + position.x,
+      y2: element.y2 + position.y,
+    });
+    e.target.position({ x: 0, y: 0 });
+  }
+
+  function handleEndpointDragEnd(e: any, element: ProjectElement, endpoint: 'start' | 'end') {
+    const rawPoint = e.target.position() as Point;
+    const snap = element.element_type === 'wall'
+      ? snapForWall(rawPoint, state.elements, zoom, 1, element.id)
+      : snapToNearest(rawPoint, state.elements, zoom, 1, element.id);
+    const point = snap?.point ?? rawPoint;
+    const changes = endpoint === 'start'
+      ? { x1: point.x, y1: point.y }
+      : { x2: point.x, y2: point.y };
+    actions.updateElement(element.id, changes);
+    e.target.position({ x: 0, y: 0 });
   }
 
   const draftMeasurement = useMemo(() => {
@@ -227,9 +308,10 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     if (!draft || draft.tool === 'column') return null;
     const length = distance(draft.start, draft.end);
     const angle = Math.atan2(draft.end.y - draft.start.y, draft.end.x - draft.start.x);
-    const displayValue = formatDisplayValue(cmToDisplay(length, displayUnit), displayUnit);
-    return { text: `${displayValue}\n${formatAngle(angle)}`, end: draft.end };
-  }, [state.draft, displayUnit]);
+    const displayValue = lengthInput || formatDisplayValue(cmToDisplay(length, displayUnit), displayUnit);
+    const suffix = lengthInput ? ` ${displayUnit}` : '';
+    return { text: `${displayValue}${suffix}\n${formatAngle(angle)}`, end: draft.end };
+  }, [state.draft, displayUnit, lengthInput]);
 
   const columnPreview = useMemo(() => {
     const draft = state.draft;
@@ -308,6 +390,8 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                   strokeWidth={thickness}
                   lineCap="butt"
                   lineJoin="miter"
+                  draggable={state.tool === 'select' && selected}
+                  onDragEnd={(e) => handleElementDragEnd(e, el)}
                   onMouseDown={(e) => handleShapeClick(e, el.id)}
                   onMouseEnter={() => setHoverId(el.id)}
                   onMouseLeave={() => setHoverId(null)}
@@ -343,6 +427,34 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 fill={state.selectedIds.includes(el.id) ? '#1e40af' : '#6b7280'}
                 listening={false}
               />
+            ))}
+            {state.elements.filter((el) => state.selectedIds.includes(el.id) && isLineType(el.element_type)).map((el) => (
+              <Fragment key={`handles-${el.id}`}>
+                <Circle
+                  key={`handle-start-${el.id}`}
+                  x={el.x1}
+                  y={el.y1}
+                  radius={7 / zoom}
+                  fill="#ffffff"
+                  stroke="#1e40af"
+                  strokeWidth={2 / zoom}
+                  draggable={state.tool === 'select'}
+                  onMouseDown={(e) => { e.cancelBubble = true; }}
+                  onDragEnd={(e) => handleEndpointDragEnd(e, el, 'start')}
+                />
+                <Circle
+                  key={`handle-end-${el.id}`}
+                  x={el.x2}
+                  y={el.y2}
+                  radius={7 / zoom}
+                  fill="#ffffff"
+                  stroke="#1e40af"
+                  strokeWidth={2 / zoom}
+                  draggable={state.tool === 'select'}
+                  onMouseDown={(e) => { e.cancelBubble = true; }}
+                  onDragEnd={(e) => handleEndpointDragEnd(e, el, 'end')}
+                />
+              </Fragment>
             ))}
             {state.draft && state.draft.tool !== 'column' && (
               <>

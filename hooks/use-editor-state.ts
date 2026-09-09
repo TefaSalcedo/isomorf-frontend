@@ -13,7 +13,7 @@ import {
   updateBeamLength,
   defaultDesignSettings,
 } from '@/lib/editor/elements';
-import { snapToNearest, snapForColumn, type SnapResult } from '@/lib/editor/snapping';
+import { findColumnContainingPoint, isPointInsideColumn, snapForColumn, snapForWall, snapToNearest, snapWallStart, wallCrossesColumnInterior, type SnapResult } from '@/lib/editor/snapping';
 import {
   cmToMeters,
   distance,
@@ -41,6 +41,8 @@ export type ActiveSection =
 export type DraftState = {
   tool: Tool;
   start: Point;
+  startInput: Point;
+  columnAnchorId: string | null;
   end: Point;
   snap: SnapResult | null;
   host: ProjectElement | null;
@@ -140,8 +142,9 @@ function propagateEndpointChange(
   });
 }
 
-function applySnap(point: Point, elements: ProjectElement[], zoom: number): SnapResult | null {
+function applySnap(point: Point, elements: ProjectElement[], zoom: number, tool?: Tool): SnapResult | null {
   if (elements.length === 0) return null;
+  if (tool === 'wall') return snapForWall(point, elements, zoom, WORLD_PER_PIXEL);
   return snapToNearest(point, elements, zoom, WORLD_PER_PIXEL);
 }
 
@@ -286,11 +289,13 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       return { ...state, viewport: { zoom: 1, pan: { x: 0, y: 0 } } };
     case 'beginDraft': {
       if (state.tool === 'select') return state;
-      const snap = state.snapEnabled
+      const columnAnchor = state.tool === 'wall' ? findColumnContainingPoint(action.point, state.elements) : null;
+      const wallStart = columnAnchor ? snapWallStart(action.point, action.point, state.elements) : null;
+      const snap = wallStart ?? (state.snapEnabled
         ? (state.tool === 'column'
             ? snapForColumn(action.point, state.elements, state.viewport.zoom, WORLD_PER_PIXEL)
-            : applySnap(action.point, state.elements, state.viewport.zoom))
-        : null;
+            : applySnap(action.point, state.elements, state.viewport.zoom, state.tool))
+        : null);
       const start = snap ? snap.point : action.point;
       const isStartT = snap?.target.type === 'midpoint';
       return {
@@ -298,6 +303,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         draft: {
           tool: state.tool,
           start,
+          startInput: action.point,
+          columnAnchorId: columnAnchor?.id ?? null,
           end: start,
           snap,
           host: isStartT && snap ? state.elements.find((el) => 'elementId' in snap.target && el.id === snap.target.elementId) ?? null : null,
@@ -309,6 +316,10 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       if (!state.draft) return state;
       const { draft } = state;
       const raw = action.point;
+      const anchoredStart = draft.tool === 'wall' && draft.columnAnchorId
+        ? snapWallStart(draft.startInput, raw, state.elements)
+        : null;
+      const start = anchoredStart?.point ?? draft.start;
 
       if (draft.tool === 'column') {
         let endSnap = state.snapEnabled
@@ -319,7 +330,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         return { ...state, draft: { ...draft, end, snap: endSnap } };
       }
 
-      let endSnap = state.snapEnabled ? applySnap(raw, state.elements, state.viewport.zoom) : null;
+      let endSnap = state.snapEnabled ? applySnap(raw, state.elements, state.viewport.zoom, draft.tool) : null;
       if (endSnap && pointsEqual(endSnap.point, draft.start)) endSnap = null;
       let end = raw;
       let host = draft.host;
@@ -328,7 +339,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         const hostStart = { x: host.x1, y: host.y1 };
         const hostEnd = { x: host.x2, y: host.y2 };
         const ref = endSnap && endSnap.target.type !== 'midpoint' ? endSnap.point : raw;
-        end = resolveTJoin(draft.start, hostStart, hostEnd, ref, 90);
+        end = resolveTJoin(start, hostStart, hostEnd, ref, 90);
       } else if (endSnap?.target.type === 'midpoint') {
         end = endSnap.point;
         const endSnapTarget = endSnap.target;
@@ -347,13 +358,19 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       } else if (endSnap) {
         end = endSnap.point;
       }
-      return { ...state, draft: { ...draft, end, snap: endSnap, host, joinAt } };
+      return { ...state, draft: { ...draft, start, end, snap: anchoredStart ?? endSnap, host, joinAt } };
     }
     case 'commitDraft': {
       if (!state.draft) return state;
       const projectId = state.elements[0]?.project_id ?? '';
       const created = makeElementFromDraft(state.draft, projectId);
       if (!created) return { ...state, draft: null };
+      if (created.element_type === 'wall') {
+        const elementsWithCreated = state.elements.concat(created);
+        if (isPointInsideColumn({ x: created.x1, y: created.y1 }, elementsWithCreated) || isPointInsideColumn({ x: created.x2, y: created.y2 }, elementsWithCreated) || wallCrossesColumnInterior({ x: created.x1, y: created.y1 }, { x: created.x2, y: created.y2 }, elementsWithCreated)) {
+          return { ...state, draft: null };
+        }
+      }
       return {
         ...state,
         elements: [...state.elements, created],
@@ -372,6 +389,17 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       if (!el) return state;
       const oldStart = { x: el.x1, y: el.y1 };
       const oldEnd = { x: el.x2, y: el.y2 };
+      const proposedStart = {
+        x: action.changes.x1 ?? el.x1,
+        y: action.changes.y1 ?? el.y1,
+      };
+      const proposedEnd = {
+        x: action.changes.x2 ?? el.x2,
+        y: action.changes.y2 ?? el.y2,
+      };
+      if (el.element_type === 'wall' && (isPointInsideColumn(proposedStart, state.elements) || isPointInsideColumn(proposedEnd, state.elements) || wallCrossesColumnInterior(proposedStart, proposedEnd, state.elements))) {
+        return state;
+      }
       const next = applyElementChanges(el, action.changes, state.elements);
       const newStart = { x: next.x1, y: next.y1 };
       const newEnd = { x: next.x2, y: next.y2 };
@@ -406,6 +434,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         future: [state.elements, ...state.future],
         selectedIds: [],
         draft: null,
+        dirty: true,
       };
     }
     case 'redo': {
@@ -418,6 +447,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         future: state.future.slice(1),
         selectedIds: [],
         draft: null,
+        dirty: true,
       };
     }
     case 'markClean':

@@ -6,7 +6,7 @@ import type { Project } from '@/types/project';
 export function ProjectCard({ project }: { project: Project }) {
   return (
     <Link
-      href={`/projects/${project.id}`}
+      href={`/projects/${project.public_id}`}
       className="block rounded-xl border border-slate-200/70 bg-white/70 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-500/30 hover:bg-white hover:shadow-md backdrop-blur"
     >
       <div className="flex items-start justify-between gap-4">

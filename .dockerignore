@@ -1,0 +1,15 @@
+node_modules
+.next
+.pnpm-store
+.env*
+.git
+coverage
+out
+build
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+*.log
+.playwright-mcp
+stitch_structura_aec_bim_saas_platform (1)
+public/**/*.map

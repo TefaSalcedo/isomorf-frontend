@@ -21,7 +21,8 @@ export type SnapTarget =
   | { type: 'intersection'; elementIdA: string; elementIdB: string }
   | { type: 'wall'; elementId: string }
   | { type: 'center'; elementId: string }
-  | { type: 'corner'; elementId: string; index: number };
+  | { type: 'corner'; elementId: string; index: number }
+  | { type: 'column-edge'; elementId: string; index: number };
 
 export type SnapCandidate = {
   point: { x: number; y: number };
@@ -47,8 +48,8 @@ function anchorPointsFor(element: ProjectElement): SnapCandidate[] {
   }
   if (element.element_type === 'column') {
     const props = element.properties;
-    const w = props.width ?? 20;
-    const d = props.depth ?? 20;
+    const w = (props.width ?? 0.2) * 100;
+    const d = (props.depth ?? 0.2) * 100;
     const center = { x: element.x1, y: element.y1 };
     candidates.push({ point: center, target: { type: 'center', elementId: element.id } });
     const half = { x: w / 2, y: d / 2 };
@@ -184,6 +185,139 @@ function findWallProjections(
     }
   }
   return result;
+}
+
+function columnEdges(element: ProjectElement, cursor: { x: number; y: number }): { point: { x: number; y: number }; target: SnapTarget }[] {
+  if (element.element_type !== 'column') return [];
+  const props = element.properties;
+  const halfWidth = (props.width ?? 0.2) * 100 / 2;
+  const halfDepth = (props.depth ?? 0.2) * 100 / 2;
+  const center = { x: element.x1, y: element.y1 };
+  const minX = center.x - halfWidth;
+  const maxX = center.x + halfWidth;
+  const minY = center.y - halfDepth;
+  const maxY = center.y + halfDepth;
+  const corners = [
+    { x: minX, y: minY },
+    { x: maxX, y: minY },
+    { x: maxX, y: maxY },
+    { x: minX, y: maxY },
+  ];
+  const edges = [
+    [{ x: minX, y: minY }, { x: maxX, y: minY }],
+    [{ x: maxX, y: minY }, { x: maxX, y: maxY }],
+    [{ x: maxX, y: maxY }, { x: minX, y: maxY }],
+    [{ x: minX, y: maxY }, { x: minX, y: minY }],
+  ];
+  const edgeCandidates: SnapCandidate[] = edges.map(([a, b], index) => ({
+    point: projectPointOnSegment(cursor, a, b).point,
+    target: { type: 'column-edge', elementId: element.id, index },
+  }));
+  const cornerCandidates: SnapCandidate[] = corners.map((point, index) => ({
+    point,
+    target: { type: 'corner', elementId: element.id, index },
+  }));
+  return [...edgeCandidates, ...cornerCandidates];
+}
+
+function pointInsideColumn(point: { x: number; y: number }, element: ProjectElement): boolean {
+  if (element.element_type !== 'column') return false;
+  const props = element.properties;
+  const halfWidth = (props.width ?? 0.2) * 100 / 2;
+  const halfDepth = (props.depth ?? 0.2) * 100 / 2;
+  return Math.abs(point.x - element.x1) < halfWidth && Math.abs(point.y - element.y1) < halfDepth;
+}
+
+export function findColumnContainingPoint(point: { x: number; y: number }, elements: ProjectElement[]): ProjectElement | null {
+  return elements.find((element) => pointInsideColumn(point, element)) ?? null;
+}
+
+export function isPointInsideColumn(point: { x: number; y: number }, elements: ProjectElement[]): boolean {
+  return findColumnContainingPoint(point, elements) !== null;
+}
+
+function segmentCrossesColumnInterior(start: { x: number; y: number }, end: { x: number; y: number }, column: ProjectElement): boolean {
+  if (column.element_type !== 'column') return false;
+  const props = column.properties;
+  const halfWidth = (props.width ?? 0.2) * 100 / 2;
+  const halfDepth = (props.depth ?? 0.2) * 100 / 2;
+  const minX = column.x1 - halfWidth;
+  const maxX = column.x1 + halfWidth;
+  const minY = column.y1 - halfDepth;
+  const maxY = column.y1 + halfDepth;
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  let enter = 0;
+  let exit = 1;
+  for (const [origin, delta, min, max] of [[start.x, dx, minX, maxX], [start.y, dy, minY, maxY]] as const) {
+    if (Math.abs(delta) < 1e-9) {
+      if (origin <= min || origin >= max) return false;
+      continue;
+    }
+    const near = (min - origin) / delta;
+    const far = (max - origin) / delta;
+    const nextEnter = Math.min(near, far);
+    const nextExit = Math.max(near, far);
+    enter = Math.max(enter, nextEnter);
+    exit = Math.min(exit, nextExit);
+    if (enter >= exit) return false;
+  }
+  return enter < exit && exit - enter > 1e-6;
+}
+
+export function wallCrossesColumnInterior(start: { x: number; y: number }, end: { x: number; y: number }, elements: ProjectElement[]): boolean {
+  return elements.some((element) => segmentCrossesColumnInterior(start, end, element));
+}
+
+export function snapWallStart(
+  cursor: { x: number; y: number },
+  reference: { x: number; y: number },
+  elements: ProjectElement[],
+): SnapResult | null {
+  const column = findColumnContainingPoint(cursor, elements);
+  if (!column || column.element_type !== 'column') return null;
+  const halfWidth = (column.properties.width ?? 0.2) * 100 / 2;
+  const halfDepth = (column.properties.depth ?? 0.2) * 100 / 2;
+  const offset = { x: reference.x - cursor.x, y: reference.y - cursor.y };
+  let point = { x: column.x1, y: column.y1 };
+  let distanceToEdge = 0;
+  if (Math.abs(offset.x) >= Math.abs(offset.y) && Math.abs(offset.x) > 1e-6) {
+    point = { x: column.x1 + Math.sign(offset.x) * halfWidth, y: column.y1 };
+    distanceToEdge = halfWidth;
+  } else if (Math.abs(offset.y) > 1e-6) {
+    point = { x: column.x1, y: column.y1 + Math.sign(offset.y) * halfDepth };
+    distanceToEdge = halfDepth;
+  } else {
+    const nearest = columnEdges(column, cursor).find((candidate) => candidate.target.type === 'column-edge');
+    if (!nearest) return null;
+    point = nearest.point;
+    distanceToEdge = distance(cursor, point);
+  }
+  return { point, target: { type: 'column-edge', elementId: column.id, index: 0 }, distance: distanceToEdge };
+}
+
+export function snapForWall(
+  cursor: { x: number; y: number },
+  elements: ProjectElement[],
+  zoom: number,
+  worldPerPixel: number,
+  excludeId?: string,
+): SnapResult | null {
+  const available = elements.filter((element) => element.id !== excludeId);
+  const candidates = [
+    ...snapCandidates(available).filter((candidate) => candidate.target.type !== 'center').map((candidate) => ({ ...candidate, distance: distance(cursor, candidate.point) })),
+    ...available.flatMap((element) => columnEdges(element, cursor).map((candidate) => ({ ...candidate, distance: distance(cursor, candidate.point) }))),
+  ];
+  const pixelTolerance = snapPixelsForZoom(zoom);
+  const worldTolerance = (pixelTolerance * worldPerPixel) / Math.max(0.1, zoom);
+  let best: SnapResult | null = null;
+  for (const candidate of candidates) {
+    const inside = available.some((element) => pointInsideColumn(cursor, element) && (candidate.target.type === 'column-edge' || candidate.target.type === 'corner') && candidate.target.elementId === element.id);
+    if (candidate.distance <= worldTolerance || inside) {
+      if (!best || candidate.distance < best.distance) best = candidate;
+    }
+  }
+  return best;
 }
 
 export function snapForColumn(

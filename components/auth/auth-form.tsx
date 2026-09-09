@@ -22,7 +22,7 @@ function Brand() {
 
 function Showcase() {
   return (
-    <div className="relative hidden overflow-hidden bg-gradient-to-br from-violet-950 via-indigo-950 to-slate-950 p-10 text-white lg:flex lg:flex-col lg:justify-between">
+    <div className="relative hidden overflow-hidden bg-gradient-to-br from-violet-950 via-indigo-950 to-slate-950 p-10 text-white lg:col-span-5 lg:flex lg:flex-col lg:justify-between">
       <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl" />
       <div className="relative">
         <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-violet-100 ring-1 ring-white/15">

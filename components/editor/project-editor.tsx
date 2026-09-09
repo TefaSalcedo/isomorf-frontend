@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type Konva from 'konva';
 import { useEditorState } from '@/hooks/use-editor-state';
@@ -17,6 +17,8 @@ import type { Project, ProjectElement } from '@/types/project';
 import type { ElementPayload } from '@/lib/api-client';
 import { defaultDesignSettings } from '@/lib/editor/elements';
 
+type EditorView = '2d' | '3d' | 'loads' | 'fem';
+
 const Model3DPreview = dynamic(
   () => import('@/components/editor/model-3d-preview').then((mod) => mod.Model3DPreview),
   { ssr: false },
@@ -24,19 +26,34 @@ const Model3DPreview = dynamic(
 
 export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   const { state, actions, selectedElements, summary } = useEditorState(initialProject);
+  const [projectName, setProjectName] = useState(initialProject.name || 'Sin nombre');
   const [saving, setSaving] = useState(false);
   const [designSettings, setDesignSettings] = useState<Project['design_settings']>(
     initialProject.design_settings ?? defaultDesignSettings(),
   );
-  const [activeView, setActiveView] = useState<'2d' | '3d' | 'loads' | 'fem'>('2d');
+  const [activeView, setActiveView] = useState<EditorView>('2d');
   const original = useRef(new Map((initialProject.elements ?? []).map((element) => [element.id, element])));
   const stageRef = useRef<Konva.Stage | null>(null);
+  const savingRef = useRef(false);
+  const pendingSaveRef = useRef(false);
+  const saveRef = useRef<() => Promise<void>>(async () => undefined);
+  const initialNameRef = useRef(initialProject.name || 'Sin nombre');
+  const initialSettingsRef = useRef(JSON.stringify(initialProject.design_settings ?? defaultDesignSettings()));
 
   async function save() {
+    if (savingRef.current) {
+      pendingSaveRef.current = true;
+      return;
+    }
+    savingRef.current = true;
     setSaving(true);
     actions.clearError();
     try {
       const currentIds = new Set(state.elements.map((el) => el.id));
+      const updatedProject = await api.updateProject(initialProject.id, {
+        name: projectName.trim() || 'Sin nombre',
+        design_settings: designSettings,
+      });
       for (const element of original.current.values()) {
         if (!currentIds.has(element.id)) {
           await api.deleteElement(initialProject.id, element.id);
@@ -60,21 +77,37 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         persisted.push(savedElement);
       }
       original.current = new Map(persisted.map((element) => [element.id, element]));
-      actions.loadProject({ ...initialProject, elements: persisted, design_settings: designSettings });
+      setProjectName(updatedProject.name || 'Sin nombre');
+      initialNameRef.current = updatedProject.name || 'Sin nombre';
+      initialSettingsRef.current = JSON.stringify(designSettings);
+      actions.markClean();
     } catch (saveError) {
       actions.setError(saveError instanceof Error ? saveError.message : 'Unable to save changes');
     } finally {
+      savingRef.current = false;
       setSaving(false);
+      if (pendingSaveRef.current) {
+        pendingSaveRef.current = false;
+        window.setTimeout(() => void saveRef.current(), 0);
+      }
     }
   }
 
-  async function saveDesignSettings() {
-    actions.clearError();
-    try {
-      await api.updateProject(initialProject.id, { design_settings: designSettings });
-    } catch (error) {
-      actions.setError(error instanceof Error ? error.message : 'Unable to save settings');
-    }
+  useEffect(() => {
+    saveRef.current = save;
+  });
+
+  useEffect(() => {
+    const projectChanged =
+      projectName.trim() !== initialNameRef.current ||
+      JSON.stringify(designSettings) !== initialSettingsRef.current;
+    if (!state.dirty && !projectChanged) return undefined;
+    const timeout = window.setTimeout(() => void saveRef.current(), 700);
+    return () => window.clearTimeout(timeout);
+  }, [state.dirty, projectName, designSettings, initialProject.name]);
+
+  function commitProjectName(value: string) {
+    setProjectName(value.trim() || 'Sin nombre');
   }
 
   function handleExport() {
@@ -82,7 +115,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     if (!dataURL) return;
     const a = document.createElement('a');
     a.href = dataURL;
-    a.download = `${initialProject.name || 'plan'}.png`;
+    a.download = `${projectName || 'plan'}.png`;
     a.click();
   }
 
@@ -105,7 +138,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
       <ProjectSettingsPanel
         settings={designSettings}
         onChange={setDesignSettings}
-        onSave={saveDesignSettings}
+        onSave={() => void saveRef.current()}
       />
     );
   } else if (state.activeSection === 'calculations' || selectedElements.length > 1) {
@@ -117,20 +150,21 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   return (
     <main className="flex h-screen w-full flex-col bg-slate-50 text-slate-900">
       <EditorToolbar
-        projectName={initialProject.name}
+        projectName={projectName}
         state={state}
         actions={actions}
         view={activeView}
         onViewChange={setActiveView}
         view3D={activeView === '3d'}
         onToggle3D={handleToggle3D}
-        onSave={save}
+        onProjectNameCommit={commitProjectName}
+        onSave={() => void saveRef.current()}
         onExport={handleExport}
         onPrint={handlePrint}
         saving={saving}
       />
       <div className="flex min-h-0 flex-1">
-        {!state.cleanMode && <EditorSidebar state={state} actions={actions} />}
+        {!state.cleanMode && <EditorSidebar state={state} actions={actions} view={activeView} onOpenLoads={() => setActiveView('loads')} />}
         <div className="relative min-h-0 flex-1">
           {activeView === '3d' ? (
             <Model3DPreview elements={state.elements} />
