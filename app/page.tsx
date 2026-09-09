@@ -30,14 +30,14 @@ export default function Home() {
       tl.fromTo(
         blockRef.current,
         { y: 0 },
-        { y: 40, duration: 0.5, yoyo: true, repeat: 1, ease: 'sine.inOut' },
+        { y: 240, duration: 1, ease: 'sine.inOut' },
         0
       );
 
       tl.fromTo(
         cableRef.current,
-        { attr: { y2: 650 } },
-        { attr: { y2: 690 }, duration: 0.5, yoyo: true, repeat: 1, ease: 'sine.inOut' },
+        { attr: { y2: 420 } },
+        { attr: { y2: 660 }, duration: 1, ease: 'sine.inOut' },
         0
       );
 
@@ -108,7 +108,7 @@ export default function Home() {
           {/* Tower crane on the right, scaled around its base */}
           <g
             className="stroke-slate-700"
-            transform="translate(1180, 900) scale(1.1) translate(-1180, -900)"
+            transform="translate(1180, 560) scale(0.8) translate(-1180, -900)"
           >
             <line x1="1180" y1="890" x2="1180" y2="620" strokeWidth="10" />
             <line x1="1180" y1="620" x2="1030" y2="665" strokeWidth="8" />
@@ -284,14 +284,14 @@ export default function Home() {
           <line
             ref={cableRef}
             data-testid="crane-cable"
-            x1="1015"
-            y1="642"
-            x2="1015"
-            y2="660"
+            x1="1060"
+            y1="372"
+            x2="1060"
+            y2="420"
             strokeWidth="3"
             className="stroke-slate-600"
           />
-          <g transform="translate(1015, 660)">
+          <g transform="translate(1060, 420)">
             <g ref={blockRef} data-testid="concrete-block">
               <g transform="scale(1.15)">
                 <rect
