@@ -1,0 +1,571 @@
+<!DOCTYPE html><html lang="es" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><title>Structura · Software de Diseño y Análisis Estructural BIM</title><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"on-secondary-fixed-variant": "#464555", "on-error-container": "#93000a", "on-surface": "#0b1c30", "surface-variant": "#d3e4fe", "secondary-fixed": "#e4e0f5", "surface-dim": "#cbdbf5", "outline-variant": "#ccc3d8", secondary: "#5e5c6e", "surface-container-low": "#eff4ff", "inverse-on-surface": "#eaf1ff", "on-secondary-container": "#646274", "on-tertiary-container": "#88fbc6", outline: "#7b7487", "surface-container-highest": "#d3e4fe", "tertiary-container": "#007551", "inverse-primary": "#d2bbff", "on-tertiary-fixed": "#002114", "surface-container-lowest": "#ffffff", "on-secondary": "#ffffff", "surface-container": "#e5eeff", "on-background": "#0b1c30", "primary-fixed": "#eaddff", "error-container": "#ffdad6", "surface-container-high": "#dce9ff", primary: "#630ed4", "on-primary": "#ffffff", surface: "#f8f9ff", error: "#ba1a1a", "surface-bright": "#f8f9ff", background: "#f8f9ff", "secondary-fixed-dim": "#c7c4d8", "on-surface-variant": "#4a4455", "on-primary-container": "#ede0ff", "secondary-container": "#e4e0f5", "tertiary-fixed": "#85f8c4", "surface-tint": "#732ee4", "tertiary-fixed-dim": "#68dba9", tertiary: "#005a3d", "primary-container": "#7c3aed", "on-tertiary-fixed-variant": "#005137", "on-secondary-fixed": "#1b1a29", "on-tertiary": "#ffffff", "inverse-surface": "#213145", "on-error": "#ffffff", "on-primary-fixed": "#25005a", "primary-fixed-dim": "#d2bbff", "on-primary-fixed-variant": "#5a00c6"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}, spacing: {"gap-2xs": "0.25rem", "sidebar-width": "15rem", "gap-xs": "0.5rem", "status-bar-height": "4.5rem", "gap-xl": "1.5rem", "toolbar-width": "14rem", "gap-lg": "1.25rem", "header-height": "4rem", "gap-sm": "0.75rem", "gap-md": "1rem", "inspector-width": "22rem"}, fontFamily: {"headline-lg-mobile": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], headline: ["Plus Jakarta Sans"], display: ["Plus Jakarta Sans"], body: ["Plus Jakarta Sans"], label: ["Plus Jakarta Sans"]}, fontSize: {"headline-lg-mobile": ["18px", {lineHeight: "24px", letterSpacing: "-0.01em", fontWeight: "700"}], "label-md": ["11px", {lineHeight: "14px", letterSpacing: "0.03em", fontWeight: "600"}], "body-md": ["13px", {lineHeight: "18px", fontWeight: "400"}], "headline-sm": ["16px", {lineHeight: "22px", letterSpacing: "-0.01em", fontWeight: "600"}], "body-lg": ["15px", {lineHeight: "22px", fontWeight: "400"}], "label-sm": ["10px", {lineHeight: "12px", letterSpacing: "0.04em", fontWeight: "700"}], "headline-lg": ["22px", {lineHeight: "28px", letterSpacing: "-0.015em", fontWeight: "700"}], "headline-xl": ["28px", {lineHeight: "36px", letterSpacing: "-0.02em", fontWeight: "700"}], "body-sm": ["12px", {lineHeight: "16px", fontWeight: "400"}], "label-lg": ["13px", {lineHeight: "16px", letterSpacing: "0.01em", fontWeight: "600"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><header class="fixed top-0 left-0 right-0 z-50 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex items-center justify-between px-6 gap-md"><div class="flex items-center gap-md min-w-[14rem]"><div class="flex items-center gap-sm"><div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-primary-container flex items-center justify-center text-on-primary shadow-[0_4px_12px_rgba(124,58,237,0.25)]"><span class="material-symbols-outlined text-[20px]">view_in_ar</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface leading-none tracking-tight">Isomorf</span><span class="font-label-sm text-label-sm text-on-surface-variant leading-tight hidden xl:block">Dibuja · Modela · Analiza · Construye</span></div></div></div><div class="flex-1 max-w-2xl px-4"><div class="relative w-full flex items-center"><span class="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-[20px] pointer-events-none">search</span><input class="w-full h-10 pl-11 pr-4 bg-surface-container-low/70 hover:bg-surface-container-low focus:bg-surface-container-lowest rounded-xl text-body-md font-body-md text-on-surface placeholder:text-on-surface-variant outline-none ring-1 ring-outline-variant/40 focus:ring-2 focus:ring-primary-container transition-all" placeholder="Buscar proyectos, modelos BIM, planos o plantillas..." type="text"></div></div><div class="flex items-center gap-sm"><button class="hidden md:flex items-center gap-xs px-3 py-1.5 rounded-xl bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"><span class="material-symbols-outlined text-[18px]">school</span><span class="font-label-md text-label-md">Aprende en 2 min</span></button><button class="relative p-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary ring-2 ring-surface-container-lowest"></span></button><button class="flex items-center gap-xs px-3.5 py-1.5 rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg shadow-[0_4px_12px_rgba(124,58,237,0.25)] hover:bg-primary transition-all"><span class="material-symbols-outlined text-[18px]">add</span><span class="hidden sm:inline">Nuevo</span></button><div class="flex items-center gap-xs pl-2"><div class="relative"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-label-md text-label-md text-on-primary font-bold shadow-sm">TS</div><span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-tertiary-container ring-2 ring-surface-container-lowest"></span></div></div></div></header><aside class="fixed left-0 top-16 bottom-0 w-60 bg-surface-container-lowest/80 backdrop-blur-md z-40 flex flex-col justify-between py-4 px-3"><div class="flex flex-col gap-md"><div class="px-2"><button class="w-full h-11 rounded-xl bg-gradient-to-r from-primary-container to-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-xs shadow-[0_6px_16px_rgba(124,58,237,0.28)] hover:opacity-95 transition-all"><span class="material-symbols-outlined text-[20px]">add_circle</span><span class="">+ Crear</span></button></div><nav class="flex flex-col gap-2xs" data-active-classes="bg-secondary-container text-on-secondary-fixed font-bold shadow-sm"><a aria-current="page" class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl transition-all bg-secondary-container text-on-secondary-fixed font-bold shadow-sm" data-path="dashboard-inicio" href="#"><span class="material-symbols-outlined text-[20px]">home</span><span class="font-label-lg text-label-lg">Inicio</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="mis-proyectos" href="#"><span class="material-symbols-outlined text-[20px]">folder_special</span><span class="font-label-lg text-label-lg">Proyectos</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="modelos-recientes" href="#"><span class="material-symbols-outlined text-[20px]">schedule</span><span class="font-label-lg text-label-lg">Recientes</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="carpetas-y-archivos" href="#"><span class="material-symbols-outlined text-[20px]">folder</span><span class="font-label-lg text-label-lg">Carpetas</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="equipos-de-calculo" href="#"><span class="material-symbols-outlined text-[20px]">groups</span><span class="font-label-lg text-label-lg">Equipos</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="plantillas-estructurales" href="#"><span class="material-symbols-outlined text-[20px]">auto_awesome_mosaic</span><span class="font-label-lg text-label-lg">Plantillas</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="biblioteca-de-materiales" href="#"><span class="material-symbols-outlined text-[20px]">menu_book</span><span class="font-label-lg text-label-lg">Biblioteca</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="compartido-conmigo" href="#"><span class="material-symbols-outlined text-[20px]">share</span><span class="font-label-lg text-label-lg">Compartido conmigo</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="papelera" href="#"><span class="material-symbols-outlined text-[20px]">delete</span><span class="font-label-lg text-label-lg">Papelera</span></a></nav></div><div class="pt-3"><nav class="flex flex-col gap-2xs" data-active-classes="bg-secondary-container text-on-secondary-fixed font-bold"><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="configuracion-de-cuenta" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-label-lg text-label-lg">Configuración</span></a></nav></div></aside><div class="pl-60"><main class="relative w-full pt-16 min-h-screen bg-surface px-8 pb-12"><div class="flex flex-col w-full gap-8">
+<!-- HERO BANNER ESTILO CANVA -->
+<section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-secondary-container/30 via-surface-container-low to-surface-container-lowest p-8 shadow-sm">
+<div class="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-primary-fixed-dim/20 blur-3xl pointer-events-none"></div>
+<div class="absolute right-1/3 -bottom-20 w-64 h-64 rounded-full bg-tertiary-fixed-dim/20 blur-2xl pointer-events-none"></div>
+<!-- Background Blueprint Geometry Accent -->
+<div class="absolute right-6 top-6 opacity-20 pointer-events-none hidden lg:block">
+<svg class="text-primary-container" fill="none" height="140" viewBox="0 0 220 140" width="220">
+<path d="M10 130 L110 30 L210 130 Z" stroke="currentColor" stroke-dasharray="4 4" stroke-width="1.5"></path>
+<path d="M60 80 L160 80" stroke="currentColor" stroke-width="1.5"></path>
+<circle cx="110" cy="30" fill="currentColor" r="4"></circle>
+<circle cx="10" cy="130" fill="currentColor" r="4"></circle>
+<circle cx="210" cy="130" fill="currentColor" r="4"></circle>
+<path d="M110 30 L110 130" stroke="currentColor" stroke-width="1"></path>
+</svg>
+</div>
+<div class="relative z-10 flex flex-col items-center text-center max-w-4xl mx-auto space-y-4">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-lowest/80 backdrop-blur-sm text-primary-container text-label-md font-label-md shadow-xs">
+<span class="material-symbols-outlined text-[16px] text-tertiary-container" style="font-variation-settings: &quot;FILL&quot; 1;">verified</span>
+<span class="">Versión Cloud 2026.4 · Motor FEA SAP2000 Conectado</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">
+        Buenos días, Tomás 👋
+      </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+        ¿Qué quieres diseñar o modelar hoy? Crea desde cero, calcula esfuerzos de segundo orden o importa tus planos de AutoCAD/Revit con un clic.
+      </p>
+<!-- Canva-Style Grand Search Bar -->
+<div class="w-full pt-3 max-w-3xl">
+<div class="relative flex items-center bg-surface-container-lowest rounded-2xl shadow-md p-2 hover:shadow-lg transition-all">
+<div class="flex items-center pl-3 pr-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[24px] text-primary-container">search</span>
+</div>
+<input class="w-full bg-transparent text-body-lg font-body-lg text-on-surface placeholder:text-on-surface-variant/70 outline-none px-2" placeholder="Buscar proyectos, modelos BIM, memorias de cálculo, planos o plantillas..." type="text">
+<div class="hidden sm:flex items-center gap-1 bg-surface-container px-2.5 py-1 rounded-lg text-label-sm font-label-sm text-on-surface-variant mr-2">
+<span class="">⌘</span>
+<span class="">K</span>
+</div>
+<button class="bg-primary-container hover:bg-primary text-on-primary font-label-lg text-label-lg px-5 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5 shrink-0">
+<span class="">Explorar</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+<!-- Quick filter chips inside banner -->
+<div class="flex flex-wrap items-center justify-center gap-2 mt-3.5">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mr-1">Filtros rápidos:</span>
+<button class="px-3 py-1 rounded-full bg-surface-container-lowest text-primary-container font-label-md text-label-md hover:bg-secondary-container transition-all shadow-xs">Todos</button>
+<button class="px-3 py-1 rounded-full bg-surface-container-lowest/70 text-on-surface-variant font-label-md text-label-md hover:bg-surface-container hover:text-on-surface transition-all">Estructural</button>
+<button class="px-3 py-1 rounded-full bg-surface-container-lowest/70 text-on-surface-variant font-label-md text-label-md hover:bg-surface-container hover:text-on-surface transition-all">Arquitectura</button>
+<button class="px-3 py-1 rounded-full bg-surface-container-lowest/70 text-on-surface-variant font-label-md text-label-md hover:bg-surface-container hover:text-on-surface transition-all">MEP &amp; Redes</button>
+<button class="px-3 py-1 rounded-full bg-surface-container-lowest/70 text-on-surface-variant font-label-md text-label-md hover:bg-surface-container hover:text-on-surface transition-all">Análisis FEA</button>
+</div>
+</div>
+</div>
+</section>
+<!-- SECCIÓN CREAR ALGO NUEVO (CANVA CARDS GRID) -->
+<section class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Crear algo nuevo</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Comienza con un lienzo en blanco optimizado para tu disciplina</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-xl bg-surface-container text-on-surface-variant hover:text-on-surface transition-all">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+</button>
+<button class="p-2 rounded-xl bg-surface-container text-on-surface-variant hover:text-on-surface transition-all">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Interactive Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+<!-- Card 1: Modelo Estructural -->
+<div class="group relative flex flex-col justify-between p-5 rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden hover:-translate-y-1">
+<div class="absolute top-3 right-3">
+<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-fixed text-label-sm font-label-sm">Popular</span>
+</div>
+<div class="w-12 h-12 rounded-xl bg-secondary-fixed flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[26px]">grid_4x4</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">Modelo estructural</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Pórticos, losas, columnas y combinación de cargas sísmicas NSR-10 / ACI 318.</p>
+</div>
+<div class="mt-4 pt-3 flex items-center text-primary-container font-label-sm text-label-sm">
+<span class="">Nuevo modelo</span>
+<span class="material-symbols-outlined text-[14px] ml-1 group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</div>
+</div>
+<!-- Card 2: Proyecto Arquitectónico -->
+<div class="group relative flex flex-col justify-between p-5 rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden hover:-translate-y-1">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[26px]">apartment</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">Proyecto arq.</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Distribución espacial, muros inteligentes, vanos y cotas automáticas.</p>
+</div>
+<div class="mt-4 pt-3 flex items-center text-secondary font-label-sm text-label-sm">
+<span class="">Crear espacio</span>
+<span class="material-symbols-outlined text-[14px] ml-1 group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</div>
+</div>
+<!-- Card 3: Plano 2D CAD -->
+<div class="group relative flex flex-col justify-between p-5 rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden hover:-translate-y-1">
+<div class="w-12 h-12 rounded-xl bg-surface-container-low flex items-center justify-center text-on-surface mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[26px]">square_foot</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">Plano 2D (CAD)</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Entorno CAD de precisión milimétrica, capas dinámicas y referencias externas.</p>
+</div>
+<div class="mt-4 pt-3 flex items-center text-on-surface font-label-sm text-label-sm">
+<span class="">Abrir lienzo CAD</span>
+<span class="material-symbols-outlined text-[14px] ml-1 group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</div>
+</div>
+<!-- Card 4: BIM Paramétrico -->
+<div class="group relative flex flex-col justify-between p-5 rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden hover:-translate-y-1">
+<div class="w-12 h-12 rounded-xl bg-surface-variant flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[26px]">domain_add</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">BIM Paramétrico</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Familias inteligentes, niveles globales y enlace directo a IFC 4.3.</p>
+</div>
+<div class="mt-4 pt-3 flex items-center text-primary font-label-sm text-label-sm">
+<span class="">Diseñar en niveles</span>
+<span class="material-symbols-outlined text-[14px] ml-1 group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</div>
+</div>
+<!-- Card 5: Análisis FEM -->
+<div class="group relative flex flex-col justify-between p-5 rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden hover:-translate-y-1">
+<div class="absolute top-3 right-3">
+<span class="px-1.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm scale-90 origin-top-right">FEA Core</span>
+</div>
+<div class="w-12 h-12 rounded-xl bg-tertiary-fixed-dim/30 flex items-center justify-center text-tertiary mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[26px]">monitoring</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">Análisis FEM</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Malla finita, envolventes de corte, flexión y espectros de aceleración.</p>
+</div>
+<div class="mt-4 pt-3 flex items-center text-tertiary font-label-sm text-label-sm">
+<span class="">Correr solver</span>
+<span class="material-symbols-outlined text-[14px] ml-1 group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</div>
+</div>
+<!-- Card 6: Instalaciones MEP -->
+<div class="group relative flex flex-col justify-between p-5 rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden hover:-translate-y-1">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center text-secondary mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[26px]">hub</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">Redes MEP</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Tuberías hidrosanitarias, bandejas eléctricas y ductos de ventilación HVAC.</p>
+</div>
+<div class="mt-4 pt-3 flex items-center text-secondary font-label-sm text-label-sm">
+<span class="">Trazar redes</span>
+<span class="material-symbols-outlined text-[14px] ml-1 group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</div>
+</div>
+</div>
+<!-- Quick Import Action Strip -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+<button class="flex items-center gap-3 p-3 rounded-xl bg-surface-container-low hover:bg-surface-container transition-all text-left group">
+<div class="w-9 h-9 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary shadow-2xs group-hover:bg-primary-container group-hover:text-on-primary transition-all">
+<span class="material-symbols-outlined text-[20px]">upload_file</span>
+</div>
+<div>
+<span class="font-label-lg text-label-lg text-on-surface block">Importar archivo DWG / DXF</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Convierte polilíneas 2D a muros y vigas 3D</span>
+</div>
+</button>
+<button class="flex items-center gap-3 p-3 rounded-xl bg-surface-container-low hover:bg-surface-container transition-all text-left group">
+<div class="w-9 h-9 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary-container shadow-2xs group-hover:bg-primary-container group-hover:text-on-primary transition-all">
+<span class="material-symbols-outlined text-[20px]">cloud_sync</span>
+</div>
+<div>
+<span class="font-label-lg text-label-lg text-on-surface block">Vincular modelo IFC 4</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Sincronización abierta desde Revit, Archicad o Tekla</span>
+</div>
+</button>
+<button class="flex items-center gap-3 p-3 rounded-xl bg-surface-container-low hover:bg-surface-container transition-all text-left group">
+<div class="w-9 h-9 rounded-lg bg-surface-container-lowest flex items-center justify-center text-tertiary shadow-2xs group-hover:bg-tertiary-container group-hover:text-on-primary transition-all">
+<span class="material-symbols-outlined text-[20px]">auto_awesome_mosaic</span>
+</div>
+<div>
+<span class="font-label-lg text-label-lg text-on-surface block">Reutilizar plantilla técnica</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Puentes, tanques apoyados y naves precalculadas</span>
+</div>
+</button>
+</div>
+</section>
+<!-- SECCIÓN PROYECTOS RECIENTES -->
+<section class="flex flex-col gap-4">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Proyectos recientes</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Modelos sincronizados en la nube listos para edición en tiempo real</p>
+</div>
+<!-- Filter Chips -->
+<div class="flex items-center gap-1.5 overflow-x-auto pb-1">
+<button class="px-3.5 py-1.5 rounded-full bg-secondary-container text-on-secondary-fixed font-label-md text-label-md">Todos</button>
+<button class="px-3.5 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant font-label-md text-label-md hover:bg-surface-container hover:text-on-surface transition-all">Mis modelos</button>
+<button class="px-3.5 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant font-label-md text-label-md hover:bg-surface-container hover:text-on-surface transition-all">Compartidos</button>
+<button class="px-3.5 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant font-label-md text-label-md hover:bg-surface-container hover:text-on-surface transition-all">En análisis</button>
+</div>
+</div>
+<!-- Projects Grid 4-Cols -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+<!-- Card 1: Edificio Residencial Bogotá -->
+<div class="group flex flex-col rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer">
+<div class="relative h-44 w-full bg-surface-container-low overflow-hidden">
+<div class="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-300" data-alt="Clean minimal 3D isometric wireframe render of a modern concrete multi-story residential building structural skeleton with lavender ambient studio lighting, showing beams, columns, and floor slabs in soft violet tones with crisp geometric clarity." style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuBRrLoHzPW6IavC-x0oH7df-lgdRoIBDxw9lfON-ZTPS4ORlovS9xjGdD1RiUNg9INys27mUZ1JF2yVBjGZ2iOMLesDlH4fXVoD_M8Ge1zcl-cT7hwMknVvDWjV-sWL5sS5MJdm_UkjAtLetS7ASonAzfb0V1TK8mvNKhOvcSD2v3IrM1IYmnmkv9q3BN4sCUmJe9l_a-D5a3CggS3LZ_WCPXDyiKNF3ifMmXlxqbgXbC8NjrSUgS8Mqw&quot;);"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
+<div class="absolute top-3 left-3">
+<span class="px-2.5 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md text-tertiary font-label-sm text-label-sm shadow-xs flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-tertiary-container"></span>
+              Análisis OK (Deriva 0.8%)
+            </span>
+</div>
+<button class="absolute top-3 right-3 w-8 h-8 rounded-full bg-surface-container-lowest/80 backdrop-blur-md text-on-surface flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-surface-container-lowest transition-all">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+<div class="absolute bottom-2.5 left-3 text-on-primary">
+<span class="font-label-sm text-label-sm bg-primary-container/80 px-2 py-0.5 rounded-md backdrop-blur-sm">Concreto f'c=28 MPa</span>
+</div>
+</div>
+<div class="p-4 flex flex-col flex-1 justify-between gap-3">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate group-hover:text-primary-container transition-colors">
+              Edificio Residencial Bogotá
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">4 niveles · Cimentación superficial</p>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-container">
+<div class="flex items-center -space-x-2">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary text-[10px] font-bold flex items-center justify-center ring-2 ring-surface-container-lowest">TS</div>
+<div class="w-6 h-6 rounded-full bg-secondary text-on-primary text-[10px] font-bold flex items-center justify-center ring-2 ring-surface-container-lowest">LM</div>
+<div class="w-6 h-6 rounded-full bg-tertiary text-on-primary text-[10px] font-bold flex items-center justify-center ring-2 ring-surface-container-lowest">CA</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Hace 2 horas</span>
+</div>
+</div>
+</div>
+<!-- Card 2: Torre Corporativa Calle 100 -->
+<div class="group flex flex-col rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer">
+<div class="relative h-44 w-full bg-surface-container-low overflow-hidden">
+<div class="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-300" data-alt="Digital architectural BIM model render of a tall corporate glass and steel skyscraper featuring layered transparent floor slabs, MEP conduits in soft pastel cyan, and structural core columns on a bright clean lavender gradient background." style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuCFRjwn6zrb7ED2rAvVMfNuTortW7w0e30DZfGTatpIjozTlqC4VNfSG8PfqNOg4CN9U0esSleagqKJm4ONqPlQoyO8QMQoQ-zJWMDwzcXe2bF9NSd6kiNsO7njIqECC6fGvUxLkWlpS96IOPSpSZ2HHr2A05tcjL66WvRPTm2b40tWh5PekHMytNIb6J7ptFPx5pQ9wyfCJHGdn9q1xIx_x43mGtdVysRUQIwDg6V_fDBC3dkvaWJA_Q&quot;);"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
+<div class="absolute top-3 left-3">
+<span class="px-2.5 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md text-primary font-label-sm text-label-sm shadow-xs flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+              En modelado BIM
+            </span>
+</div>
+<button class="absolute top-3 right-3 w-8 h-8 rounded-full bg-surface-container-lowest/80 backdrop-blur-md text-on-surface flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-surface-container-lowest transition-all">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+<div class="absolute bottom-2.5 left-3 text-on-primary">
+<span class="font-label-sm text-label-sm bg-primary-container/80 px-2 py-0.5 rounded-md backdrop-blur-sm">BIM + MEP Integrado</span>
+</div>
+</div>
+<div class="p-4 flex flex-col flex-1 justify-between gap-3">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate group-hover:text-primary-container transition-colors">
+              Torre Corporativa Calle 100
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">18 niveles · 3 sótanos de parqueo</p>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-container">
+<div class="flex items-center -space-x-2">
+<div class="w-6 h-6 rounded-full bg-primary text-on-primary text-[10px] font-bold flex items-center justify-center ring-2 ring-surface-container-lowest">DA</div>
+<div class="w-6 h-6 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[10px] font-bold flex items-center justify-center ring-2 ring-surface-container-lowest">+4</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Ayer 18:40</span>
+</div>
+</div>
+</div>
+<!-- Card 3: Centro Logístico Nave Industrial -->
+<div class="group flex flex-col rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer">
+<div class="relative h-44 w-full bg-surface-container-low overflow-hidden">
+<div class="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-300" data-alt="Technical CAD 3D wireframe render of an expansive industrial warehouse steel truss structural system, Pratt trusses, metal roof framing, and bracing lines rendered in high precision white and violet vector graphics." style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuA0WRRoFBXGO2eJ4tZURDKkjCmnYeU-2bXzxpoimve06LeSH9TBKJRWYxpeQ4z2IUq0O61DuFlfuhGx4FGe7jASqAiHAiXKeLz3Py75FSWM3CLQ9qN9cPl0WYVKYY85aG3u0pdN7Y44lSPNaQiGadS2kerV1n-sVc30LX4tjy0vDbU-qSl9WZYEl3flyFZqOed2DhT1VaIAghPpT_025_fgrkzoFJs5vxeP1wqlmB6w8GXy0_tUHUdfww&quot;);"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
+<div class="absolute top-3 left-3">
+<span class="px-2.5 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md text-on-surface-variant font-label-sm text-label-sm shadow-xs flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+              Pendiente viento
+            </span>
+</div>
+<button class="absolute top-3 right-3 w-8 h-8 rounded-full bg-surface-container-lowest/80 backdrop-blur-md text-on-surface flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-surface-container-lowest transition-all">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+<div class="absolute bottom-2.5 left-3 text-on-primary">
+<span class="font-label-sm text-label-sm bg-surface-container-highest/80 text-on-surface px-2 py-0.5 rounded-md backdrop-blur-sm">Acero ASTM A992</span>
+</div>
+</div>
+<div class="p-4 flex flex-col flex-1 justify-between gap-3">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate group-hover:text-primary-container transition-colors">
+              Centro Logístico Nave Sur
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Luz libre 36 m · Cerchas Warren</p>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-container">
+<div class="flex items-center -space-x-2">
+<div class="w-6 h-6 rounded-full bg-tertiary text-on-primary text-[10px] font-bold flex items-center justify-center ring-2 ring-surface-container-lowest">JR</div>
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary text-[10px] font-bold flex items-center justify-center ring-2 ring-surface-container-lowest">TS</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Hace 3 días</span>
+</div>
+</div>
+</div>
+<!-- Card 4: Vivienda Unifamiliar Moderna -->
+<div class="group flex flex-col rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer">
+<div class="relative h-44 w-full bg-surface-container-low overflow-hidden">
+<div class="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-300" data-alt="Elegant architectural blueprint floor plan overlaid with high-end minimal 3D volumetric massing of a modern two-story residential home with interior courtyards and cantilevered concrete balconies in crisp architectural style." style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuBNiSorpXPsCoduBIZOlbQ972WQk3eKouErhmC33vSH1XlSCKv_Ya2h7SEneGnfFF2lkLSwESxlgtogGxhCNqHZL1-07zof3PszHEf5RdjFnxdcpzLsOxE05x0voIggE15iRe4oYdrtSeDXzdi1V_yMds9_vgjGFRr22GAbx-6yhbafOG1ljeV177c7k2GGfG1w_G1nssO0UMOVxQGOx9Z65GKIqktuN8wFTEsy4m_cXAw8lZpH-GG6qg&quot;);"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
+<div class="absolute top-3 left-3">
+<span class="px-2.5 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md text-tertiary font-label-sm text-label-sm shadow-xs flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+              Planos listos
+            </span>
+</div>
+<button class="absolute top-3 right-3 w-8 h-8 rounded-full bg-surface-container-lowest/80 backdrop-blur-md text-on-surface flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-surface-container-lowest transition-all">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+<div class="absolute bottom-2.5 left-3 text-on-primary">
+<span class="font-label-sm text-label-sm bg-primary-container/80 px-2 py-0.5 rounded-md backdrop-blur-sm">Arquitectura &amp; Planimetría</span>
+</div>
+</div>
+<div class="p-4 flex flex-col flex-1 justify-between gap-3">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate group-hover:text-primary-container transition-colors">
+              Vivienda Unifamiliar Moderna
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">2 niveles · Entrega municipal</p>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-container">
+<div class="flex items-center -space-x-2">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary text-[10px] font-bold flex items-center justify-center ring-2 ring-surface-container-lowest">TS</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Hace 5 días</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Link to all projects -->
+<div class="flex justify-center pt-2">
+<button class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-surface-container text-primary-container font-label-lg text-label-lg hover:bg-secondary-container transition-all">
+<span class="">Ver todos los proyectos (28)</span>
+<span class="material-symbols-outlined text-[18px]">east</span>
+</button>
+</div>
+</section>
+<!-- SECCIÓN DOBLE COLUMNA: TUS CARPETAS & EQUIPOS -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Columna Izquierda: Tus Carpetas (7 cols) -->
+<section class="lg:col-span-7 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Tus Carpetas</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Archivos técnicos organizados por tipología estructural</p>
+</div>
+<button class="flex items-center gap-1 text-primary-container font-label-md text-label-md hover:underline">
+<span class="material-symbols-outlined text-[18px]">create_new_folder</span>
+<span class="">Nueva carpeta</span>
+</button>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+<!-- Folder 1 -->
+<div class="p-4 rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all flex items-center justify-between cursor-pointer group">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-secondary-fixed flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[24px]">folder</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface group-hover:text-primary-container transition-colors">Estructuras en Concreto</h4>
+<span class="font-body-sm text-body-sm text-on-surface-variant">12 modelos · Actualizado ayer</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px] opacity-0 group-hover:opacity-100 transition-opacity">navigate_next</span>
+</div>
+<!-- Folder 2 -->
+<div class="p-4 rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all flex items-center justify-between cursor-pointer group">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[24px]">folder</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface group-hover:text-primary-container transition-colors">Acero &amp; Naves Industriales</h4>
+<span class="font-body-sm text-body-sm text-on-surface-variant">8 proyectos · Hace 3 días</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px] opacity-0 group-hover:opacity-100 transition-opacity">navigate_next</span>
+</div>
+<!-- Folder 3 -->
+<div class="p-4 rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all flex items-center justify-between cursor-pointer group">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-tertiary-fixed flex items-center justify-center text-tertiary group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[24px]">folder</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface group-hover:text-primary-container transition-colors">Memorias de Cálculo &amp; Docs</h4>
+<span class="font-body-sm text-body-sm text-on-surface-variant">19 reportes PDF/DOCX</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px] opacity-0 group-hover:opacity-100 transition-opacity">navigate_next</span>
+</div>
+<!-- Folder 4 -->
+<div class="p-4 rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all flex items-center justify-between cursor-pointer group">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-primary-container group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[24px]">folder</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface group-hover:text-primary-container transition-colors">Tesis Maestría &amp; UniAndes</h4>
+<span class="font-body-sm text-body-sm text-on-surface-variant">5 modelos no lineales</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px] opacity-0 group-hover:opacity-100 transition-opacity">navigate_next</span>
+</div>
+</div>
+</section>
+<!-- Columna Derecha: Equipos de Cálculo (5 cols) -->
+<section class="lg:col-span-5 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Equipos</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Colabora con calculistas y arquitectos</p>
+</div>
+<button class="px-2.5 py-1 rounded-xl bg-primary-container text-on-primary font-label-md text-label-md shadow-xs hover:bg-primary transition-all flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span class="">Invitar</span>
+</button>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Team 1 -->
+<div class="p-3.5 rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-xl bg-secondary-container flex items-center justify-center text-on-secondary-fixed font-bold font-label-lg text-label-lg">
+              ES
+            </div>
+<div>
+<div class="flex items-center gap-2">
+<h4 class="font-label-lg text-label-lg text-on-surface">Estructuras &amp; Sismo</h4>
+<span class="px-1.5 py-0.2 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm">Pro</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">6 ingenieros · 14 modelos activos</span>
+</div>
+</div>
+<div class="flex items-center -space-x-1.5">
+<div class="w-6 h-6 rounded-full bg-primary text-on-primary text-[9px] font-bold flex items-center justify-center">TS</div>
+<div class="w-6 h-6 rounded-full bg-secondary text-on-primary text-[9px] font-bold flex items-center justify-center">JR</div>
+<div class="w-6 h-6 rounded-full bg-tertiary text-on-primary text-[9px] font-bold flex items-center justify-center">ML</div>
+</div>
+</div>
+<!-- Team 2 -->
+<div class="p-3.5 rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-on-surface font-bold font-label-lg text-label-lg">
+              TA
+            </div>
+<div>
+<div class="flex items-center gap-2">
+<h4 class="font-label-lg text-label-lg text-on-surface">Taller Arq &amp; Detallado</h4>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">4 arquitectos · 7 planos 2D</span>
+</div>
+</div>
+<div class="flex items-center -space-x-1.5">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary text-[9px] font-bold flex items-center justify-center">LM</div>
+<div class="w-6 h-6 rounded-full bg-secondary text-on-primary text-[9px] font-bold flex items-center justify-center">FG</div>
+</div>
+</div>
+<!-- Team 3 -->
+<div class="p-3.5 rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-xl bg-surface-variant flex items-center justify-center text-primary-container font-bold font-label-lg text-label-lg">
+              UA
+            </div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Investigación UniAndes</h4>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Grupo de dinámica estructural</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface p-1">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+<!-- BANNER DE ONBOARDING / AYUDA ESTILO CANVA (INFERIOR) -->
+<section class="rounded-2xl bg-surface-container-lowest p-6 shadow-sm">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[24px]">bolt</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Aprende Structura en 2 minutos</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Tutoriales exprés e interactivos con modelos de ejemplo precargados</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Progreso de bienvenida:</span>
+<div class="w-28 h-2 rounded-full bg-surface-container overflow-hidden">
+<div class="w-2/3 h-full bg-primary-container rounded-full"></div>
+</div>
+<span class="font-label-sm text-label-sm text-primary-container font-bold">66%</span>
+</div>
+</div>
+<!-- Mini Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Tutorial 1 -->
+<div class="flex gap-3.5 p-3.5 rounded-xl bg-surface-container-low hover:bg-surface-container transition-all cursor-pointer group">
+<div class="w-16 h-16 rounded-lg bg-surface-container-lowest shrink-0 overflow-hidden relative flex items-center justify-center">
+<div class="w-full h-full bg-cover bg-center group-hover:scale-110 transition-transform" data-alt="Digital isometric tutorial preview of drawing concrete frame columns and continuous beams in 3D CAD interface with lavender grid lines." style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuCjUflLLc2MtnchaYH0GNRQY9XBDQjzBTlSZU-fvkt3CO0AeDR83H0meuy8VyiuH_5G-ARxcjoA3vYxb9VC_AhzO434o74GU8Bupb8poxHiU0qyCFK8AKjREDKtB54_qVQuHLcoCIAXE5Oa6hto7L96SXjI6c0AgqM1TDoeEMYSlpQc7rCR42GTrnKgX90T43sgk5Ah4cgC9U9OjzqK4zIGL-LkrRXCmyq5B8Pj6OChgLDOakBARkvldg&quot;);"></div>
+<span class="material-symbols-outlined absolute text-[20px] text-on-primary drop-shadow">play_circle</span>
+</div>
+<div class="flex flex-col justify-between">
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface group-hover:text-primary-container transition-colors">Cómo modelar tu primer pórtico 3D</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Ejes, columnas de 40x40 y vigas de carga</p>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 1 min 45 seg
+          </span>
+</div>
+</div>
+<!-- Tutorial 2 -->
+<div class="flex gap-3.5 p-3.5 rounded-xl bg-surface-container-low hover:bg-surface-container transition-all cursor-pointer group">
+<div class="w-16 h-16 rounded-lg bg-surface-container-lowest shrink-0 overflow-hidden relative flex items-center justify-center">
+<div class="w-full h-full bg-cover bg-center group-hover:scale-110 transition-transform" data-alt="Diagram showing structural seismic drift analysis, colorful bending moment envelopes and deflection curves on an architectural frame." style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuAQFSvzd76sss0wPveTsgPHUf-grFW2fg377ZegB09OYErWJG8WXHyLdR7G4yVPOclYo3QbQjF6OMwtTlg7bI7x9U-lkQJkib0s7vRjIykYViPeLg_JG6dDCVIv3hO4YJJS0h8Ns8TgS3w092OacgQEcDwLHg7aZFHC8730_d25bDRMlIQ7noWQcm3u-h0i_bZmEN4eg-fXzDXm33koD9QF9dT0ec-TJmpF4MBwkPCV8pBTzcL1W1YR7g&quot;);"></div>
+<span class="material-symbols-outlined absolute text-[20px] text-on-primary drop-shadow">play_circle</span>
+</div>
+<div class="flex flex-col justify-between">
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface group-hover:text-primary-container transition-colors">Asignar cargas y calcular deriva sísmica</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Espectros elásticos y control de desplazamientos</p>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 2 min 10 seg
+          </span>
+</div>
+</div>
+<!-- Tutorial 3 -->
+<div class="flex gap-3.5 p-3.5 rounded-xl bg-surface-container-low hover:bg-surface-container transition-all cursor-pointer group">
+<div class="w-16 h-16 rounded-lg bg-surface-container-lowest shrink-0 overflow-hidden relative flex items-center justify-center">
+<div class="w-full h-full bg-cover bg-center group-hover:scale-110 transition-transform" data-alt="Technical illustration of transforming an architectural 2D AutoCAD layout plan into an automated 3D parametric BIM structural model." style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuAflzRTCvSyTEwe1ACaAToU7zloKCjacYgh6AhRT07K0925xUTtND6OXGmJkT_O9phM8yo64FqYaTOQs19z9oWpxgUHkvSV_zYfo49Zy0wIotvhnaCZrldzCvO4GIisTJPYklE9gJwtJyY6Odr92OOgHEEifcqqzWroIJOAUL-NJoE_pIC1Aj5jCmz_gkClhQUtfW5GdS0oNi0GojMSKneoD20U8zXLzBwkkUiWBqg9PF_wpSJZgEcuHA&quot;);"></div>
+<span class="material-symbols-outlined absolute text-[20px] text-on-primary drop-shadow">play_circle</span>
+</div>
+<div class="flex flex-col justify-between">
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface group-hover:text-primary-container transition-colors">Vincular planos 2D a modelo 3D</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Extrusión instantánea de muros desde DWG</p>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 1 min 20 seg
+          </span>
+</div>
+</div>
+</div>
+</section>
+</div></main></div>
+
+</body></html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html><html lang="es" class="h-full"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recuperar Contraseña — Structura</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              200: '#ddd6fe',
+              300: '#c4b5fd',
+              400: '#a78bfa',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+              800: '#5b21b6',
+              900: '#4c1d95',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #faf8fd;
+    }
+  </style>
+</head>
+<body class="min-h-full flex flex-col text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- Header Superior Minimalista -->
+  <header class="w-full border-b border-purple-100/70 bg-white/80 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <!-- Logo Structura -->
+      <a href="#" class="flex items-center gap-2.5 group">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-600 via-purple-600 to-indigo-700 flex items-center justify-center text-white font-bold text-lg shadow-sm shadow-purple-500/20 group-hover:scale-105 transition-transform duration-200">
+          <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3L2 8.5l10 5.5 10-5.5L12 3z"></path>
+            <path d="M2 15.5L12 21l10-5.5"></path>
+            <path d="M2 12l10 5.5 10-5.5"></path>
+          </svg>
+        </div>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-1.5">
+            <span class="font-extrabold text-xl tracking-tight text-slate-900">Isomorf</span>
+            <span class="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-purple-100 text-brand-700">AEC Cloud</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Volver al login -->
+      <a href="#" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-brand-600 transition-colors py-1.5 px-3 rounded-lg hover:bg-purple-50">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        <span class="">Volver a iniciar sesión</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal Centrado con Tarjeta de Recuperación -->
+  <main class="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden">
+    <!-- Efectos de iluminación sutil de fondo -->
+    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand-400/15 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="max-w-md w-full relative z-10">
+      
+      <!-- Tarjeta Principal -->
+      <div class="bg-white rounded-3xl border border-purple-100/90 shadow-xl shadow-purple-950/5 p-8 sm:p-10">
+        
+        <!-- Icono Header -->
+        <div class="w-14 h-14 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-brand-600 mb-6 shadow-sm">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+          </svg>
+        </div>
+
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">
+          ¿Olvidaste tu contraseña?
+        </h1>
+        <p class="text-slate-500 text-sm mt-2 leading-relaxed">
+          No te preocupes. Ingresa el correo electrónico asociado a tu cuenta de Structura y te enviaremos un enlace con instrucciones para restablecerla de forma segura.
+        </p>
+
+        <!-- Formulario de Recuperación -->
+        <form class="mt-6 space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Correo electrónico corporativo
+            </label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                </svg>
+              </div>
+              <input type="email" placeholder="ejemplo@ingenieria.com" required="" class="w-full pl-10 pr-3.5 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 text-sm font-medium placeholder-slate-400 transition outline-none bg-slate-50/50 focus:bg-white">
+            </div>
+          </div>
+
+          <!-- Botón de Envío -->
+          <button type="submit" class="w-full mt-2 py-3 px-6 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 text-white text-sm font-bold shadow-lg shadow-purple-500/25 transition duration-150 transform active:scale-[0.99] flex items-center justify-center gap-2 group">
+            <span class="">Enviar enlace de recuperación</span>
+            <svg class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+            </svg>
+          </button>
+        </form>
+
+        <!-- Estado de ayuda / Alternativa -->
+        <div class="mt-6 pt-6 border-t border-slate-100 flex flex-col gap-3 text-center">
+          <div class="text-xs text-slate-500">
+            ¿No tienes acceso a este correo? 
+            <a href="#" class="font-semibold text-brand-600 hover:text-brand-700 hover:underline">Contactar a soporte IT</a>
+          </div>
+
+          <!-- Caja de seguridad informativa -->
+          <div class="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-100 text-left flex items-start gap-2.5">
+            <svg class="w-4 h-4 text-brand-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <p class="text-[11px] text-slate-600 leading-relaxed">
+              Por motivos de confidencialidad de los modelos BIM, el enlace de restablecimiento expira automáticamente en <strong>15 minutos</strong>.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Links inferiores -->
+      <div class="mt-6 text-center text-xs text-slate-400">
+        ¿Aún no tienes cuenta? 
+        <a href="#" class="font-bold text-brand-600 hover:text-brand-700 hover:underline ml-1">Crear cuenta gratis</a>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer global -->
+  <footer class="w-full py-4 text-center text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto px-6 flex items-center justify-between">
+      <span class="">Structura Platform © 2026</span>
+      <div class="flex gap-4">
+        <a href="#" class="hover:text-slate-600">Seguridad SOC2</a>
+        <a href="#" class="hover:text-slate-600">Ayuda</a>
+      </div>
+    </div>
+  </footer>
+
+
+
+
+</body></html>

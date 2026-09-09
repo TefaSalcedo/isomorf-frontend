@@ -1,0 +1,469 @@
+<!DOCTYPE html><html lang="es" style=""><svg class="inline-defs-container" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><title>Structura · Software de Diseño y Análisis Estructural BIM</title><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary-fixed-variant": "#474363", "on-error-container": "#93000a", "on-surface": "#121c2a", "surface-variant": "#d9e3f6", "secondary-fixed": "#e5deff", "surface-dim": "#d0dbed", "outline-variant": "#ccc3d8", "secondary": "#5f5a7c", "surface-container-low": "#eff4ff", "inverse-on-surface": "#eaf1ff", "on-secondary-container": "#605b7d", "on-tertiary-container": "#76ffc2", "outline": "#7b7487", "surface-container-highest": "#d9e3f6", "tertiary-container": "#007650", "inverse-primary": "#d2bbff", "on-tertiary-fixed": "#002113", "surface-container-lowest": "#ffffff", "on-secondary": "#ffffff", "surface-container": "#e6eeff", "on-background": "#121c2a", "primary-fixed": "#eaddff", "error-container": "#ffdad6", "surface-container-high": "#dee9fc", "primary": "#630ed4", "on-primary": "#ffffff", "surface": "#f8f9ff", "error": "#ba1a1a", "surface-bright": "#f8f9ff", "background": "#f8f9ff", "secondary-fixed-dim": "#c8c2e9", "on-surface-variant": "#4a4455", "on-primary-container": "#ede0ff", "secondary-container": "#dcd5fd", "tertiary-fixed": "#6ffbbe", "surface-tint": "#732ee4", "tertiary-fixed-dim": "#4edea3", "tertiary": "#005b3d", "primary-container": "#7c3aed", "on-tertiary-fixed-variant": "#005236", "on-secondary-fixed": "#1b1735", "on-tertiary": "#ffffff", "inverse-surface": "#27313f", "on-error": "#ffffff", "on-primary-fixed": "#25005a", "primary-fixed-dim": "#d2bbff", "on-primary-fixed-variant": "#5a00c6" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gap-2xs": "0.25rem", "sidebar-width": "15rem", "gap-xs": "0.5rem", "status-bar-height": "4.5rem", "gap-xl": "1.5rem", "toolbar-width": "14rem", "gap-lg": "1.25rem", "header-height": "4rem", "gap-sm": "0.75rem", "gap-md": "1rem", "inspector-width": "22rem" }, "fontFamily": { "headline-lg-mobile": [ "Plus Jakarta Sans" ], "label-md": [ "Plus Jakarta Sans" ], "body-md": [ "Plus Jakarta Sans" ], "headline-sm": [ "Plus Jakarta Sans" ], "body-lg": [ "Plus Jakarta Sans" ], "label-sm": [ "Plus Jakarta Sans" ], "headline-lg": [ "Plus Jakarta Sans" ], "headline-xl": [ "Plus Jakarta Sans" ], "body-sm": [ "Plus Jakarta Sans" ], "label-lg": [ "Plus Jakarta Sans" ] }, "fontSize": { "headline-lg-mobile": [ "18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "700" } ], "label-md": [ "11px", { "lineHeight": "14px", "letterSpacing": "0.03em", "fontWeight": "600" } ], "body-md": [ "13px", { "lineHeight": "18px", "fontWeight": "400" } ], "headline-sm": [ "16px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "body-lg": [ "15px", { "lineHeight": "22px", "fontWeight": "400" } ], "label-sm": [ "10px", { "lineHeight": "12px", "letterSpacing": "0.04em", "fontWeight": "700" } ], "headline-lg": [ "22px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "700" } ], "headline-xl": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "body-sm": [ "12px", { "lineHeight": "16px", "fontWeight": "400" } ], "label-lg": [ "13px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600" } ] } } } };</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><svg class="inline-defs-container" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><title>Structura · Software de Diseño y Análisis Estructural BIM</title><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary-fixed-variant": "#474363", "on-error-container": "#93000a", "on-surface": "#121c2a", "surface-variant": "#d9e3f6", "secondary-fixed": "#e5deff", "surface-dim": "#d0dbed", "outline-variant": "#ccc3d8", "secondary": "#5f5a7c", "surface-container-low": "#eff4ff", "inverse-on-surface": "#eaf1ff", "on-secondary-container": "#605b7d", "on-tertiary-container": "#76ffc2", "outline": "#7b7487", "surface-container-highest": "#d9e3f6", "tertiary-container": "#007650", "inverse-primary": "#d2bbff", "on-tertiary-fixed": "#002113", "surface-container-lowest": "#ffffff", "on-secondary": "#ffffff", "surface-container": "#e6eeff", "on-background": "#121c2a", "primary-fixed": "#eaddff", "error-container": "#ffdad6", "surface-container-high": "#dee9fc", "primary": "#630ed4", "on-primary": "#ffffff", "surface": "#f8f9ff", "error": "#ba1a1a", "surface-bright": "#f8f9ff", "background": "#f8f9ff", "secondary-fixed-dim": "#c8c2e9", "on-surface-variant": "#4a4455", "on-primary-container": "#ede0ff", "secondary-container": "#dcd5fd", "tertiary-fixed": "#6ffbbe", "surface-tint": "#732ee4", "tertiary-fixed-dim": "#4edea3", "tertiary": "#005b3d", "primary-container": "#7c3aed", "on-tertiary-fixed-variant": "#005236", "on-secondary-fixed": "#1b1735", "on-tertiary": "#ffffff", "inverse-surface": "#27313f", "on-error": "#ffffff", "on-primary-fixed": "#25005a", "primary-fixed-dim": "#d2bbff", "on-primary-fixed-variant": "#5a00c6" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gap-2xs": "0.25rem", "sidebar-width": "15rem", "gap-xs": "0.5rem", "status-bar-height": "4.5rem", "gap-xl": "1.5rem", "toolbar-width": "14rem", "gap-lg": "1.25rem", "header-height": "4rem", "gap-sm": "0.75rem", "gap-md": "1rem", "inspector-width": "22rem" }, "fontFamily": { "headline-lg-mobile": [ "Plus Jakarta Sans" ], "label-md": [ "Plus Jakarta Sans" ], "body-md": [ "Plus Jakarta Sans" ], "headline-sm": [ "Plus Jakarta Sans" ], "body-lg": [ "Plus Jakarta Sans" ], "label-sm": [ "Plus Jakarta Sans" ], "headline-lg": [ "Plus Jakarta Sans" ], "headline-xl": [ "Plus Jakarta Sans" ], "body-sm": [ "Plus Jakarta Sans" ], "label-lg": [ "Plus Jakarta Sans" ] }, "fontSize": { "headline-lg-mobile": [ "18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "700" } ], "label-md": [ "11px", { "lineHeight": "14px", "letterSpacing": "0.03em", "fontWeight": "600" } ], "body-md": [ "13px", { "lineHeight": "18px", "fontWeight": "400" } ], "headline-sm": [ "16px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "body-lg": [ "15px", { "lineHeight": "22px", "fontWeight": "400" } ], "label-sm": [ "10px", { "lineHeight": "12px", "letterSpacing": "0.04em", "fontWeight": "700" } ], "headline-lg": [ "22px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "700" } ], "headline-xl": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "body-sm": [ "12px", { "lineHeight": "16px", "fontWeight": "400" } ], "label-lg": [ "13px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600" } ] } } } };</script><header class="fixed top-0 left-0 right-0 z-50 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex items-center justify-between px-6 gap-md"><div class="flex items-center gap-md min-w-[14rem]"><div class="flex items-center gap-sm"><div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-primary-container flex items-center justify-center text-on-primary shadow-[0_4px_12px_rgba(124,58,237,0.25)]"><span class="material-symbols-outlined text-[20px]">view_in_ar</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface leading-none tracking-tight">&nbsp; &nbsp;Isomorf</span><span class="font-label-sm text-label-sm text-on-surface-variant leading-tight hidden xl:block">&nbsp; &nbsp; Dibuja · Modela · Analiza · Construye</span></div></div></div><div class="flex-1 max-w-2xl px-4"><div class="relative w-full flex items-center"><span class="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-[20px] pointer-events-none">search</span><input class="w-full h-10 pl-11 pr-4 bg-surface-container-low/70 hover:bg-surface-container-low focus:bg-surface-container-lowest rounded-xl text-body-md font-body-md text-on-surface placeholder:text-on-surface-variant outline-none ring-1 ring-outline-variant/40 focus:ring-2 focus:ring-primary-container transition-all" placeholder="Buscar proyectos, modelos BIM, planos o plantillas..." type="text"></div></div><div class="flex items-center gap-sm"><button class="hidden md:flex items-center gap-xs px-3 py-1.5 rounded-xl bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"><span class="material-symbols-outlined text-[18px]">school</span><span class="font-label-md text-label-md">Aprende en 2 min</span></button><button class="relative p-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary ring-2 ring-surface-container-lowest"></span></button><button class="flex items-center gap-xs px-3.5 py-1.5 rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg shadow-[0_4px_12px_rgba(124,58,237,0.25)] hover:bg-primary transition-all"><span class="material-symbols-outlined text-[18px]">add</span><span class="hidden sm:inline">Nuevo</span></button><div class="flex items-center gap-xs pl-2"><div class="relative"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-label-md text-label-md text-on-primary font-bold shadow-sm">TS</div><span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-tertiary-container ring-2 ring-surface-container-lowest"></span></div></div></div></header><aside class="fixed left-0 top-16 bottom-0 w-60 bg-surface-container-lowest/80 backdrop-blur-md z-40 flex flex-col justify-between py-4 px-3"><div class="flex flex-col gap-md"><div class="px-2"><button class="w-full h-11 rounded-xl bg-gradient-to-r from-primary-container to-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-xs shadow-[0_6px_16px_rgba(124,58,237,0.28)] hover:opacity-95 transition-all"><span class="material-symbols-outlined text-[20px]">add_circle</span><span class="">+ Crear</span></button></div><nav class="flex flex-col gap-2xs" data-active-classes="bg-secondary-container text-on-secondary-fixed font-bold shadow-sm"><a aria-current="page" class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl transition-all bg-secondary-container text-on-secondary-fixed font-bold shadow-sm" data-path="dashboard-inicio" href="#"><span class="material-symbols-outlined text-[20px]">home</span><span class="font-label-lg text-label-lg">Inicio</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="mis-proyectos" href="#"><span class="material-symbols-outlined text-[20px]">folder_special</span><span class="font-label-lg text-label-lg">Proyectos</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="modelos-recientes" href="#"><span class="material-symbols-outlined text-[20px]">schedule</span><span class="font-label-lg text-label-lg">Recientes</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="carpetas-y-archivos" href="#"><span class="material-symbols-outlined text-[20px]">folder</span><span class="font-label-lg text-label-lg">Carpetas</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="equipos-de-calculo" href="#"><span class="material-symbols-outlined text-[20px]">groups</span><span class="font-label-lg text-label-lg">Equipos</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="plantillas-estructurales" href="#"><span class="material-symbols-outlined text-[20px]">auto_awesome_mosaic</span><span class="font-label-lg text-label-lg">Plantillas</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="biblioteca-de-materiales" href="#"><span class="material-symbols-outlined text-[20px]">menu_book</span><span class="font-label-lg text-label-lg">Biblioteca</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="compartido-conmigo" href="#"><span class="material-symbols-outlined text-[20px]">share</span><span class="font-label-lg text-label-lg">Compartido conmigo</span></a><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="papelera" href="#"><span class="material-symbols-outlined text-[20px]">delete</span><span class="font-label-lg text-label-lg">Papelera</span></a></nav></div><div class="pt-3"><nav class="flex flex-col gap-2xs" data-active-classes="bg-secondary-container text-on-secondary-fixed font-bold"><a class="flex items-center gap-sm px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="configuracion-de-cuenta" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-label-lg text-label-lg">Configuración</span></a></nav></div></aside><div class="pl-60"><main class="relative w-full pt-16 min-h-screen bg-surface px-8 pb-12"><div class="flex flex-col w-full">
+<!-- Sub-Header / Workspace Bar -->
+<section class="flex flex-col lg:flex-row lg:items-center justify-between gap-md mb-6">
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 rounded-2xl bg-primary-container text-on-primary flex items-center justify-center shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-[26px]">earthquake</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-xs flex-wrap">
+<span class="font-headline-lg text-headline-lg text-on-surface">Edificio Residencial Las Palmas</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm uppercase tracking-wider">FEM &amp; Sismo v2026.4</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm">NSR-10 / ACI 318</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Configuración Sísmica, Análisis Modal y Cargas Gravitatorias</p>
+</div>
+</div>
+<!-- Quick Search / AI Action -->
+<div class="flex items-center gap-sm flex-wrap">
+<div class="relative min-w-[280px] sm:min-w-[340px]">
+<span class="material-symbols-outlined absolute left-3.5 top-2.5 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full h-10 pl-11 pr-24 rounded-xl bg-surface-container-lowest text-on-surface text-body-md font-body-md shadow-sm outline-none ring-1 ring-outline-variant/30 focus:ring-2 focus:ring-primary-container transition-all" placeholder="Buscar parámetros sísmicos, Aa, Av, suelo... (Ctrl+K)" type="text">
+<button class="absolute right-1 top-1 h-8 px-3 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md hover:bg-primary shadow-sm transition-all flex items-center gap-1">
+<span class="">Buscar</span>
+</button>
+</div>
+<button class="h-10 px-3.5 rounded-xl bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-lg text-label-lg shadow-sm flex items-center gap-xs transition-all">
+<span class="material-symbols-outlined text-primary text-[18px]">play_circle</span>
+<span class="">Simular</span>
+</button>
+<button class="h-10 px-3.5 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-label-lg text-label-lg shadow-md shadow-primary/20 flex items-center gap-xs transition-all">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span class="">+ Nueva Carga</span>
+</button>
+</div>
+</section>
+<!-- Workspace Grid Layout: Studio 3-Column Studio Experience -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-xl items-start">
+<!-- LEFT CANVA-STYLE TOOL PANEL (4 cols) -->
+<div class="xl:col-span-4 flex flex-col gap-lg">
+<!-- AI Assisted Quick Tuning Card -->
+<div class="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-xs text-primary">
+<span class="material-symbols-outlined text-[20px]">auto_awesome</span>
+<span class="font-label-lg text-label-lg uppercase tracking-wider text-primary">Asistente Inteligente</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">BIM-AI v4</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-3">
+          Ajusta parámetros de microzonificación o coeficientes espectrales mediante lenguaje natural.
+        </p>
+<div class="relative">
+<input class="w-full h-11 pl-3.5 pr-20 rounded-xl bg-surface-container-low text-on-surface text-body-md font-body-md shadow-inner outline-none ring-1 ring-outline-variant/30 focus:ring-2 focus:ring-primary-container transition-all" placeholder="Ej: Cambiar a suelo Tipo C y recalcular cortante..." type="text">
+<div class="absolute right-1.5 top-1.5 flex items-center gap-1">
+<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:text-primary flex items-center justify-center transition-all" title="Comando de voz">
+<span class="material-symbols-outlined text-[18px]">mic</span>
+</button>
+<button class="h-8 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md hover:bg-primary transition-all">
+              Generar
+            </button>
+</div>
+</div>
+</div>
+<!-- Stepper Module (Canva Stage Selector) -->
+<div class="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Flujo de Definición</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mt-0.5">Paso 8 de 11: Espectro &amp; Suelo</h3>
+</div>
+<span class="w-9 h-9 rounded-xl bg-secondary-container text-on-secondary-container flex items-center justify-center font-label-lg text-label-lg font-bold">
+            73%
+          </span>
+</div>
+<!-- Progress mini bar -->
+<div class="w-full h-2 rounded-full bg-surface-container mb-4 overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-primary-container rounded-full w-[73%] transition-all duration-500"></div>
+</div>
+<!-- Mini Step Pill Row -->
+<div class="grid grid-cols-4 gap-1.5 text-center">
+<div class="p-1.5 rounded-lg bg-secondary-fixed/50 text-on-secondary-fixed flex flex-col items-center">
+<span class="material-symbols-outlined text-[16px] text-tertiary">check_circle</span>
+<span class="font-label-sm text-label-sm mt-0.5">1-2. Norma</span>
+</div>
+<div class="p-1.5 rounded-lg bg-secondary-fixed/50 text-on-secondary-fixed flex flex-col items-center">
+<span class="material-symbols-outlined text-[16px] text-tertiary">check_circle</span>
+<span class="font-label-sm text-label-sm mt-0.5">3-5. Cargas</span>
+</div>
+<div class="p-1.5 rounded-lg bg-secondary-fixed/50 text-on-secondary-fixed flex flex-col items-center">
+<span class="material-symbols-outlined text-[16px] text-tertiary">check_circle</span>
+<span class="font-label-sm text-label-sm mt-0.5">6-7. Modal</span>
+</div>
+<div class="p-1.5 rounded-lg bg-primary text-on-primary shadow-sm flex flex-col items-center font-bold">
+<span class="material-symbols-outlined text-[16px]">radio_button_checked</span>
+<span class="font-label-sm text-label-sm mt-0.5">8. Espectro</span>
+</div>
+</div>
+</div>
+<!-- Seismic Configuration Interactive Cards -->
+<div class="flex flex-col gap-sm">
+<!-- Card 1: Soil -->
+<div class="group p-4 rounded-2xl bg-surface-container-lowest hover:bg-surface-container-low transition-all cursor-pointer shadow-sm hover:shadow-md">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-xl bg-surface-container text-on-surface-variant flex items-center justify-center group-hover:bg-primary-container group-hover:text-on-primary transition-all">
+<span class="material-symbols-outlined text-[20px]">layers</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Geotecnia &amp; Suelo</span>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Perfil Tipo D (Rígido)</h4>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
+</div>
+<div class="mt-3 pt-3 flex items-center justify-between text-body-sm font-body-sm text-on-surface-variant border-t border-surface-container/60">
+<span class="">Vs = 260 m/s</span>
+<span class="font-semibold text-primary">Fa = 1.50 • Fv = 2.00</span>
+</div>
+</div>
+<!-- Card 2: Accelerations -->
+<div class="group p-4 rounded-2xl bg-surface-container-lowest hover:bg-surface-container-low transition-all cursor-pointer shadow-sm hover:shadow-md">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-xl bg-surface-container text-on-surface-variant flex items-center justify-center group-hover:bg-primary-container group-hover:text-on-primary transition-all">
+<span class="material-symbols-outlined text-[20px]">speed</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Aceleraciones Sísmicas</span>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Aa = 0.15g • Av = 0.20g</h4>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
+</div>
+<div class="mt-3 pt-3 flex items-center justify-between text-body-sm font-body-sm text-on-surface-variant border-t border-surface-container/60">
+<span class="">Zona de Amenaza Intermedia</span>
+<span class="font-semibold text-primary">I = 1.00 (Grupo I)</span>
+</div>
+</div>
+<!-- Card 3: Structural System -->
+<div class="group p-4 rounded-2xl bg-surface-container-lowest hover:bg-surface-container-low transition-all cursor-pointer shadow-sm hover:shadow-md">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-xl bg-surface-container text-on-surface-variant flex items-center justify-center group-hover:bg-primary-container group-hover:text-on-primary transition-all">
+<span class="material-symbols-outlined text-[20px]">domain</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Sistema Estructural</span>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Pórticos DMO (R = 5.0)</h4>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
+</div>
+<div class="mt-3 pt-3 flex items-center justify-between text-body-sm font-body-sm text-on-surface-variant border-t border-surface-container/60">
+<span class="">Disipación Moderada</span>
+<span class="font-semibold text-primary">Ω0 = 2.5 • Cd = 4.5</span>
+</div>
+</div>
+</div>
+<!-- Smart Engineering Recommendation Callout -->
+<div class="p-4 rounded-2xl bg-secondary-fixed/40 text-on-secondary-fixed flex items-start gap-sm">
+<span class="material-symbols-outlined text-primary text-[22px] shrink-0 mt-0.5">tips_and_updates</span>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg font-bold text-on-secondary-fixed">Dictamen Asistente Sísmico</span>
+<p class="font-body-sm text-body-sm mt-1 text-on-secondary-fixed-variant">
+            Con suelo Perfil D y R=5.0, el cortante basal estimado es de <strong>68.25 kN (7.5% W)</strong>. Cumple con holgura los límites normativos mínimos de diseño.
+          </p>
+</div>
+</div>
+</div>
+<!-- CENTER CANVAS (5 cols) -->
+<div class="xl:col-span-5 flex flex-col gap-lg">
+<!-- Primary Spectral Viewer -->
+<div class="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col">
+<!-- Viewport Header & Floating Tabs -->
+<div class="flex items-center justify-between pb-4 border-b border-surface-container/80 flex-wrap gap-2">
+<div class="flex items-center gap-1 p-1 rounded-xl bg-surface-container">
+<button class="px-3 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md font-bold shadow-sm">
+              Curva Sa(T)
+            </button>
+<button class="px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface font-label-md text-label-md">
+              Modos 3D
+            </button>
+<button class="px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface font-label-md text-label-md">
+              Matriz Masas
+            </button>
+</div>
+<div class="flex items-center gap-1">
+<button class="w-8 h-8 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-primary flex items-center justify-center transition-all" title="Descargar datos .CSV">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+<button class="w-8 h-8 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-primary flex items-center justify-center transition-all" title="Pantalla completa">
+<span class="material-symbols-outlined text-[18px]">fullscreen</span>
+</button>
+</div>
+</div>
+<!-- Chart Title & Operational Point Marker -->
+<div class="pt-4 pb-2 flex items-center justify-between flex-wrap gap-2">
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Espectro de Aceleraciones Elástico vs. Reducido</h4>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Amortiguamiento crítico ξ = 5% • R = 5.0</span>
+</div>
+<div class="flex items-center gap-xs px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-bold">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="">T1 = 0.42 s (Sa = 0.112g)</span>
+</div>
+</div>
+<!-- Vectorized High-Precision Spectrum Chart (SVG) -->
+<div class="relative w-full h-64 my-2 flex items-center justify-center overflow-hidden">
+<svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 540 240">
+<defs>
+<linearGradient id="spectrumGradient" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#8a4cfc" stop-opacity="0.32"></stop>
+<stop offset="100%" stop-color="#8a4cfc" stop-opacity="0.01"></stop>
+</linearGradient>
+<linearGradient id="elasticGradient" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#c5a7ff" stop-opacity="0.2"></stop>
+<stop offset="100%" stop-color="#c5a7ff" stop-opacity="0.0"></stop>
+</linearGradient>
+</defs>
+<!-- Subtle Gridlines -->
+<line stroke="#f3ebf9" stroke-width="1" x1="40" x2="520" y1="20" y2="20"></line>
+<line stroke="#f3ebf9" stroke-width="1" x1="40" x2="520" y1="65" y2="65"></line>
+<line stroke="#f3ebf9" stroke-width="1" x1="40" x2="520" y1="110" y2="110"></line>
+<line stroke="#f3ebf9" stroke-width="1" x1="40" x2="520" y1="155" y2="155"></line>
+<line stroke="#ccc3d8" stroke-width="1" x1="40" x2="520" y1="200" y2="200"></line>
+<!-- Y-Axis labels -->
+<text class="fill-outline text-[10px] font-sans" x="10" y="24">0.50g</text>
+<text class="fill-outline text-[10px] font-sans" x="10" y="69">0.35g</text>
+<text class="fill-outline text-[10px] font-sans" x="10" y="114">0.20g</text>
+<text class="fill-outline text-[10px] font-sans" x="10" y="159">0.10g</text>
+<text class="fill-outline text-[10px] font-sans" x="10" y="204">0.00g</text>
+<!-- X-Axis vertical gridlines -->
+<line stroke="#ccc3d8" stroke-width="1" x1="40" x2="40" y1="20" y2="200"></line>
+<line stroke="#f3ebf9" stroke-width="1" x1="160" x2="160" y1="20" y2="200"></line>
+<line stroke="#f3ebf9" stroke-width="1" x1="280" x2="280" y1="20" y2="200"></line>
+<line stroke="#f3ebf9" stroke-width="1" x1="400" x2="400" y1="20" y2="200"></line>
+<line stroke="#f3ebf9" stroke-width="1" x1="520" x2="520" y1="20" y2="200"></line>
+<!-- X-Axis labels -->
+<text class="fill-outline text-[10px] font-sans" x="36" y="218">0.0</text>
+<text class="fill-outline text-[10px] font-sans" x="150" y="218">0.5 s</text>
+<text class="fill-outline text-[10px] font-sans" x="270" y="218">1.0 s</text>
+<text class="fill-outline text-[10px] font-sans" x="390" y="218">1.5 s</text>
+<text class="fill-outline text-[10px] font-sans" x="510" y="218">2.0 s</text>
+<!-- Elastic Spectrum Curve (Gray-purple dashed) -->
+<path d="M 40,140 Q 70,30 110,30 L 190,30 Q 300,100 520,165" fill="none" stroke="#ccc3d8" stroke-dasharray="4 3" stroke-width="2"></path>
+<!-- Reduced Design Spectrum Area (Filled Gradient) -->
+<path d="M 40,185 Q 70,140 110,140 L 190,140 Q 300,175 520,195 L 520,200 L 40,200 Z" fill="url(#spectrumGradient)"></path>
+<!-- Reduced Design Spectrum Stroke (Bold Violet) -->
+<path d="M 40,185 Q 70,140 110,140 L 190,140 Q 300,175 520,195" fill="none" stroke="#8a4cfc" stroke-width="2.5"></path>
+<!-- Mode 1 Fundamental Period Operating Indicator -->
+<line stroke="#702be2" stroke-dasharray="2 2" stroke-width="1.5" x1="140.8" x2="140.8" y1="20" y2="200"></line>
+<circle cx="140.8" cy="140" fill="#702be2" r="5" stroke="#ffffff" stroke-width="2"></circle>
+<circle cx="140.8" cy="140" fill="#702be2" opacity="0.2" r="10"></circle>
+<!-- Plateau indicators -->
+<text class="fill-primary text-[10px] font-bold" x="115" y="130">Sa = 0.112g (T1=0.42s)</text>
+<text class="fill-outline text-[9px]" x="200" y="25">Elástico (Sin R)</text>
+</svg>
+</div>
+<!-- Legend / Footer of chart -->
+<div class="flex items-center justify-between pt-2 border-t border-surface-container/60 text-body-sm font-body-sm text-on-surface-variant flex-wrap gap-2">
+<div class="flex items-center gap-md">
+<span class="flex items-center gap-1">
+<span class="w-3 h-0.5 bg-primary-container inline-block"></span>
+<span class="">Espectro de Diseño (R=5.0)</span>
+</span>
+<span class="flex items-center gap-1">
+<span class="w-3 h-0.5 border-t border-dashed border-outline inline-block"></span>
+<span class="">Espectro Elástico</span>
+</span>
+</div>
+<span class="font-semibold text-primary">Tc = 0.48 s • TL = 2.40 s</span>
+</div>
+</div>
+<!-- 3 Horizontal Clean Visual Parameter Tiles -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<!-- Tile 1: Geotechnical Summary -->
+<div class="p-4 rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Geotecnia</span>
+<span class="w-6 h-6 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[15px]">terrain</span>
+</span>
+</div>
+<div>
+<div class="font-headline-sm text-headline-sm text-on-surface">Tipo D</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Suelo cohesivo rígido</p>
+</div>
+<div class="mt-3 flex items-center gap-1">
+<span class="px-2 py-0.5 rounded-md bg-surface-container font-label-sm text-label-sm">Fa: 1.50</span>
+<span class="px-2 py-0.5 rounded-md bg-surface-container font-label-sm text-label-sm">Fv: 2.00</span>
+</div>
+</div>
+<!-- Tile 2: Gravity Loads Summary -->
+<div class="p-4 rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Cargas Grav.</span>
+<span class="w-6 h-6 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[15px]">vertical_align_bottom</span>
+</span>
+</div>
+<div>
+<div class="font-headline-sm text-headline-sm text-on-surface">1,234 kN</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Muerta + Viva Total</p>
+</div>
+<div class="mt-3 flex items-center gap-1">
+<span class="px-2 py-0.5 rounded-md bg-secondary-fixed/60 font-label-sm text-label-sm text-on-secondary-fixed">D: 802 kN</span>
+<span class="px-2 py-0.5 rounded-md bg-surface-container font-label-sm text-label-sm">L: 432 kN</span>
+</div>
+</div>
+<!-- Tile 3: Wind & Climate -->
+<div class="p-4 rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Viento</span>
+<span class="w-6 h-6 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[15px]">air</span>
+</span>
+</div>
+<div>
+<div class="font-headline-sm text-headline-sm text-on-surface">28 m/s</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">100 km/h (Básico)</p>
+</div>
+<div class="mt-3 flex items-center gap-1">
+<span class="px-2 py-0.5 rounded-md bg-surface-container font-label-sm text-label-sm">+0.82 kN/m²</span>
+<span class="px-2 py-0.5 rounded-md bg-surface-container font-label-sm text-label-sm">-0.45 kN/m²</span>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT PANEL: DYNAMIC SUMMARY & MODES (3 cols) -->
+<div class="xl:col-span-3 flex flex-col gap-lg">
+<!-- Live Dynamic Metrics Card -->
+<div class="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+<span class="font-label-lg text-label-lg font-bold text-on-surface">Resumen Dinámico</span>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed">En Vivo</span>
+</div>
+<!-- Seismic Mass -->
+<div class="p-3.5 rounded-xl bg-surface-container-low mb-3">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Masa Sísmica (W)</span>
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">910.0 kN</span>
+</div>
+<!-- Split Mass Bar -->
+<div class="w-full h-2 rounded-full bg-surface-container flex overflow-hidden">
+<div class="bg-primary h-full w-[88%]" title="Muerta: 88%"></div>
+<div class="bg-secondary-container h-full w-[12%]" title="Viva participante: 12%"></div>
+</div>
+<div class="flex justify-between text-[10px] text-on-surface-variant mt-1">
+<span class="">100% Carga Muerta</span>
+<span class="">25% Carga Viva</span>
+</div>
+</div>
+<!-- Base Shear -->
+<div class="p-3.5 rounded-xl bg-surface-container-low mb-4">
+<div class="flex justify-between items-baseline">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Cortante Basal (Vs)</span>
+<span class="font-headline-sm text-headline-sm font-bold text-primary">68.25 kN</span>
+</div>
+<div class="mt-1 flex items-center justify-between text-body-sm font-body-sm text-on-surface-variant">
+<span class="">Relación Vs/W</span>
+<span class="font-semibold text-tertiary">7.50% ≥ 5.0% min</span>
+</div>
+</div>
+<!-- Eigen Modal Shapes Breakdown -->
+<div class="flex flex-col gap-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Modos de Vibración (Eigen 3D)</span>
+<!-- Mode 1 -->
+<div class="p-2.5 rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between border-l-4 border-primary">
+<div>
+<div class="font-label-md text-label-md font-bold text-on-surface">Modo 1 • Traslación X</div>
+<span class="text-[11px] text-on-surface-variant">T = 0.42 s (f = 2.38 Hz)</span>
+</div>
+<div class="text-right">
+<span class="font-label-md text-label-md text-primary font-bold">78.4%</span>
+<span class="block text-[10px] text-on-surface-variant">Masa Part.</span>
+</div>
+</div>
+<!-- Mode 2 -->
+<div class="p-2.5 rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between border-l-4 border-secondary-container">
+<div>
+<div class="font-label-md text-label-md font-bold text-on-surface">Modo 2 • Traslación Y</div>
+<span class="text-[11px] text-on-surface-variant">T = 0.38 s (f = 2.63 Hz)</span>
+</div>
+<div class="text-right">
+<span class="font-label-md text-label-md text-secondary font-bold">81.2%</span>
+<span class="block text-[10px] text-on-surface-variant">Masa Part.</span>
+</div>
+</div>
+<!-- Mode 3 -->
+<div class="p-2.5 rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between border-l-4 border-surface-variant">
+<div>
+<div class="font-label-md text-label-md font-bold text-on-surface">Modo 3 • Torsión Pura Z</div>
+<span class="text-[11px] text-on-surface-variant">T = 0.26 s (f = 3.85 Hz)</span>
+</div>
+<div class="text-right">
+<span class="font-label-md text-label-md text-on-surface-variant font-bold">12.1%</span>
+<span class="block text-[10px] text-on-surface-variant">Masa Part.</span>
+</div>
+</div>
+</div>
+<!-- Modal Status Confirmation -->
+<div class="mt-4 p-3 rounded-xl bg-tertiary-fixed/30 text-on-tertiary-fixed flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[18px]">verified</span>
+<span class="font-body-sm text-body-sm font-semibold">Masa acumulada &gt; 90% alcanzada</span>
+</div>
+<!-- Next Action CTA Button -->
+<button class="w-full mt-4 h-12 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-label-lg text-label-lg shadow-md shadow-primary/25 flex items-center justify-center gap-xs transition-all">
+<span class="">Guardar y Pasar a Casos (Paso 9)</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+<!-- Quick Reference Sheet -->
+<div class="p-4 rounded-2xl bg-surface-container-lowest shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant text-[22px]">description</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Memoria de Cálculo</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">PDF generado • 4 págs</span>
+</div>
+</div>
+<button class="h-8 px-3 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md hover:bg-surface-container-high transition-all">
+          Ver
+        </button>
+</div>
+</div>
+</div>
+<!-- BOTTOM STATUS & WORKFLOW DOCK (Clean, Informative Footer) -->
+<footer class="mt-10 pt-4 border-t border-surface-container flex flex-col sm:flex-row items-center justify-between gap-md text-body-sm font-body-sm text-on-surface-variant">
+<div class="flex items-center gap-md flex-wrap">
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-full bg-tertiary"></span>
+<span class="font-semibold text-on-surface">Modelo Sincronizado</span>
+</div>
+<span class="">•</span>
+<span class="">3 Niveles (H = 9.00 m)</span>
+<span class="">•</span>
+<span class="">Grados de Libertad: 18 Dinámicos</span>
+<span class="">•</span>
+<span class="">Norma: NSR-10 Título A / ACI 318-19</span>
+</div>
+<div class="flex items-center gap-sm">
+<button class="px-3 py-1.5 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        Guardar Borrador
+      </button>
+<button class="px-4 py-1.5 rounded-xl bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-secondary-container transition-all">
+        Reiniciar a Valores por Defecto
+      </button>
+</div>
+</footer>
+</div>
+<script>
+  // Simple client-side micro-interactions for tab switching and interactive hover
+  document.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      // Visual feedback on click
+      if(!this.classList.contains('active-tab')) {
+        this.classList.add('scale-[0.98]');
+        setTimeout(() => this.classList.remove('scale-[0.98]'), 150);
+      }
+    });
+  });
+</script></main></div>
+
+</body></html>

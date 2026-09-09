@@ -23,6 +23,8 @@ export function EditorToolbar({
   projectName,
   state,
   actions,
+  view,
+  onViewChange,
   view3D,
   onToggle3D,
   onSave,
@@ -44,6 +46,8 @@ export function EditorToolbar({
     deleteSelection: () => void;
     setTool: (tool: Tool) => void;
   };
+  view: '2d' | '3d' | 'loads' | 'fem';
+  onViewChange: (view: '2d' | '3d' | 'loads' | 'fem') => void;
   view3D: boolean;
   onToggle3D: () => void;
   onSave: () => void;
@@ -62,6 +66,13 @@ export function EditorToolbar({
       <span className="text-slate-300">/</span>
       <h1 className="max-w-xs truncate text-sm font-semibold text-slate-900">{projectName}</h1>
       <span className="ml-2 text-xs text-slate-400">{state.elements.length} elements</span>
+      <div className="ml-4 hidden items-center gap-1 rounded-xl bg-slate-100 p-1 lg:flex">
+        {(['2d', '3d', 'loads', 'fem'] as const).map((mode) => (
+          <button key={mode} onClick={() => onViewChange(mode)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition ${view === mode ? 'bg-violet-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>
+            {mode === 'fem' ? 'FEM' : mode}
+          </button>
+        ))}
+      </div>
       <div className="ml-auto flex items-center gap-1.5">
         <ToolbarButton onClick={actions.undo} disabled={state.past.length === 0} icon={Undo} label="Undo" />
         <ToolbarButton onClick={actions.redo} disabled={state.future.length === 0} icon={Redo} label="Redo" />

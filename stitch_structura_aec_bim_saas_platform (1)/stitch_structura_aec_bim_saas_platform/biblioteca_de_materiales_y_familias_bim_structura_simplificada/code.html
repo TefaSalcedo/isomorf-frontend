@@ -1,0 +1,638 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><title>Structura · Biblioteca de Materiales y Secciones</title><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "primary": "#702be2",
+        "primary-container": "#8a4cfc",
+        "on-primary": "#ffffff",
+        "on-primary-container": "#fffbff",
+        "secondary": "#6b4fa0",
+        "secondary-container": "#ebdffe",
+        "on-secondary-fixed": "#250059",
+        "surface": "#fcfaff",
+        "on-surface": "#1d1a24",
+        "on-surface-variant": "#5f586b",
+        "surface-container-lowest": "#ffffff",
+        "surface-container-low": "#f7f2fb",
+        "surface-container": "#f1ebf6",
+        "surface-container-high": "#ebe3f2",
+        "outline-variant": "#e4ddec",
+        "tertiary": "#057a55",
+        "tertiary-container": "#def7ec",
+        "on-tertiary-container": "#03543f"
+      },
+      borderRadius: {
+        DEFAULT: "0.25rem",
+        lg: "0.5rem",
+        xl: "0.75rem",
+        "2xl": "1rem",
+        "3xl": "1.5rem",
+        full: "9999px"
+      },
+      fontFamily: {
+        sans: ["Plus Jakarta Sans", "sans-serif"]
+      }
+    }
+  }
+};</script><script data-extension-id="idgadaccgipmpannjkmfddolnnhmeklj" src="chrome-extension://idgadaccgipmpannjkmfddolnnhmeklj/js/tb_remapper.js"></script></head>
+<body class="bg-[#fbf9fe] font-sans text-on-surface antialiased">
+<!-- Top App Header -->
+<header class="fixed top-0 left-0 right-0 z-50 h-16 bg-white/90 backdrop-blur-xl border-b border-outline-variant/60 flex items-center justify-between px-6">
+<div class="flex items-center gap-3 min-w-[14rem]">
+<div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-primary-container flex items-center justify-center text-on-primary shadow-md shadow-primary/20">
+<span class="material-symbols-outlined text-[22px]">view_in_ar</span>
+</div>
+<div class="flex flex-col">
+<span class="font-bold text-base text-on-surface leading-tight tracking-tight">Structura</span>
+<span class="text-[11px] text-on-surface-variant font-medium hidden sm:block">Dibuja · Modela · Analiza · Construye</span>
+</div>
+</div>
+<!-- Quick global search in header -->
+<div class="flex-1 max-w-xl px-4 hidden md:block">
+<div class="relative w-full flex items-center">
+<span class="material-symbols-outlined absolute left-3.5 text-on-surface-variant/70 text-[18px]">search</span>
+<input class="w-full h-9 pl-10 pr-4 bg-surface-container-low hover:bg-surface-container/60 focus:bg-white rounded-xl text-xs text-on-surface placeholder:text-on-surface-variant/60 outline-none ring-1 ring-outline-variant/60 focus:ring-2 focus:ring-primary/40 transition-all" placeholder="Buscar proyectos, modelos o familias..." type="text">
+</div>
+</div>
+<div class="flex items-center gap-2.5">
+<button class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface-variant text-xs font-semibold transition-all">
+<span class="material-symbols-outlined text-[16px] text-primary">school</span>
+<span>Tutorial rápido</span>
+</button>
+<button class="p-2 rounded-xl text-on-surface-variant hover:bg-surface-container-low transition-colors relative">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary"></span>
+</button>
+<button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary hover:bg-primary-container text-on-primary text-xs font-semibold shadow-sm shadow-primary/25 transition-all">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span>Nuevo Proyecto</span>
+</button>
+<div class="pl-2 flex items-center">
+<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-fixed font-bold text-xs flex items-center justify-center border-2 border-white shadow-sm">
+          TS
+        </div>
+</div>
+</div>
+</header>
+<!-- Side Navigation -->
+<aside class="fixed left-0 top-16 bottom-0 w-60 bg-white border-r border-outline-variant/60 z-40 flex flex-col justify-between py-4 px-3">
+<div class="flex flex-col gap-4">
+<div class="px-1">
+<button class="w-full h-10 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-semibold text-xs flex items-center justify-center gap-2 shadow-sm shadow-primary/20 transition-all">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+<span>+ Nuevo Material</span>
+</button>
+</div>
+<!-- Navigation links matching Structura flow -->
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-on-surface-variant hover:bg-surface-container-low transition-all" href="#">
+<span class="material-symbols-outlined text-[19px]">home</span>
+<span>Inicio</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-on-surface-variant hover:bg-surface-container-low transition-all" href="#">
+<span class="material-symbols-outlined text-[19px]">folder_open</span>
+<span>Proyectos</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-on-surface-variant hover:bg-surface-container-low transition-all" href="#">
+<span class="material-symbols-outlined text-[19px]">deployed_code</span>
+<span>Modelar 3D</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-on-surface-variant hover:bg-surface-container-low transition-all" href="#">
+<span class="material-symbols-outlined text-[19px]">architecture</span>
+<span>Planos 2D</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-on-surface-variant hover:bg-surface-container-low transition-all" href="#">
+<span class="material-symbols-outlined text-[19px]">tune</span>
+<span>Cargas &amp; Análisis</span>
+</a>
+<!-- Active Library -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold bg-secondary-container/70 text-primary transition-all" href="#">
+<span class="material-symbols-outlined text-[19px]">menu_book</span>
+<span>Biblioteca</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-on-surface-variant hover:bg-surface-container-low transition-all" href="#">
+<span class="material-symbols-outlined text-[19px]">group</span>
+<span>Equipos</span>
+</a>
+</nav>
+</div>
+<div>
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-on-surface-variant hover:bg-surface-container-low transition-all" href="#">
+<span class="material-symbols-outlined text-[19px]">settings</span>
+<span>Configuración</span>
+</a>
+</div>
+</aside>
+<!-- Main Workspace Area -->
+<div class="pl-60">
+<main class="relative w-full pt-16 min-h-screen px-8 py-8">
+<div class="max-w-[1440px] mx-auto flex flex-col gap-6">
+<!-- Header: Clean Canva-style introduction -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="text-xs font-bold text-primary tracking-wide uppercase">Catálogo Certificado Structura</span>
+<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-tertiary bg-tertiary-container/70 px-2 py-0.5 rounded-full">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                AISC &amp; ACI 2025
+              </span>
+</div>
+<h1 class="text-2xl font-bold text-on-surface tracking-tight">Biblioteca de Materiales y Secciones</h1>
+<p class="text-sm text-on-surface-variant font-normal">Explora, personaliza y asigna materiales certificados a tus modelos estructurales.</p>
+</div>
+<!-- Secondary header tools -->
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-outline-variant text-xs font-semibold text-on-surface hover:bg-surface-container-low shadow-sm transition-all">
+<span class="material-symbols-outlined text-[18px] text-primary">upload_file</span>
+<span>Importar RFA / IFC</span>
+</button>
+<button class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-primary hover:bg-primary-container text-white text-xs font-semibold shadow-sm shadow-primary/20 transition-all">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span>Crear Material</span>
+</button>
+</div>
+</div>
+<!-- Prominent Friendly Search Bar -->
+<div class="relative w-full rounded-2xl bg-white p-2 border border-outline-variant/80 shadow-sm flex flex-col sm:flex-row items-center gap-2">
+<div class="flex-1 flex items-center gap-3 px-3 w-full">
+<span class="material-symbols-outlined text-primary text-[22px]">search</span>
+<input class="w-full h-10 bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/60 outline-none" placeholder="Buscar concreto, acero W-Shapes, madera o código de norma (ej. f'c=28 MPa, W14x90)..." type="text">
+<span class="hidden sm:inline-flex px-2 py-0.5 rounded-md bg-surface-container-low text-on-surface-variant/80 text-[11px] font-semibold border border-outline-variant/60">⌘K</span>
+</div>
+<button class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-semibold shadow-sm hover:bg-primary-container transition-all">
+            Buscar
+          </button>
+</div>
+<!-- Clean Main Category Tabs & Quick Secondary Chips -->
+<div class="flex flex-col gap-3">
+<!-- Primary Pill Navigation -->
+<div class="flex items-center gap-2 overflow-x-auto pb-1">
+<button class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary-container/80 text-primary font-bold text-xs shadow-sm transition-all whitespace-nowrap">
+<span>Todos</span>
+</button>
+<button class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-outline-variant hover:bg-surface-container-low text-on-surface font-semibold text-xs transition-all whitespace-nowrap">
+<span>Hormigón / Concreto</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container text-on-surface-variant text-[10px]">12</span>
+</button>
+<button class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-outline-variant hover:bg-surface-container-low text-on-surface font-semibold text-xs transition-all whitespace-nowrap">
+<span>Perfiles de Acero</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container text-on-surface-variant text-[10px]">48</span>
+</button>
+<button class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-outline-variant hover:bg-surface-container-low text-on-surface font-semibold text-xs transition-all whitespace-nowrap">
+<span>Barras de Refuerzo</span>
+</button>
+<button class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-outline-variant hover:bg-surface-container-low text-on-surface font-semibold text-xs transition-all whitespace-nowrap">
+<span>Madera Estructural</span>
+</button>
+<button class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-outline-variant hover:bg-surface-container-low text-on-surface font-semibold text-xs transition-all whitespace-nowrap">
+<span class="material-symbols-outlined text-[15px] text-amber-500">bookmark</span>
+<span>Mis Guardados / Proyecto</span>
+</button>
+</div>
+<!-- Secondary Filter Chips -->
+<div class="flex items-center gap-2 flex-wrap text-xs">
+<span class="text-[11px] font-semibold text-on-surface-variant/80 uppercase mr-1 tracking-wider">Filtro rápido:</span>
+<button class="px-3 py-1 rounded-full bg-white hover:bg-surface-container-low text-on-surface-variant border border-outline-variant text-xs transition-colors">
+              Norma ACI 318
+            </button>
+<button class="px-3 py-1 rounded-full bg-white hover:bg-surface-container-low text-on-surface-variant border border-outline-variant text-xs transition-colors">
+              Norma AISC 360
+            </button>
+<button class="flex items-center gap-1 px-3 py-1 rounded-full bg-white hover:bg-surface-container-low text-on-surface-variant border border-outline-variant text-xs transition-colors">
+<span class="material-symbols-outlined text-[14px] text-primary">bolt</span>
+<span>Sismo-resistente</span>
+</button>
+<button class="flex items-center gap-1 px-3 py-1 rounded-full bg-white hover:bg-surface-container-low text-on-surface-variant border border-outline-variant text-xs transition-colors">
+<span class="material-symbols-outlined text-[14px] text-tertiary">eco</span>
+<span>Sostenible</span>
+</button>
+</div>
+</div>
+<!-- 2-Column Clean Workspace: Cards (Left) + Minimalist Inspector (Right) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-2">
+<!-- Left Catalog (8 cols on lg) -->
+<div class="lg:col-span-8 flex flex-col gap-6">
+<!-- Concretes Section -->
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-tertiary"></span>
+<h2 class="text-sm font-bold text-on-surface">Concretos &amp; Hormigones</h2>
+<span class="text-xs text-on-surface-variant">Calibrados para diseño sísmico</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Card 1: Concreto 28 MPa -->
+<div class="bg-white rounded-2xl p-5 border border-outline-variant/70 shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col justify-between gap-4">
+<div class="flex flex-col gap-3">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-xl bg-surface-container-low overflow-hidden flex-shrink-0 border border-outline-variant/40">
+<img class="w-full h-full object-cover" data-alt="Concreto estructural textura limpia" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAH0tTYwPN-8L8988_gDvMsOobDDUgDc-JDrcbuC_A73JAXXG6tn8RDRL33yCjQgd6Q2cebWpn76TbozLOmvaEJ9qGfwqwobHqsSzY5OkBT8LgaCAaAaoqU-uPNubJVtk98h5meS3F5hQsBhjxFj3DqhbhJPUGBkZHD5vgYcgiqX09i7VrYgJFpnpaqLbx1udetr9dR-02vQ5OyXlQd5zzch9OGtxw3eo64CUYWqYwpXd56dX6d_K4azg">
+</div>
+<div>
+<h3 class="font-bold text-sm text-on-surface">Concreto f'c = 28 MPa</h3>
+<p class="text-xs text-on-surface-variant">4000 PSI · ACI 318</p>
+</div>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-tertiary-container/80 text-tertiary">
+                        Recomendado
+                      </span>
+</div>
+<!-- Only 3 essential readable indicators -->
+<div class="grid grid-cols-3 gap-2 bg-surface-container-low/70 rounded-xl p-2.5 text-center">
+<div>
+<span class="block text-[10px] text-on-surface-variant font-medium">Resistencia</span>
+<span class="font-bold text-xs text-on-surface">28 MPa</span>
+</div>
+<div class="border-x border-outline-variant/50">
+<span class="block text-[10px] text-on-surface-variant font-medium">Densidad</span>
+<span class="font-bold text-xs text-on-surface">24 kN/m³</span>
+</div>
+<div>
+<span class="block text-[10px] text-on-surface-variant font-medium">Módulo E</span>
+<span class="font-bold text-xs text-on-surface">24,800 MPa</span>
+</div>
+</div>
+</div>
+<!-- Footer actions -->
+<div class="flex items-center justify-between pt-1 border-t border-outline-variant/40">
+<button class="text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">info</span>
+<span>Ver detalles</span>
+</button>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg hover:bg-surface-container-low text-on-surface-variant" title="Más opciones">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+<button class="px-3.5 py-1.5 rounded-xl bg-primary hover:bg-primary-container text-white text-xs font-semibold shadow-sm transition-all">
+                        Usar en Modelo
+                      </button>
+</div>
+</div>
+</div>
+<!-- Card 2: Concreto 35 MPa -->
+<div class="bg-white rounded-2xl p-5 border border-outline-variant/70 shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col justify-between gap-4">
+<div class="flex flex-col gap-3">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-xl bg-surface-container-low overflow-hidden flex-shrink-0 border border-outline-variant/40">
+<img class="w-full h-full object-cover" data-alt="Concreto alta resistencia textura" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAH9EI_e96-7d86bzeJRCvV9AoIuhlKt8AhCXxGB2dkVFgQIKfHByt-nRkwfH9kr-af59DVOaY2i6FWWs4q_aI4kJJnM135eQLAsQl_mb6lgs9mRsfDaXXNjV6Nx7-yrY5LHT-EFx1Y4XqP_0PjReCPGfStxDnzc8PBSWxOaiF4UdjxupUb-FPxysK55RZPQKeR6N5uhi3feoFFO7rBUkWD3tfbfLAFck5zJf01RO0HVr-odE8VLeXrQw">
+</div>
+<div>
+<h3 class="font-bold text-sm text-on-surface">Concreto f'c = 35 MPa</h3>
+<p class="text-xs text-on-surface-variant">5000 PSI · Columnas &amp; Muros</p>
+</div>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-secondary-container text-primary">
+                        Alta Carga
+                      </span>
+</div>
+<!-- 3 essential indicators -->
+<div class="grid grid-cols-3 gap-2 bg-surface-container-low/70 rounded-xl p-2.5 text-center">
+<div>
+<span class="block text-[10px] text-on-surface-variant font-medium">Resistencia</span>
+<span class="font-bold text-xs text-on-surface">35 MPa</span>
+</div>
+<div class="border-x border-outline-variant/50">
+<span class="block text-[10px] text-on-surface-variant font-medium">Densidad</span>
+<span class="font-bold text-xs text-on-surface">24.5 kN/m³</span>
+</div>
+<div>
+<span class="block text-[10px] text-on-surface-variant font-medium">Módulo E</span>
+<span class="font-bold text-xs text-on-surface">27,800 MPa</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1 border-t border-outline-variant/40">
+<button class="text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">info</span>
+<span>Ver detalles</span>
+</button>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg hover:bg-surface-container-low text-on-surface-variant" title="Más opciones">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+<button class="px-3.5 py-1.5 rounded-xl bg-surface-container hover:bg-primary hover:text-white text-on-surface text-xs font-semibold transition-all">
+                        Asignar
+                      </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Steel Profiles & Reinforcements Section -->
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-primary"></span>
+<h2 class="text-sm font-bold text-on-surface">Perfiles &amp; Aceros Normalizados</h2>
+<span class="text-xs text-on-surface-variant">Catálogo AISC 15th Edición</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Card 3: Perfil Metálico W14x90 (Selected State) -->
+<div class="bg-white rounded-2xl p-5 border-2 border-primary shadow-md shadow-primary/10 flex flex-col justify-between gap-4 relative">
+<div class="absolute -top-3 right-4 px-2.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-bold shadow-xs">
+                    Activo en Inspector
+                  </div>
+<div class="flex flex-col gap-3">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-xl bg-secondary-container/70 flex items-center justify-center text-primary flex-shrink-0">
+<svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+<path d="M4 3h16v3h-6v12h6v3H4v-3h6V6H4V3z"></path>
+</svg>
+</div>
+<div>
+<h3 class="font-bold text-sm text-on-surface">Perfil W14×90</h3>
+<p class="text-xs text-on-surface-variant">Acero ASTM A992 · Grado 50</p>
+</div>
+</div>
+<span class="p-1 text-amber-500">
+<span class="material-symbols-outlined text-[18px]">star</span>
+</span>
+</div>
+<!-- 4 Clear Essential Dimensions -->
+<div class="grid grid-cols-4 gap-1.5 bg-surface-container-low/80 rounded-xl p-2.5 text-center">
+<div>
+<span class="block text-[10px] text-on-surface-variant">Altura d</span>
+<span class="font-bold text-xs text-on-surface">356 mm</span>
+</div>
+<div>
+<span class="block text-[10px] text-on-surface-variant">Ancho bf</span>
+<span class="font-bold text-xs text-on-surface">368 mm</span>
+</div>
+<div>
+<span class="block text-[10px] text-on-surface-variant">Peso</span>
+<span class="font-bold text-xs text-on-surface">134 kg/m</span>
+</div>
+<div>
+<span class="block text-[10px] text-on-surface-variant">Fluencia</span>
+<span class="font-bold text-xs text-on-surface">345 MPa</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1 border-t border-outline-variant/40">
+<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-tertiary">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                      Cumple AISC 341 Sísmico
+                    </span>
+<button class="px-4 py-1.5 rounded-xl bg-primary hover:bg-primary-container text-white text-xs font-semibold shadow-xs transition-all">
+                      Seleccionar e Insertar
+                    </button>
+</div>
+</div>
+<!-- Card 4: Acero ASTM A615 Grado 60 (Barras de Refuerzo) -->
+<div class="bg-white rounded-2xl p-5 border border-outline-variant/70 shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col justify-between gap-4">
+<div class="flex flex-col gap-3">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-xl bg-surface-container-low flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[24px]">grain</span>
+</div>
+<div>
+<h3 class="font-bold text-sm text-on-surface">Barras ASTM A615 (G60)</h3>
+<p class="text-xs text-on-surface-variant">Acero corrugado para armaduras</p>
+</div>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-container text-on-surface-variant">
+                        #3 a #10
+                      </span>
+</div>
+<!-- 3 simple indicators -->
+<div class="grid grid-cols-3 gap-2 bg-surface-container-low/70 rounded-xl p-2.5 text-center">
+<div>
+<span class="block text-[10px] text-on-surface-variant font-medium">Fluencia Fy</span>
+<span class="font-bold text-xs text-on-surface">420 MPa</span>
+</div>
+<div class="border-x border-outline-variant/50">
+<span class="block text-[10px] text-on-surface-variant font-medium">Rotura Fu</span>
+<span class="font-bold text-xs text-on-surface">620 MPa</span>
+</div>
+<div>
+<span class="block text-[10px] text-on-surface-variant font-medium">Alargamiento</span>
+<span class="font-bold text-xs text-on-surface">≥ 9%</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1 border-t border-outline-variant/40">
+<button class="text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">format_list_bulleted</span>
+<span>Tabla de calibres</span>
+</button>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg hover:bg-surface-container-low text-on-surface-variant" title="Más opciones">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+<button class="px-3.5 py-1.5 rounded-xl bg-surface-container hover:bg-primary hover:text-white text-on-surface text-xs font-semibold transition-all">
+                        Asignar
+                      </button>
+</div>
+</div>
+</div>
+<!-- Card 5: Madera Estructural Glulam GL28h -->
+<div class="bg-white rounded-2xl p-5 border border-outline-variant/70 shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col justify-between gap-4">
+<div class="flex flex-col gap-3">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-xl bg-surface-container-low overflow-hidden flex-shrink-0 border border-outline-variant/40">
+<img class="w-full h-full object-cover" data-alt="Madera Glulam textura" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXP1cKijXO93ccQ3-HxCl2vMz119cWhWDl8RheBOq8S3eaB6KyEu1Q-iitQd-husWzDAFA2mhxiH08_KWRHKuAmLd_BSTZYuy28a5WrbsnIO4C4ZaL7EYjqw6NO2O2n8MMBsqD1wFYx881r4OuiKRahuNzIp10F3ewJPJbKX-Ty_agDSrKAnATiE5CYJ6ZjX1BbwP2ewsNxdI6oov-xGhSSvnK_BGv4-wxRgJEit1HkVUum5HgEaE4UA">
+</div>
+<div>
+<h3 class="font-bold text-sm text-on-surface">Madera Glulam GL28h</h3>
+<p class="text-xs text-on-surface-variant">Vigas Laminadas Encoladas</p>
+</div>
+</div>
+<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-tertiary-container text-tertiary">
+<span class="material-symbols-outlined text-[12px]">eco</span>
+                        Eco
+                      </span>
+</div>
+<div class="grid grid-cols-3 gap-2 bg-surface-container-low/70 rounded-xl p-2.5 text-center">
+<div>
+<span class="block text-[10px] text-on-surface-variant font-medium">Flexión</span>
+<span class="font-bold text-xs text-on-surface">28 MPa</span>
+</div>
+<div class="border-x border-outline-variant/50">
+<span class="block text-[10px] text-on-surface-variant font-medium">Módulo E</span>
+<span class="font-bold text-xs text-on-surface">12,600 MPa</span>
+</div>
+<div>
+<span class="block text-[10px] text-on-surface-variant font-medium">Densidad</span>
+<span class="font-bold text-xs text-on-surface">425 kg/m³</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1 border-t border-outline-variant/40">
+<button class="text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">info</span>
+<span>Ficha EPD</span>
+</button>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg hover:bg-surface-container-low text-on-surface-variant" title="Más opciones">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+<button class="px-3.5 py-1.5 rounded-xl bg-surface-container hover:bg-primary hover:text-white text-on-surface text-xs font-semibold transition-all">
+                        Asignar
+                      </button>
+</div>
+</div>
+</div>
+<!-- Card 6: Perfil Tubular HSS 200x200 -->
+<div class="bg-white rounded-2xl p-5 border border-outline-variant/70 shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col justify-between gap-4">
+<div class="flex flex-col gap-3">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-xl bg-surface-container-low flex items-center justify-center text-primary flex-shrink-0">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+<rect height="16" rx="2" width="16" x="4" y="4"></rect>
+<rect height="10" rx="1" width="10" x="7" y="7"></rect>
+</svg>
+</div>
+<div>
+<h3 class="font-bold text-sm text-on-surface">Tubo HSS 200×200×8</h3>
+<p class="text-xs text-on-surface-variant">Perfil Hueco Cuadrado · ASTM A500</p>
+</div>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-container text-on-surface-variant">
+                        Columnas
+                      </span>
+</div>
+<div class="grid grid-cols-3 gap-2 bg-surface-container-low/70 rounded-xl p-2.5 text-center">
+<div>
+<span class="block text-[10px] text-on-surface-variant font-medium">Sección</span>
+<span class="font-bold text-xs text-on-surface">200×200 mm</span>
+</div>
+<div class="border-x border-outline-variant/50">
+<span class="block text-[10px] text-on-surface-variant font-medium">Espesor</span>
+<span class="font-bold text-xs text-on-surface">8.0 mm</span>
+</div>
+<div>
+<span class="block text-[10px] text-on-surface-variant font-medium">Fluencia</span>
+<span class="font-bold text-xs text-on-surface">315 MPa</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1 border-t border-outline-variant/40">
+<button class="text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">info</span>
+<span>Ver detalles</span>
+</button>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg hover:bg-surface-container-low text-on-surface-variant" title="Más opciones">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+<button class="px-3.5 py-1.5 rounded-xl bg-surface-container hover:bg-primary hover:text-white text-on-surface text-xs font-semibold transition-all">
+                        Asignar
+                      </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Inspector: Simplified, Didactic & High-Clarity (4 cols on lg) -->
+<div class="lg:col-span-4 sticky top-20 flex flex-col gap-4">
+<div class="bg-white rounded-3xl p-6 border border-outline-variant/80 shadow-sm flex flex-col gap-5">
+<!-- Inspector Header -->
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-bold text-primary uppercase tracking-wider">Elemento Seleccionado</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container/80 text-primary text-[10px] font-bold">LOD 350</span>
+</div>
+<h3 class="text-lg font-bold text-on-surface leading-tight mt-0.5">Perfil Metálico W14×90</h3>
+<span class="text-xs text-on-surface-variant font-medium">Norma AISC · Viga / Columna</span>
+</div>
+<button class="p-1.5 rounded-xl text-on-surface-variant hover:bg-surface-container-low" title="Cerrar inspector">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Clean 3D / Section Schematic with Easy-to-read Dimensions -->
+<div class="relative w-full h-48 rounded-2xl bg-gradient-to-b from-[#f8f4fe] to-[#efe7fc] border border-outline-variant/60 flex items-center justify-center overflow-hidden">
+<svg class="w-40 h-40 text-primary drop-shadow-sm" fill="none" viewBox="0 0 200 200">
+<!-- Flange top isometric -->
+<polygon fill="rgba(112,43,226,0.18)" points="40,65 100,30 160,65 100,100" stroke="#702be2" stroke-width="2"></polygon>
+<!-- Flange thickness -->
+<polygon fill="rgba(112,43,226,0.32)" points="40,65 40,73 100,108 100,100" stroke="#702be2" stroke-width="1.5"></polygon>
+<polygon fill="rgba(112,43,226,0.25)" points="160,65 160,73 100,108 100,100" stroke="#702be2" stroke-width="1.5"></polygon>
+<!-- Web isometric -->
+<polygon fill="rgba(112,43,226,0.28)" points="95,106 105,112 105,145 95,139" stroke="#702be2" stroke-width="1.5"></polygon>
+<!-- Bottom Flange -->
+<polygon fill="rgba(112,43,226,0.18)" points="40,140 100,105 160,140 100,175" stroke="#702be2" stroke-width="2"></polygon>
+<polygon fill="rgba(112,43,226,0.4)" points="40,140 40,148 100,183 100,175" stroke="#702be2" stroke-width="1.5"></polygon>
+<polygon fill="rgba(112,43,226,0.3)" points="160,140 160,148 100,183 100,175" stroke="#702be2" stroke-width="1.5"></polygon>
+<!-- Dimension indicators -->
+<line stroke="#5f586b" stroke-dasharray="3 3" stroke-width="1" x1="28" x2="28" y1="65" y2="148"></line>
+<text fill="#1d1a24" font-family="Plus Jakarta Sans" font-size="10" font-weight="700" x="6" y="110">d=356</text>
+<line stroke="#5f586b" stroke-dasharray="3 3" stroke-width="1" x1="40" x2="160" y1="52" y2="52"></line>
+<text fill="#1d1a24" font-family="Plus Jakarta Sans" font-size="10" font-weight="700" x="80" y="46">bf=368</text>
+</svg>
+<div class="absolute bottom-2.5 right-2.5 flex items-center gap-1 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[11px] font-semibold text-on-surface border border-outline-variant/60 shadow-xs">
+<span class="material-symbols-outlined text-[14px] text-primary">3d_rotation</span>
+<span>Rotar 3D</span>
+</div>
+</div>
+<!-- Only Essential Property Cards (No dense unreadable table) -->
+<div class="flex flex-col gap-2">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Propiedades Esenciales</span>
+<div class="grid grid-cols-2 gap-2">
+<div class="p-2.5 rounded-xl bg-surface-container-low border border-outline-variant/40 flex flex-col">
+<span class="text-[10px] text-on-surface-variant font-medium">Área Transversal (A)</span>
+<span class="text-xs font-bold text-on-surface mt-0.5">171.0 cm²</span>
+</div>
+<div class="p-2.5 rounded-xl bg-surface-container-low border border-outline-variant/40 flex flex-col">
+<span class="text-[10px] text-on-surface-variant font-medium">Inercia Principal (Ix)</span>
+<span class="text-xs font-bold text-on-surface mt-0.5">41,600 cm⁴</span>
+</div>
+<div class="p-2.5 rounded-xl bg-surface-container-low border border-outline-variant/40 flex flex-col">
+<span class="text-[10px] text-on-surface-variant font-medium">Peso Lineal</span>
+<span class="text-xs font-bold text-on-surface mt-0.5">134 kg/m</span>
+</div>
+<div class="p-2.5 rounded-xl bg-surface-container-low border border-outline-variant/40 flex flex-col">
+<span class="text-[10px] text-on-surface-variant font-medium">Módulo Elástico (Sx)</span>
+<span class="text-xs font-bold text-on-surface mt-0.5">2,340 cm³</span>
+</div>
+</div>
+</div>
+<!-- Clear Normative Compliance Card -->
+<div class="p-3 rounded-xl bg-tertiary-container/50 border border-tertiary/20 flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-tertiary flex-shrink-0 shadow-xs">
+<span class="material-symbols-outlined text-[20px]">verified</span>
+</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-on-surface">Cumple AISC 360 &amp; 341</span>
+<span class="text-[11px] text-on-surface-variant">Sección compacta apta para zonas sísmicas</span>
+</div>
+</div>
+<!-- Main Execution CTA Buttons -->
+<div class="flex flex-col gap-2 pt-1">
+<button class="w-full py-3 px-4 rounded-xl bg-primary hover:bg-primary-container text-white font-bold text-xs shadow-md shadow-primary/25 flex items-center justify-center gap-2 transition-all">
+<span class="material-symbols-outlined text-[18px]">add_box</span>
+<span>Insertar en Modelo Activo</span>
+</button>
+<button class="w-full py-2 px-3 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold border border-outline-variant/60 flex items-center justify-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">download</span>
+<span>Exportar IFC / BIM</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Clean Footer Status -->
+<div class="pt-6 pb-4 border-t border-outline-variant/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span><strong>1,420</strong> materiales certificados listos para asignación</span>
+</div>
+<div class="flex items-center gap-4">
+<span>Sincronizado con bases AISC 15th &amp; ACI 318-19</span>
+<a class="text-primary hover:underline font-semibold" href="#">¿No encuentras un material? Solicitar</a>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

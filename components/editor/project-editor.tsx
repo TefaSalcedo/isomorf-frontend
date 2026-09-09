@@ -10,6 +10,8 @@ import { EditorSidebar } from '@/components/editor/editor-sidebar';
 import { PropertiesPanel } from '@/components/editor/properties-panel';
 import { SelectionSummary } from '@/components/editor/selection-summary';
 import { ProjectSettingsPanel } from '@/components/editor/project-settings-panel';
+import { LoadEditor } from '@/components/editor/load-editor';
+import { FemComingSoon } from '@/components/editor/fem-coming-soon';
 import { api } from '@/lib/api-client';
 import type { Project, ProjectElement } from '@/types/project';
 import type { ElementPayload } from '@/lib/api-client';
@@ -26,7 +28,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   const [designSettings, setDesignSettings] = useState<Project['design_settings']>(
     initialProject.design_settings ?? defaultDesignSettings(),
   );
-  const [view3D, setView3D] = useState(false);
+  const [activeView, setActiveView] = useState<'2d' | '3d' | 'loads' | 'fem'>('2d');
   const original = useRef(new Map((initialProject.elements ?? []).map((element) => [element.id, element])));
   const stageRef = useRef<Konva.Stage | null>(null);
 
@@ -85,7 +87,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   }
 
   function handleToggle3D() {
-    setView3D((v) => !v);
+    setActiveView((view) => view === '3d' ? '2d' : '3d');
   }
 
   function handlePrint() {
@@ -118,7 +120,9 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         projectName={initialProject.name}
         state={state}
         actions={actions}
-        view3D={view3D}
+        view={activeView}
+        onViewChange={setActiveView}
+        view3D={activeView === '3d'}
         onToggle3D={handleToggle3D}
         onSave={save}
         onExport={handleExport}
@@ -128,8 +132,12 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
       <div className="flex min-h-0 flex-1">
         {!state.cleanMode && <EditorSidebar state={state} actions={actions} />}
         <div className="relative min-h-0 flex-1">
-          {view3D ? (
+          {activeView === '3d' ? (
             <Model3DPreview elements={state.elements} />
+          ) : activeView === 'loads' ? (
+            <LoadEditor projectId={initialProject.id} state={state} />
+          ) : activeView === 'fem' ? (
+            <FemComingSoon />
           ) : (
             <CanvasStage state={state} actions={actions} stageRef={stageRef} displayUnit={designSettings.unit ?? 'm'} />
           )}

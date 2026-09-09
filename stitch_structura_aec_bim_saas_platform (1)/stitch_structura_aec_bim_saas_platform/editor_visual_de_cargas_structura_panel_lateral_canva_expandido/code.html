@@ -1,0 +1,171 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><title>Structura · Software de Diseño y Análisis Estructural BIM</title><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600;1,700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } } ::-webkit-scrollbar { width: 4px; height: 4px; } ::-webkit-scrollbar-thumb { background: rgba(124, 58, 237, 0.2); border-radius: 4px; } ::-webkit-scrollbar-track { background: transparent; }</style><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {tertiary: "#005a3d", "surface-container-highest": "#d3e4fe", "primary-fixed-dim": "#d2bbff", surface: "#f8f9ff", "on-tertiary": "#ffffff", "surface-tint": "#732ee4", "on-error-container": "#93000a", "surface-container-lowest": "#ffffff", "inverse-on-surface": "#eaf1ff", "surface-dim": "#cbdbf5", "surface-container": "#e5eeff", "inverse-surface": "#213145", "tertiary-container": "#007551", "on-secondary-fixed": "#1b1a29", outline: "#7b7487", "on-primary-container": "#ede0ff", "on-tertiary-fixed": "#002114", "secondary-fixed": "#e4e0f5", "on-primary-fixed": "#25005a", "surface-container-low": "#eff4ff", "surface-variant": "#d3e4fe", primary: "#630ed4", "primary-fixed": "#eaddff", "on-primary": "#ffffff", "error-container": "#ffdad6", background: "#f8f9ff", "on-error": "#ffffff", "on-surface": "#0b1c30", "on-secondary": "#ffffff", "outline-variant": "#ccc3d8", "on-background": "#0b1c30", "surface-bright": "#f8f9ff", "primary-container": "#7c3aed", secondary: "#5e5c6e", "tertiary-fixed-dim": "#68dba9", "on-tertiary-fixed-variant": "#005137", "on-primary-fixed-variant": "#5a00c6", "surface-container-high": "#dce9ff", error: "#ba1a1a", "tertiary-fixed": "#85f8c4", "on-tertiary-container": "#88fbc6", "on-secondary-fixed-variant": "#464555", "inverse-primary": "#d2bbff", "secondary-fixed-dim": "#c7c4d8", "secondary-container": "#e4e0f5", "on-secondary-container": "#646274", "on-surface-variant": "#4a4455"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}, fontFamily: {sans: ["Plus Jakarta Sans", "sans-serif"], headline: ["Plus Jakarta Sans"], display: ["Plus Jakarta Sans"], body: ["Plus Jakarta Sans"], label: ["Plus Jakarta Sans"]}, fontSize: {}}}};</script></head><body class="bg-surface font-sans text-on-surface antialiased overflow-hidden"><div class="flex flex-col h-screen w-screen overflow-hidden">
+<!-- Top Navbar -->
+<header class="h-14 bg-surface-container-lowest border-b border-surface-container flex items-center justify-between px-5 gap-4 z-40 shrink-0"><div class="flex items-center gap-3 min-w-[200px]"><div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary to-primary-container flex items-center justify-center text-on-primary shadow-[0_3px_10px_rgba(124,58,237,0.25)]"><span class="material-symbols-outlined text-[18px]">view_in_ar</span></div><div class="flex flex-col"><span class="text-sm font-bold text-on-surface leading-tight tracking-tight">Isomorf</span><span class="text-[10px] text-on-surface-variant leading-none hidden sm:block">Editor de Cargas BIM</span></div></div><div class="flex-1 max-w-xl px-2"><div class="relative w-full flex items-center"><span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-[18px] pointer-events-none">search</span><input class="w-full h-9 pl-9 pr-4 bg-surface-container-low/70 hover:bg-surface-container-low focus:bg-surface-container-lowest rounded-xl text-xs text-on-surface placeholder:text-on-surface-variant outline-none ring-1 ring-outline-variant/30 focus:ring-2 focus:ring-primary-container transition-all" placeholder="Buscar elementos estructurales, ejes, losas o tipos de carga..." type="text"></div></div><div class="flex items-center gap-2.5"><button class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface text-xs font-semibold transition-all"><span class="material-symbols-outlined text-[16px]">school</span><span class="">Tutorial</span></button><button class="relative p-1.5 rounded-xl text-on-surface-variant hover:bg-surface-container transition-all"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-surface-container-lowest"></span></button><button class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-container text-on-primary text-xs font-semibold shadow-[0_3px_10px_rgba(124,58,237,0.25)] hover:bg-primary transition-all"><span class="material-symbols-outlined text-[16px]">add</span><span class="">Nuevo</span></button><div class="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-[11px] text-on-primary font-bold shadow-sm ring-2 ring-primary/20">TS</div></div></header>
+<!-- Main Application Layout Body -->
+<div class="flex flex-1 overflow-hidden relative">
+<!-- Navigation Rail (Canva-style extreme left icon bar) -->
+<nav class="w-16 bg-surface-container-lowest border-r border-surface-container/80 flex flex-col justify-between items-center py-3.5 z-30 shrink-0"><div class="flex flex-col items-center gap-3 w-full"><div class="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-700 via-fuchsia-600 to-amber-300 p-[1.5px] shadow-sm mb-1 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform"><div class="w-full h-full rounded-full bg-purple-900 flex items-center justify-center text-white"><span class="text-[10px] font-extrabold tracking-tighter uppercase">IA</span></div></div><button class="flex flex-col items-center gap-0.5 p-1 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all w-13 group"><span class="material-symbols-outlined text-[20px]">dashboard_customize</span><span class="text-[9px] font-medium leading-none text-slate-500 group-hover:text-on-surface">Plantillas</span></button><button class="flex flex-col items-center gap-0.5 p-1 rounded-xl bg-secondary-container/70 text-primary-container font-bold shadow-xs transition-all w-13"><span class="material-symbols-outlined text-[20px] text-primary">category</span><span class="text-[9px] font-bold leading-none text-primary">Elementos</span></button><button class="flex flex-col items-center gap-0.5 p-1 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all w-13 group"><span class="material-symbols-outlined text-[20px]">folder</span><span class="text-[9px] font-medium leading-none text-slate-500 group-hover:text-on-surface">Carpetas</span></button><button class="flex flex-col items-center gap-0.5 p-1 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all w-13 group"><span class="material-symbols-outlined text-[20px]">group</span><span class="text-[9px] font-medium leading-none text-slate-500 group-hover:text-on-surface">Equipos</span></button><button class="flex flex-col items-center gap-0.5 p-1 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all w-13 group"><span class="material-symbols-outlined text-[20px]">layers</span><span class="text-[9px] font-medium leading-none text-slate-500 group-hover:text-on-surface">Capas</span></button><button class="flex flex-col items-center gap-0.5 p-1 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all w-13 group"><span class="material-symbols-outlined text-[20px]">menu_book</span><span class="text-[9px] font-medium leading-none text-slate-500 group-hover:text-on-surface">Normas</span></button><button class="flex flex-col items-center gap-0.5 p-1 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all w-13 group"><span class="material-symbols-outlined text-[20px]">delete</span><span class="text-[9px] font-medium leading-none text-slate-500 group-hover:text-on-surface">Papelera</span></button></div><div class="flex flex-col items-center gap-2"><button class="p-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" title="Ajustes"><span class="material-symbols-outlined text-[20px]">settings</span></button></div></nav>
+<!-- Expanded Tools Drawer (Canva / Structura Load Catalog Panel) -->
+<aside class="w-[280px] xl:w-[290px] bg-surface-container-lowest border-r border-surface-container/90 flex flex-col z-20 shrink-0 overflow-y-auto relative shadow-[2px_0_12px_rgba(0,0,0,0.02)]"><div class="p-3.5 flex flex-col gap-3.5">
+<!-- Search & AI Prompt Box -->
+<div class="relative flex items-center bg-surface-container-low/60 rounded-xl px-3 py-2 border border-outline-variant/30 focus-within:border-primary-container focus-within:ring-1 focus-within:ring-primary-container"><span class="text-primary font-bold text-sm mr-2">+</span><input class="w-full text-[12px] bg-transparent outline-none text-on-surface placeholder:text-slate-400 font-normal" placeholder="Describe tu elemento ideal" type="text"><button class="text-slate-400 hover:text-primary ml-1" title="Voz / Asistente IA"><span class="material-symbols-outlined text-[17px]">mic</span></button></div>
+<!-- Generator Action Button Row -->
+<div class="flex items-center gap-2"><button class="flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-xl border border-outline-variant/30 bg-white hover:bg-surface-container-low text-[12px] text-on-surface font-medium transition-all"><span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-primary text-[16px]">auto_fix_high</span><span class="">Generar</span></span><span class="material-symbols-outlined text-[15px] text-slate-400">expand_more</span></button><button class="px-5 py-1.5 rounded-xl bg-[#7C3AED] hover:bg-[#6d28d9] text-white font-semibold text-[12px] shadow-[0_3px_10px_rgba(124,58,237,0.35)] transition-all">Buscar</button></div>
+<!-- Recently Used Beams Diagram Strip -->
+<div class="flex flex-col gap-1.5 pt-0.5"><div class="flex items-center justify-between text-[11px]"><span class="font-bold text-on-surface tracking-tight">Utilizado recientemente</span><button class="text-primary hover:underline text-[11px] font-medium">Ver todo</button></div><div class="flex items-center gap-2 pt-0.5">
+<!-- Diagram 1: Single Point Load Beam -->
+<div class="w-[66px] h-[52px] rounded-xl border border-surface-container bg-surface-container-lowest hover:border-primary-container flex flex-col items-center justify-center p-1 cursor-pointer transition-all shadow-2xs hover:shadow-xs group"><div class="flex flex-col items-center w-full px-1"><span class="material-symbols-outlined text-red-500 text-[14px] leading-none mb-0.5">arrow_downward</span><div class="w-full h-1 bg-slate-700 rounded-xs"></div><div class="flex justify-between w-full mt-1 px-1"><div class="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-b-[5px] border-b-slate-600"></div><div class="w-1.5 h-1.5 rounded-full border border-slate-600"></div></div></div></div>
+<!-- Diagram 2: Uniformly Distributed Load Beam -->
+<div class="w-[66px] h-[52px] rounded-xl border border-surface-container bg-surface-container-lowest hover:border-primary-container flex flex-col items-center justify-center p-1 cursor-pointer transition-all shadow-2xs hover:shadow-xs group"><div class="flex flex-col items-center w-full px-1"><div class="flex justify-between w-full px-0.5 mb-0.5"><span class="material-symbols-outlined text-amber-500 text-[10px] leading-none">arrow_downward</span><span class="material-symbols-outlined text-amber-500 text-[10px] leading-none">arrow_downward</span><span class="material-symbols-outlined text-amber-500 text-[10px] leading-none">arrow_downward</span><span class="material-symbols-outlined text-amber-500 text-[10px] leading-none">arrow_downward</span></div><div class="w-full h-1 bg-slate-700 rounded-xs"></div><div class="flex justify-between w-full mt-1 px-1"><div class="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-b-[5px] border-b-slate-600"></div><div class="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-b-[5px] border-b-slate-600"></div></div></div></div>
+<!-- Diagram 3: Continuous / Trapezoidal Load Beam -->
+<div class="w-[66px] h-[52px] rounded-xl border border-surface-container bg-surface-container-lowest hover:border-primary-container flex flex-col items-center justify-center p-1 cursor-pointer transition-all shadow-2xs hover:shadow-xs group"><div class="flex flex-col items-center w-full px-1"><div class="flex justify-between w-full px-0.5 mb-0.5 items-end"><span class="material-symbols-outlined text-blue-500 text-[8px] leading-none">arrow_downward</span><span class="material-symbols-outlined text-blue-500 text-[10px] leading-none">arrow_downward</span><span class="material-symbols-outlined text-blue-500 text-[13px] leading-none">arrow_downward</span></div><div class="w-full h-1 bg-slate-700 rounded-xs"></div><div class="flex justify-between w-full mt-1 px-1"><div class="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-b-[5px] border-b-slate-600"></div><div class="w-1.5 h-1.5 rounded-full border border-slate-600"></div></div></div></div>
+<!-- Next Arrow Button -->
+<button class="w-7 h-7 rounded-full border border-pink-200 text-pink-500 hover:bg-pink-50 flex items-center justify-center transition-all shrink-0"><span class="material-symbols-outlined text-[16px]">arrow_forward</span></button></div></div>
+<!-- Section Header: 'explorar cargas' -->
+<div class="pt-1"><h3 class="text-sm font-semibold italic text-slate-800 tracking-tight">explorar cargas</h3></div>
+<!-- 2-Column Load Grid exactly matching the design -->
+<div class="grid grid-cols-2 gap-2.5">
+<!-- Muerta -->
+<div class="flex flex-col items-center gap-1 cursor-pointer group"><div class="w-full h-16 rounded-2xl bg-[#eff3f8] group-hover:bg-[#e4ebf5] flex items-center justify-center transition-all shadow-2xs group-hover:scale-[1.02]"><span class="material-symbols-outlined text-[#64748b] text-[26px]">open_in_full</span></div><span class="text-[11px] font-semibold text-slate-700 group-hover:text-primary">muerta</span></div>
+<!-- Viva -->
+<div class="flex flex-col items-center gap-1 cursor-pointer group"><div class="w-full h-16 rounded-2xl bg-[#eaf1fe] group-hover:bg-[#dce8fc] flex items-center justify-center transition-all shadow-2xs group-hover:scale-[1.02]"><span class="material-symbols-outlined text-[#2563eb] text-[26px]">groups</span></div><span class="text-[11px] font-semibold text-slate-700 group-hover:text-primary">viva</span></div>
+<!-- Puntual -->
+<div class="flex flex-col items-center gap-1 cursor-pointer group"><div class="w-full h-16 rounded-2xl bg-[#fdeded] group-hover:bg-[#fbd9d9] flex items-center justify-center transition-all shadow-2xs group-hover:scale-[1.02]"><span class="material-symbols-outlined text-[#ef4444] text-[26px]">vertical_align_bottom</span></div><span class="text-[11px] font-semibold text-slate-700 group-hover:text-primary">puntual</span></div>
+<!-- Distribuida -->
+<div class="flex flex-col items-center gap-1 cursor-pointer group"><div class="w-full h-16 rounded-2xl bg-[#fff4e8] group-hover:bg-[#ffe7cf] flex items-center justify-center transition-all shadow-2xs group-hover:scale-[1.02]"><span class="material-symbols-outlined text-[#f97316] text-[26px]">key</span></div><span class="text-[11px] font-semibold text-slate-700 group-hover:text-primary">distribuida</span></div>
+<!-- Superficial -->
+<div class="flex flex-col items-center gap-1 cursor-pointer group"><div class="w-full h-16 rounded-2xl bg-[#eaf8f4] group-hover:bg-[#d6f2ea] flex items-center justify-center transition-all shadow-2xs group-hover:scale-[1.02]"><span class="material-symbols-outlined text-[#0d9488] text-[26px]">grid_view</span></div><span class="text-[11px] font-semibold text-slate-700 group-hover:text-primary">superficial</span></div>
+<!-- Viento -->
+<div class="flex flex-col items-center gap-1 cursor-pointer group"><div class="w-full h-16 rounded-2xl bg-[#e9f8ff] group-hover:bg-[#d5f1fe] flex items-center justify-center transition-all shadow-2xs group-hover:scale-[1.02]"><span class="material-symbols-outlined text-[#06b6d4] text-[26px]">air</span></div><span class="text-[11px] font-semibold text-slate-700 group-hover:text-primary">viento</span></div>
+<!-- Nieve -->
+<div class="flex flex-col items-center gap-1 cursor-pointer group"><div class="w-full h-16 rounded-2xl bg-[#f0f3f8] group-hover:bg-[#e2e8f0] flex items-center justify-center transition-all shadow-2xs group-hover:scale-[1.02]"><span class="material-symbols-outlined text-[#94a3b8] text-[26px]">ac_unit</span></div><span class="text-[11px] font-semibold text-slate-700 group-hover:text-primary">nieve</span></div>
+<!-- Sísmica -->
+<div class="flex flex-col items-center gap-1 cursor-pointer group"><div class="w-full h-16 rounded-2xl bg-[#f4effe] group-hover:bg-[#ebe1fd] flex items-center justify-center transition-all shadow-2xs group-hover:scale-[1.02]"><span class="material-symbols-outlined text-[#7c3aed] text-[26px]">waves</span></div><span class="text-[11px] font-semibold text-slate-700 group-hover:text-primary">sismica</span></div>
+<!-- Peso propio -->
+<div class="flex flex-col items-center gap-1 cursor-pointer group col-span-2 max-w-[130px] mx-auto w-full"><div class="w-full h-16 rounded-2xl bg-[#eafaf1] group-hover:bg-[#d6f5e3] flex items-center justify-center transition-all shadow-2xs group-hover:scale-[1.02]"><span class="material-symbols-outlined text-[#10b981] text-[26px]">eco</span></div><span class="text-[11px] font-semibold text-slate-700 group-hover:text-primary">peso propio</span></div></div>
+<!-- Eliminar Carga Action -->
+<div class="flex flex-col items-center gap-1 pt-1"><button class="w-16 h-14 rounded-2xl bg-[#fdeeee] hover:bg-[#fad8d8] text-[#ef4444] flex items-center justify-center transition-all shadow-2xs hover:scale-105" title="Eliminar carga"><span class="material-symbols-outlined text-[24px]">delete_sweep</span></button><span class="text-[11px] font-semibold italic text-slate-800">Eliminar carga</span></div></div>
+<!-- Collapse / Expand Purple Arrow Notch Tab on right edge of panel -->
+<div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-30"><button class="w-6 h-6 rounded-full bg-white border border-outline-variant/40 shadow-md flex items-center justify-center hover:bg-surface-container transition-all group" title="Ocultar panel"><span class="material-symbols-outlined text-[#7c3aed] text-[15px] font-bold">arrow_forward</span></button></div></aside>
+<!-- Central 3D Canvas Viewport -->
+<main class="flex-1 relative bg-[#f1f4fa] flex items-center justify-center overflow-hidden">
+<!-- Top Canvas Floating Control Bar (2D / 3D / Isométrica selector) -->
+<div class="absolute top-4 left-10 z-20 flex items-center gap-2"><div class="flex items-center bg-white/95 backdrop-blur-md px-1.5 py-1 rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.06)] border border-white/60"><button class="px-3.5 py-1 rounded-xl text-xs font-semibold text-slate-600 hover:text-on-surface">2D</button><button class="px-3.5 py-1 rounded-xl bg-[#7C3AED] text-white text-xs font-semibold shadow-sm">3D</button><div class="h-4 w-px bg-slate-200 mx-1"></div><button class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-700 hover:text-primary"><span class="material-symbols-outlined text-[16px] text-slate-500">view_in_ar</span><span class="">Isométrica</span><span class="material-symbols-outlined text-[15px] text-slate-400">expand_more</span></button></div></div>
+<!-- Top Right Orientation Gizmo & Zoom Floating Tools -->
+<div class="absolute top-4 right-6 z-20 flex items-center gap-3">
+<!-- 3D Axes Orientation Gizmo Card -->
+<div class="bg-white/90 backdrop-blur-md p-2 rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.06)] border border-white/60 flex items-center justify-center"><svg class="w-9 h-9" viewBox="0 0 40 40"><line stroke="#94a3b8" stroke-dasharray="2,2" stroke-width="1" x1="20" x2="20" y1="20" y2="4"></line><line stroke="#ef4444" stroke-linecap="round" stroke-width="2" x1="20" x2="35" y1="20" y2="28"></line><line stroke="#10b981" stroke-linecap="round" stroke-width="2" x1="20" x2="7" y1="20" y2="28"></line><line stroke="#3b82f6" stroke-linecap="round" stroke-width="2.5" x1="20" x2="20" y1="20" y2="5"></line><circle cx="20" cy="20" fill="#64748b" r="2.5"></circle><text fill="#ef4444" font-family="Plus Jakarta Sans" font-size="7" font-weight="bold" x="35" y="32">X</text><text fill="#10b981" font-family="Plus Jakarta Sans" font-size="7" font-weight="bold" x="3" y="32">Y</text><text fill="#3b82f6" font-family="Plus Jakarta Sans" font-size="7" font-weight="bold" x="22" y="7">Z</text></svg></div>
+<!-- Mini Zoom Controls -->
+<div class="bg-white/90 backdrop-blur-md px-1.5 py-1 rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.06)] border border-white/60 flex items-center gap-1"><button class="p-1 rounded-lg hover:bg-slate-100 text-slate-600" title="Zoom +"><span class="material-symbols-outlined text-[16px]">add</span></button><button class="p-1 rounded-lg hover:bg-slate-100 text-slate-600" title="Zoom -"><span class="material-symbols-outlined text-[16px]">remove</span></button><div class="w-px h-3.5 bg-slate-200"></div><button class="p-1 rounded-lg hover:bg-slate-100 text-slate-600" title="Centrar"><span class="material-symbols-outlined text-[16px]">crop_free</span></button><button class="p-1 rounded-lg hover:bg-slate-100 text-[#7c3aed]" title="Modo Pantalla Completa"><span class="material-symbols-outlined text-[16px]">open_in_full</span></button></div></div>
+<!-- 3D BIM Structural Model View (Clean, High-Fidelity Isometric Visual) -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none select-none"><div class="w-full h-full bg-contain bg-no-repeat bg-center mix-blend-multiply opacity-95 transition-all" style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuBaiabAcoHjEmRuterGHwiT8kgFZ1Rn5paZafMRZHydNslSiHGKoXAT8Xq8N7NkqrmTTHppGZcoiG56nUQkN4KuRAhB7YJev-gvhaaTNfnFLO7_86Tb6NVuUVelNtofOroMiI1CM11QoZ0M5O3iN8hnoeQVOkv33e6oF_7T3WRFFvqMhZQFZdt9L00kGvC0eC_VNjtuyIl5X8F90Zn1oUGpcxXqF--TocJ_njvHjstyOwqRYI11JGugwg&quot;);"></div></div>
+<!-- Selected Beam Callout Badge (@Viga B-12) exactly positioned -->
+<div class="absolute top-[37.5%] left-[58%] -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none select-none"><div class="px-3 py-1 rounded-full bg-[#630ed4] text-white font-semibold text-[11px] shadow-[0_4px_14px_rgba(99,14,212,0.45)] flex items-center gap-1 whitespace-nowrap"><span class="text-white/80 text-[10px]">@</span><span class="">Viga B-12 (Seleccionada)</span></div><div class="w-0.5 h-6 bg-[#630ed4]/80"></div><div class="w-2.5 h-2.5 rounded-full bg-[#630ed4] ring-4 ring-[#630ed4]/25"></div></div>
+<!-- Bottom Left Floating Load Legend -->
+<div class="absolute bottom-5 left-8 z-20 bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-[0_6px_20px_rgba(0,0,0,0.06)] border border-white/70 max-w-[280px]"><div class="flex items-baseline justify-between mb-1.5"><span class="text-[11px] font-bold text-slate-800">Leyenda de Cargas (kN/m)</span><span class="text-[9px] text-purple-600 font-medium">Escala 1:50</span></div><div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] text-slate-600"><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#2563eb]"></span><span class="">Viva (4.2 kN/m)</span></div><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#64748b]"></span><span class="">Muerta (2.8 kN/m)</span></div><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#06b6d4]"></span><span class="">Viento (1.5 kN/m)</span></div><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#7c3aed]"></span><span class="">Sismo (Ex 8%)</span></div></div></div></main>
+<!-- Right Properties / Inspector Panel (matching reference screenshot) -->
+<aside class="w-[305px] xl:w-[320px] bg-surface-container-lowest border-l border-surface-container/90 flex flex-col justify-between z-20 shrink-0 shadow-[-2px_0_12px_rgba(0,0,0,0.02)] overflow-y-auto"><div class="p-4 flex flex-col gap-3.5"><!-- Panel Top Header with Close Icon -->
+<div class="flex items-center justify-between">
+<h2 class="text-sm font-bold text-slate-900 tracking-tight">Propiedades</h2>
+<button class="text-slate-400 hover:text-slate-700" title="Cerrar panel">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Member Title Card -->
+<div class="flex items-center justify-between pb-1">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-xl bg-[#f4effe] text-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">table_rows</span>
+</div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-xs font-bold text-slate-900">Viga B-12</span>
+<span class="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-semibold">Seleccionado</span>
+</div>
+<span class="text-[10px] text-slate-500">Elemento estructural lineal</span>
+</div>
+</div>
+</div>
+<!-- Tabs Navigation: General (Activa) / Cargas / Avanzado -->
+<div class="flex items-center border-b border-slate-100 text-xs gap-4 pt-1">
+<button class="pb-1.5 border-b-2 border-[#7C3AED] text-[#7C3AED] font-semibold text-[12px] flex items-center gap-1">
+<span class="">General</span>
+</button>
+<button class="pb-1.5 text-slate-500 hover:text-slate-800 text-[12px] flex items-center gap-1.5 transition-all">
+<span class="">Cargas</span>
+<span class="px-1.5 py-0.5 rounded-full bg-surface-container text-slate-600 text-[9px] font-bold">3</span>
+</button>
+<button class="pb-1.5 text-slate-500 hover:text-slate-800 text-[12px] transition-all">
+<span class="">Avanzado</span>
+</button>
+</div>
+<!-- TAB CONTENT: GENERAL (Active View) -->
+<div class="flex flex-col gap-3 pt-1">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-bold text-slate-800 uppercase tracking-wider text-[10px]">Geometría &amp; Material</span>
+<span class="text-[10px] text-primary font-medium bg-secondary-container/70 px-2 py-0.5 rounded-full">Nivel 2 (+3.60 m)</span>
+</div>
+<!-- Grid de Propiedades Básicas de General (Sin Peso Propio) -->
+<div class="grid grid-cols-2 gap-2.5">
+<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+<div class="text-[10px] text-slate-500 font-medium">Longitud</div>
+<div class="text-xs font-bold text-slate-800 mt-0.5">4.20 m</div>
+</div>
+<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+<div class="text-[10px] text-slate-500 font-medium">Sección</div>
+<div class="text-xs font-bold text-slate-800 mt-0.5">30 × 60 cm</div>
+</div>
+</div>
+<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+<div class="text-[10px] text-slate-500 font-medium">Material</div>
+<div class="text-xs font-bold text-slate-800 mt-0.5 flex items-center justify-between">
+<span class="">H-30 (30 MPa)</span>
+<span class="text-[10px] text-slate-500 font-normal">f'c = 300 kg/cm²</span>
+</div>
+</div>
+<!-- Especificaciones de Refuerzo y Armado -->
+<div class="flex items-center justify-between pt-1">
+<span class="text-[11px] font-bold text-slate-800 uppercase tracking-wider text-[10px]">Armadura &amp; Refuerzo</span>
+<span class="flex items-center gap-1 text-[10px] font-semibold text-[#005b3d] bg-[#eafaf1] px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined text-[12px]">check_circle</span> Con refuerzo
+    </span>
+</div>
+<div class="flex flex-col gap-2">
+<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+<div class="text-[10px] text-slate-500 font-medium">Tipo de Refuerzo</div>
+<div class="text-xs font-bold text-slate-800 mt-0.5">Acero corrugado B500S (fy = 500 MPa)</div>
+</div>
+<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+<div class="text-[10px] text-slate-500 font-medium">Tipo de Varilla y Distribución</div>
+<div class="text-[11px] font-semibold text-slate-800 mt-0.5 leading-snug">
+        Ø16 mm (superior e inferior)
+      </div>
+<div class="text-[10px] text-slate-600 mt-0.5 flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-slate-400">tune</span>
+<span class="">Estribos Ø8 mm @ 15 cm</span>
+</div>
+</div>
+</div>
+<!-- Resumen de Pestaña Cargas (Acceso directo limpio) -->
+<div class="mt-1 p-3 rounded-2xl bg-surface-container-low/70 border border-outline-variant/30 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">line_weight</span>
+<div>
+<div class="text-[11px] font-bold text-slate-800">3 Cargas Asociadas</div>
+<div class="text-[10px] text-slate-500">Gestionadas en la pestaña 'Cargas'</div>
+</div>
+</div>
+<button class="px-2.5 py-1 rounded-xl bg-white hover:bg-surface-container text-primary font-semibold text-[11px] border border-outline-variant/30 shadow-2xs transition-all">
+      Ver Cargas
+    </button>
+</div>
+</div></div>
+<!-- Inspector Bottom Footer -->
+<div class="px-4 py-2.5 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between text-[11px]"><span class="text-slate-500 font-mono text-[10px]">ID: ELM-BEAM-0102</span><button class="text-primary hover:underline font-medium">Ver historial</button></div></aside>
+</div>
+<!-- Global Structural Summary Bottom Bar -->
+<footer class="h-10 bg-surface-container-lowest border-t border-surface-container px-5 flex items-center justify-between z-30 shrink-0 text-xs"><div class="flex items-center gap-4 text-slate-600"><div class="flex items-center gap-1 font-semibold text-slate-800"><span class="material-symbols-outlined text-primary text-[17px]">analytics</span><span class="">Resumen Estructural Global</span></div><div class="h-3 w-px bg-slate-200"></div><div class="flex items-center gap-3 text-[11px]"><span class="">Cargas Activas: <strong class="text-slate-900">12</strong></span><span class="">Carga Muerta Total: <strong class="text-slate-900">802 kN</strong></span><span class="">Carga Viva Total: <strong class="text-slate-900">432 kN</strong></span><span class="">Cortante Basal: <strong class="text-[#7C3AED]">68.25 kN</strong></span></div></div><div class="flex items-center gap-2"><button class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-all"><span class="material-symbols-outlined text-[14px]">verified</span><span class="">Verificar Norma ACI 318</span></button><button class="flex items-center gap-1 px-3 py-1 rounded-lg bg-[#005b3d] hover:bg-[#004830] text-white text-[11px] font-semibold transition-all shadow-2xs"><span class="material-symbols-outlined text-[14px]">play_arrow</span><span class="">Ejecutar Análisis FEA</span></button></div></footer>
+</div>
+
+
+</body></html>

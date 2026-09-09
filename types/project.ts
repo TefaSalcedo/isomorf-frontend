@@ -95,6 +95,7 @@ export type ProjectElement =
 
 export type Project = {
   id: string;
+  folder_id?: string | null;
   name: string;
   description: string;
   design_settings: DesignSettings;
