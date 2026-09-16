@@ -6,6 +6,14 @@ export type MaterialConstants = {
   elastic_modulus?: number;
 };
 
+export type PlanLayer = {
+  id: string;
+  name: string;
+  color: string;
+  visible: boolean;
+  locked: boolean;
+};
+
 export type DesignSettings = {
   unit?: 'm' | 'ft';
   seismic_zone?: string;
@@ -13,6 +21,7 @@ export type DesignSettings = {
   wind_zone?: string;
   building_code?: string;
   material?: MaterialConstants;
+  layers?: PlanLayer[];
 };
 
 export type BaseElement = {
@@ -28,7 +37,11 @@ export type BaseElement = {
   updated_at: string;
 };
 
-export type WallProperties = {
+export type LayeredProperties = {
+  layer_id?: string | null;
+};
+
+export type WallProperties = LayeredProperties & {
   height: number;
   thickness: number;
   join_mode: 'perpendicular' | '45' | 'free';
@@ -42,7 +55,7 @@ export type WallElement = BaseElement & {
   properties: WallProperties;
 };
 
-export type DoorProperties = {
+export type DoorProperties = LayeredProperties & {
   width?: number;
   swing?: 'left' | 'right';
 };
@@ -52,7 +65,7 @@ export type DoorElement = BaseElement & {
   properties: DoorProperties;
 };
 
-export type WindowProperties = {
+export type WindowProperties = LayeredProperties & {
   width?: number;
   sill_height?: number;
 };
@@ -62,7 +75,7 @@ export type WindowElement = BaseElement & {
   properties: WindowProperties;
 };
 
-export type ColumnProperties = {
+export type ColumnProperties = LayeredProperties & {
   width: number;
   depth: number;
   height: number;
@@ -74,7 +87,7 @@ export type ColumnElement = BaseElement & {
   properties: ColumnProperties;
 };
 
-export type BeamProperties = {
+export type BeamProperties = LayeredProperties & {
   width: number;
   height: number;
   length: number;

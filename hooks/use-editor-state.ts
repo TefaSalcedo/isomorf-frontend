@@ -1,6 +1,6 @@
 import { useReducer, useCallback, useMemo } from 'react';
 import type { Point } from '@/lib/editor/geometry';
-import type { Project, ProjectElement, WallElement } from '@/types/project';
+import type { PlanLayer, Project, ProjectElement, WallElement } from '@/types/project';
 import {
   createColumn,
   createWall,
@@ -21,6 +21,7 @@ import {
   resolveTJoin,
 } from '@/lib/editor/geometry';
 import { calculateSelectionSummary } from '@/lib/editor/calculations';
+import { createLayer, defaultLayerFor, ensureLayers, isElementLocked } from '@/lib/editor/layers';
 
 export type Tool =
   | 'select'
@@ -35,6 +36,7 @@ export type ActiveSection =
   | 'projects'
   | 'draw'
   | 'structure'
+  | 'layers'
   | 'calculations'
   | 'settings';
 
@@ -59,6 +61,8 @@ export type EditorState = {
   snapEnabled: boolean;
   cleanMode: boolean;
   activeSection: ActiveSection;
+  layers: PlanLayer[];
+  activeLayerId: string;
   past: ProjectElement[][];
   future: ProjectElement[][];
   dirty: boolean;
@@ -89,6 +93,11 @@ export type EditorAction =
   | { type: 'deleteSelection' }
   | { type: 'undo' }
   | { type: 'redo' }
+  | { type: 'addLayer' }
+  | { type: 'updateLayer'; id: string; changes: Partial<PlanLayer> }
+  | { type: 'removeLayer'; id: string }
+  | { type: 'setActiveLayer'; id: string }
+  | { type: 'assignSelectionToLayer'; id: string }
   | { type: 'markClean' }
   | { type: 'setError'; error: string }
   | { type: 'clearError' };
@@ -196,6 +205,10 @@ function applyElementChanges(
   return next;
 }
 
+function withLayer(element: ProjectElement, layerId: string): ProjectElement {
+  return { ...element, properties: { ...element.properties, layer_id: layerId } } as ProjectElement;
+}
+
 function makeElementFromDraft(draft: DraftState, projectId: string): ProjectElement | null {
   const id = crypto.randomUUID();
   let start = draft.start;
@@ -234,9 +247,12 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case 'load': {
       const elements = (action.project.elements ?? []).map(normalizeElement);
+      const layers = ensureLayers(action.project.design_settings?.layers);
       return {
         ...state,
         elements,
+        layers,
+        activeLayerId: layers[0].id,
         selectedIds: [],
         draft: null,
         dirty: false,
@@ -263,6 +279,44 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       return { ...state, selectedIds: action.ids };
     case 'selectBox':
       return { ...state, selectedIds: action.ids };
+    case 'addLayer': {
+      const layer = createLayer(state.layers.length);
+      return { ...state, layers: [...state.layers, layer], activeLayerId: layer.id, dirty: true };
+    }
+    case 'updateLayer':
+      return {
+        ...state,
+        layers: state.layers.map((layer) => (layer.id === action.id ? { ...layer, ...action.changes } : layer)),
+        dirty: true,
+      };
+    case 'removeLayer': {
+      if (state.layers.length <= 1) return state;
+      const remaining = state.layers.filter((layer) => layer.id !== action.id);
+      const fallbackId = remaining[0].id;
+      const elements = state.elements.map((element) =>
+        (element.properties.layer_id ?? defaultLayerFor(element.element_type)) === action.id
+          ? withLayer(element, fallbackId)
+          : element,
+      );
+      return {
+        ...state,
+        layers: remaining,
+        elements,
+        activeLayerId: state.activeLayerId === action.id ? fallbackId : state.activeLayerId,
+        dirty: true,
+        past: [...state.past, state.elements],
+        future: [],
+      };
+    }
+    case 'setActiveLayer':
+      return { ...state, activeLayerId: action.id };
+    case 'assignSelectionToLayer': {
+      if (state.selectedIds.length === 0) return state;
+      const elements = state.elements.map((element) =>
+        state.selectedIds.includes(element.id) ? withLayer(element, action.id) : element,
+      );
+      return { ...state, elements, dirty: true, past: [...state.past, state.elements], future: [] };
+    }
     case 'clearSelection':
       return { ...state, selectedIds: [] };
     case 'toggleGrid':
@@ -371,10 +425,11 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
           return { ...state, draft: null };
         }
       }
+      const placed = withLayer(created, state.activeLayerId);
       return {
         ...state,
-        elements: [...state.elements, created],
-        selectedIds: [created.id],
+        elements: [...state.elements, placed],
+        selectedIds: [placed.id],
         draft: null,
         tool: 'select',
         dirty: true,
@@ -387,6 +442,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     case 'updateElement': {
       const el = state.elements.find((e) => e.id === action.id);
       if (!el) return state;
+      const layerChange = action.changes.properties && 'layer_id' in action.changes.properties;
+      if (!layerChange && isElementLocked(el, state.layers)) return state;
       const oldStart = { x: el.x1, y: el.y1 };
       const oldEnd = { x: el.x2, y: el.y2 };
       const proposedStart = {
@@ -414,7 +471,13 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       };
     }
     case 'deleteSelection': {
-      const remaining = state.elements.filter((el) => !state.selectedIds.includes(el.id));
+      const removable = new Set(
+        state.elements
+          .filter((el) => state.selectedIds.includes(el.id) && !isElementLocked(el, state.layers))
+          .map((el) => el.id),
+      );
+      if (removable.size === 0) return state;
+      const remaining = state.elements.filter((el) => !removable.has(el.id));
       return {
         ...state,
         elements: remaining,
@@ -471,6 +534,8 @@ const initialState: EditorState = {
   snapEnabled: true,
   cleanMode: false,
   activeSection: 'draw',
+  layers: ensureLayers(undefined),
+  activeLayerId: ensureLayers(undefined)[0].id,
   past: [],
   future: [],
   dirty: false,
@@ -513,6 +578,11 @@ export function useEditorState(project: Project) {
       deleteSelection: () => dispatch({ type: 'deleteSelection' }),
       undo: () => dispatch({ type: 'undo' }),
       redo: () => dispatch({ type: 'redo' }),
+      addLayer: () => dispatch({ type: 'addLayer' }),
+      updateLayer: (id: string, changes: Partial<PlanLayer>) => dispatch({ type: 'updateLayer', id, changes }),
+      removeLayer: (id: string) => dispatch({ type: 'removeLayer', id }),
+      setActiveLayer: (id: string) => dispatch({ type: 'setActiveLayer', id }),
+      assignSelectionToLayer: (id: string) => dispatch({ type: 'assignSelectionToLayer', id }),
       markClean: () => dispatch({ type: 'markClean' }),
       setError: (error: string) => dispatch({ type: 'setError', error }),
       clearError: () => dispatch({ type: 'clearError' }),
