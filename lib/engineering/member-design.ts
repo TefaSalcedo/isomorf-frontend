@@ -2,6 +2,7 @@ import type {
   BeamElement,
   ColumnElement,
   ConcreteSpec,
+  DesignInputs,
   DesignLoads,
   DesignMemory,
   DesignStep,
@@ -80,6 +81,7 @@ export function columnDesign(
   return {
     calculated_at: new Date().toISOString(),
     code: DESIGN_CODE,
+    inputs: { geometry: { width: b, depth: h, height }, concrete, reinforcement, loads },
     status: warnings.length === 0 ? 'ok' : 'review',
     ratio: round(ratio, 3),
     summary: [
@@ -167,6 +169,7 @@ export function beamDesign(
   return {
     calculated_at: new Date().toISOString(),
     code: DESIGN_CODE,
+    inputs: { geometry: { width: b, height: h, length: span }, concrete, reinforcement, loads },
     status: warnings.length === 0 ? 'ok' : 'review',
     ratio: round(ratio, 3),
     summary: [
@@ -204,10 +207,28 @@ export function beamDesign(
   };
 }
 
+export function currentInputs(
+  element: ColumnElement | BeamElement,
+  concrete: ConcreteSpec,
+  reinforcement: ReinforcementSpec,
+  loads: DesignLoads,
+): DesignInputs {
+  const geometry: Record<string, number> =
+    element.element_type === 'column'
+      ? { width: element.properties.width, depth: element.properties.depth, height: element.properties.height }
+      : { width: element.properties.width, height: element.properties.height, length: element.properties.length };
+  return { geometry, concrete, reinforcement, loads };
+}
+
+export function isMemoryStale(memory: DesignMemory, inputs: DesignInputs): boolean {
+  return JSON.stringify(memory.inputs) !== JSON.stringify(inputs);
+}
+
 export function memoryToMarkdown(
   memory: DesignMemory,
-  context: { projectName: string; elementLabel: string; concrete: ConcreteSpec; reinforcement: ReinforcementSpec; loads: DesignLoads },
+  context: { projectName: string; elementLabel: string },
 ): string {
+  const { concrete, reinforcement, loads } = memory.inputs;
   const lines: string[] = [];
   lines.push(`# Memoria de cálculo — ${context.elementLabel}`);
   lines.push('');
@@ -218,10 +239,12 @@ export function memoryToMarkdown(
   lines.push('');
   lines.push('## Datos de entrada');
   lines.push('');
-  lines.push(`- Concreto f'c = ${context.concrete.fc} MPa, acero fy = ${context.concrete.fy} MPa, recubrimiento = ${context.concrete.cover * 100} cm`);
-  lines.push(`- Refuerzo longitudinal: ${context.reinforcement.bar_count} ⌀${context.reinforcement.bar_diameter} mm`);
-  lines.push(`- Estribos: ⌀${context.reinforcement.stirrup_diameter} mm @ ${context.reinforcement.stirrup_spacing} m`);
-  lines.push(`- Carga axial de servicio: ${context.loads.axial} kN · Carga distribuida: ${context.loads.distributed} kN/m`);
+  lines.push(`- Concreto f'c = ${concrete.fc} MPa, acero fy = ${concrete.fy} MPa, recubrimiento = ${concrete.cover * 100} cm`);
+  lines.push(`- Refuerzo longitudinal: ${reinforcement.bar_count} ⌀${reinforcement.bar_diameter} mm`);
+  lines.push(`- Estribos: ⌀${reinforcement.stirrup_diameter} mm @ ${reinforcement.stirrup_spacing} m`);
+  lines.push(`- Carga axial externa mayorada: ${loads.axial} kN · Carga distribuida externa mayorada: ${loads.distributed} kN/m`);
+  lines.push('');
+  lines.push('Las cargas externas se ingresan ya mayoradas; el cálculo sólo añade 1.2 · peso propio.');
   lines.push('');
   lines.push('## Resumen');
   lines.push('');

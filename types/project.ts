@@ -100,9 +100,17 @@ export type DesignStep = {
   result: string;
 };
 
+export type DesignInputs = {
+  geometry: Record<string, number>;
+  concrete: ConcreteSpec;
+  reinforcement: ReinforcementSpec;
+  loads: DesignLoads;
+};
+
 export type DesignMemory = {
   calculated_at: string;
   code: string;
+  inputs: DesignInputs;
   status: 'ok' | 'review';
   ratio: number;
   summary: { label: string; value: string }[];

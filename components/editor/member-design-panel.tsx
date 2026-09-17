@@ -11,6 +11,8 @@ import {
   DEFAULT_CONCRETE,
   beamDesign,
   columnDesign,
+  currentInputs,
+  isMemoryStale,
   memoryToMarkdown,
 } from '@/lib/engineering/member-design';
 import type {
@@ -54,6 +56,7 @@ export function MemberDesignPanel({
     element.properties.design_loads ??
     (element.element_type === 'column' ? DEFAULT_COLUMN_LOADS : DEFAULT_BEAM_LOADS);
   const memory = element.properties.design_memory;
+  const stale = memory ? isMemoryStale(memory, currentInputs(element, concrete, reinforcement, loads)) : false;
 
   function patch(properties: DesignPatch) {
     onUpdate(element.id, properties);
@@ -69,13 +72,7 @@ export function MemberDesignPanel({
 
   function download() {
     if (!memory) return;
-    const markdown = memoryToMarkdown(memory, {
-      projectName,
-      elementLabel: elementLabel(element),
-      concrete,
-      reinforcement,
-      loads,
-    });
+    const markdown = memoryToMarkdown(memory, { projectName, elementLabel: elementLabel(element) });
     const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -96,16 +93,18 @@ export function MemberDesignPanel({
 
       {memory && (
         <div
-          className={`mt-3 rounded-xl border p-3 text-[11px] leading-5 ${memory.status === 'ok' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}
+          className={`mt-3 rounded-xl border p-3 text-[11px] leading-5 ${stale ? 'border-rose-200 bg-rose-50 text-rose-800' : memory.status === 'ok' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}
         >
           <div className="flex items-center gap-1.5 font-semibold">
-            {memory.status === 'ok' ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-            {memory.status === 'ok' ? 'Elemento ya calculado' : 'Calculado con observaciones'}
+            {!stale && memory.status === 'ok' ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+            {stale ? 'Memoria desactualizada' : memory.status === 'ok' ? 'Elemento ya calculado' : 'Calculado con observaciones'}
           </div>
           <p className="mt-1">
-            {memory.status === 'ok'
-              ? 'No recomendamos cambiar nada de este elemento. Si modificas secciones, refuerzo o materiales, valida nuevamente las cargas y vuelve a calcular.'
-              : 'Revisa las observaciones y valida nuevamente las cargas antes de aprobar este elemento.'}
+            {stale
+              ? 'Cambiaste datos de entrada después de calcular. Los resultados mostrados corresponden a los datos anteriores: valida nuevamente las cargas y recalcula antes de descargar la memoria.'
+              : memory.status === 'ok'
+                ? 'No recomendamos cambiar nada de este elemento. Si modificas secciones, refuerzo o materiales, valida nuevamente las cargas y vuelve a calcular.'
+                : 'Revisa las observaciones y valida nuevamente las cargas antes de aprobar este elemento.'}
           </p>
           <p className="mt-1 text-[10px] opacity-80">
             {new Date(memory.calculated_at).toLocaleString('es-CO')} · D/C {memory.ratio}
@@ -164,11 +163,11 @@ export function MemberDesignPanel({
         <Field label="Separación estribos (m)" step={0.01} value={reinforcement.stirrup_spacing} onChange={(stirrup_spacing) => patch({ reinforcement: { ...reinforcement, stirrup_spacing } })} />
       </Section>
 
-      <Section title="Cargas de servicio">
+      <Section title="Cargas externas mayoradas">
         {element.element_type === 'column' ? (
-          <Field label="Axial Pu (kN)" value={loads.axial} onChange={(axial) => patch({ design_loads: { ...loads, axial } })} />
+          <Field label="Axial Pu,externa (kN)" value={loads.axial} onChange={(axial) => patch({ design_loads: { ...loads, axial } })} />
         ) : (
-          <Field label="Distribuida w (kN/m)" value={loads.distributed} onChange={(distributed) => patch({ design_loads: { ...loads, distributed } })} />
+          <Field label="Distribuida wu,externa (kN/m)" value={loads.distributed} onChange={(distributed) => patch({ design_loads: { ...loads, distributed } })} />
         )}
       </Section>
 
@@ -183,7 +182,7 @@ export function MemberDesignPanel({
 
       {memory && (
         <>
-          <Section title="Memoria de cálculo">
+          <Section title={stale ? 'Memoria de cálculo (datos anteriores)' : 'Memoria de cálculo'}>
             <dl className="space-y-1">
               {memory.summary.map((item) => (
                 <div key={item.label} className="flex items-center justify-between gap-2 text-[11px]">
@@ -204,7 +203,7 @@ export function MemberDesignPanel({
             <button type="button" onClick={() => setShowFullMemory(true)} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-[11px] font-semibold text-slate-600 hover:border-violet-300">
               <Maximize2 className="h-3.5 w-3.5" />Ver más
             </button>
-            <button type="button" onClick={download} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-[11px] font-semibold text-slate-600 hover:border-violet-300">
+            <button type="button" onClick={download} disabled={stale} title={stale ? 'Recalcula la memoria para descargarla' : undefined} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-[11px] font-semibold text-slate-600 hover:border-violet-300 disabled:cursor-not-allowed disabled:opacity-50">
               <Download className="h-3.5 w-3.5" />Descargar
             </button>
           </div>
@@ -240,7 +239,7 @@ export function MemberDesignPanel({
               )}
             </div>
             <footer className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3">
-              <button type="button" onClick={download} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+              <button type="button" onClick={download} disabled={stale} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50">
                 <Download className="h-3.5 w-3.5" />Descargar memoria
               </button>
             </footer>
