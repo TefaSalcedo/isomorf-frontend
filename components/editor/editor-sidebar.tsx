@@ -28,6 +28,7 @@ import {
   Snowflake,
   Zap,
   Trash2,
+  Layers3,
 } from 'lucide-react';
 import type { EditorState, Tool, ActiveSection } from '@/hooks/use-editor-state';
 
@@ -38,6 +39,7 @@ const SECTIONS: { id: ActiveSection; label: string; icon: typeof Home }[] = [
   { id: 'projects', label: 'Projects', icon: FolderOpen },
   { id: 'draw', label: 'Draw', icon: Pencil },
   { id: 'structure', label: 'Structure', icon: Columns3 },
+  { id: 'layers', label: 'Capas', icon: Layers3 },
   { id: 'calculations', label: 'Calculations', icon: Calculator },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
@@ -70,17 +72,22 @@ export function EditorSidebar({
   actions,
   view,
   onOpenLoads,
+  compact = false,
+  onClose,
 }: {
   state: EditorState;
   actions: { setSection: (section: ActiveSection) => void; setTool: (tool: Tool) => void };
   view: EditorView;
   onOpenLoads: () => void;
+  compact?: boolean;
+  onClose?: () => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
+  const expanded = compact || !collapsed;
   const { activeSection, tool } = state;
 
   return (
-    <div className={`flex h-full shrink-0 border-r border-slate-200 bg-white ${expanded ? 'w-72' : 'w-14'}`}>
+    <div className={`flex shrink-0 bg-white ${compact ? 'h-full w-full' : `h-full border-r border-slate-200 ${expanded ? 'w-72' : 'w-14'}`}`}>
       <nav className="flex h-full w-14 flex-col items-center border-r border-slate-100 py-3">
         {SECTIONS.map((section) => {
           const Icon = section.icon;
@@ -91,8 +98,8 @@ export function EditorSidebar({
             </button>
           );
         })}
-        <div className="mt-auto">
-          <button onClick={() => setExpanded((value) => !value)} className="flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-50 hover:text-slate-900" title={expanded ? 'Collapse menu' : 'Expand menu'}>
+        <div className={compact ? 'hidden' : 'mt-auto'}>
+          <button onClick={() => setCollapsed((value) => !value)} className="flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-50 hover:text-slate-900" title={expanded ? 'Collapse menu' : 'Expand menu'}>
             {expanded ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         </div>
@@ -100,7 +107,7 @@ export function EditorSidebar({
       {expanded && (
         <div className="flex h-full min-w-0 flex-1 flex-col overflow-y-auto p-4">
           {view === '2d' ? (
-            <TwoDSidebar state={state} tool={tool} actions={actions} activeSection={activeSection} />
+            <TwoDSidebar state={state} tool={tool} actions={{ ...actions, onClose }} activeSection={activeSection} />
           ) : view === '3d' ? (
             <ThreeDSidebar onOpenLoads={onOpenLoads} />
           ) : (
@@ -112,7 +119,13 @@ export function EditorSidebar({
   );
 }
 
-function TwoDSidebar({ state, tool, actions, activeSection }: { state: EditorState; tool: Tool; actions: { setTool: (tool: Tool) => void }; activeSection: ActiveSection }) {
+function TwoDSidebar({ state, tool, actions: rawActions, activeSection }: { state: EditorState; tool: Tool; actions: { setTool: (tool: Tool) => void; onClose?: () => void }; activeSection: ActiveSection }) {
+  const actions = {
+    setTool: (nextTool: Tool) => {
+      rawActions.setTool(nextTool);
+      rawActions.onClose?.();
+    },
+  };
   return (
     <>
       <SidebarHeading title="2D plan" subtitle="Draw and annotate your structural plan" />

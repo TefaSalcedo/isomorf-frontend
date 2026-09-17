@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import type { ProjectElement, WallElement, ColumnElement } from '@/types/project';
+import type { ProjectElement, WallElement, ColumnElement, BeamElement } from '@/types/project';
 
 function cmToMeters(value: number): number {
   return value / 100;
@@ -32,15 +32,50 @@ function WallMesh({ wall }: { wall: WallElement }) {
   );
 }
 
-function ColumnMesh({ column }: { column: ColumnElement }) {
+function ColumnMesh({ column, selected, onSelect }: { column: ColumnElement; selected: boolean; onSelect: () => void }) {
   const x = cmToMeters(column.x1);
   const z = -cmToMeters(column.y1);
   const { width, depth, height } = column.properties;
 
   return (
-    <mesh position={[x, height / 2, z]} rotation={[0, column.rotation, 0]} castShadow receiveShadow>
+    <mesh
+      position={[x, height / 2, z]}
+      rotation={[0, column.rotation, 0]}
+      castShadow
+      receiveShadow
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        onSelect();
+      }}
+    >
       <boxGeometry args={[width, height, depth]} />
-      <meshStandardMaterial color="#334155" />
+      <meshStandardMaterial color={selected ? '#7c3aed' : '#334155'} />
+    </mesh>
+  );
+}
+
+function BeamMesh({ beam, selected, onSelect }: { beam: BeamElement; selected: boolean; onSelect: () => void }) {
+  const startX = cmToMeters(beam.x1);
+  const startZ = -cmToMeters(beam.y1);
+  const endX = cmToMeters(beam.x2);
+  const endZ = -cmToMeters(beam.y2);
+  const span = Math.hypot(endX - startX, endZ - startZ) || beam.properties.length;
+  const { width, height } = beam.properties;
+  const elevation = 2.5;
+
+  return (
+    <mesh
+      position={[(startX + endX) / 2, elevation + height / 2, (startZ + endZ) / 2]}
+      rotation={[0, -Math.atan2(endZ - startZ, endX - startX), 0]}
+      castShadow
+      receiveShadow
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        onSelect();
+      }}
+    >
+      <boxGeometry args={[span, height, width]} />
+      <meshStandardMaterial color={selected ? '#7c3aed' : '#64748b'} />
     </mesh>
   );
 }
@@ -64,13 +99,25 @@ function sceneBounds(elements: ProjectElement[]) {
   return { center, size };
 }
 
-export function Model3DPreview({ elements }: { elements: ProjectElement[] }) {
+export function Model3DPreview({
+  elements,
+  selectedIds = [],
+  onSelectElement,
+}: {
+  elements: ProjectElement[];
+  selectedIds?: string[];
+  onSelectElement?: (id: string) => void;
+}) {
   const walls = useMemo(
     () => elements.filter((el) => el.element_type === 'wall') as WallElement[],
     [elements],
   );
   const columns = useMemo(
     () => elements.filter((el) => el.element_type === 'column') as ColumnElement[],
+    [elements],
+  );
+  const beams = useMemo(
+    () => elements.filter((el) => el.element_type === 'beam') as BeamElement[],
     [elements],
   );
   const bounds = useMemo(() => sceneBounds(elements), [elements]);
@@ -97,7 +144,20 @@ export function Model3DPreview({ elements }: { elements: ProjectElement[] }) {
           <WallMesh key={wall.id} wall={wall} />
         ))}
         {columns.map((column) => (
-          <ColumnMesh key={column.id} column={column} />
+          <ColumnMesh
+            key={column.id}
+            column={column}
+            selected={selectedIds.includes(column.id)}
+            onSelect={() => onSelectElement?.(column.id)}
+          />
+        ))}
+        {beams.map((beam) => (
+          <BeamMesh
+            key={beam.id}
+            beam={beam}
+            selected={selectedIds.includes(beam.id)}
+            onSelect={() => onSelectElement?.(beam.id)}
+          />
         ))}
         <OrbitControls makeDefault target={[bounds.center.x, 1, bounds.center.z]} />
       </Canvas>

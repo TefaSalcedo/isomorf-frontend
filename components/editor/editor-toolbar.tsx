@@ -19,6 +19,7 @@ import {
   Pencil,
   Check,
   X,
+  ChevronLeft,
 } from 'lucide-react';
 import { SaveStatus } from '@/components/editor/save-status';
 import type { EditorState, Tool } from '@/hooks/use-editor-state';
@@ -79,9 +80,10 @@ export function EditorToolbar({
   }
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4">
-      <a href="/dashboard" className="text-sm text-slate-500 hover:text-slate-900">Dashboard</a>
-      <span className="text-slate-300">/</span>
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-2 sm:gap-3 sm:px-4">
+      <a href="/dashboard" className="hidden text-sm text-slate-500 hover:text-slate-900 sm:inline">Dashboard</a>
+      <a href="/dashboard" className="text-slate-500 hover:text-slate-900 sm:hidden" aria-label="Dashboard"><ChevronLeft className="h-4 w-4" /></a>
+      <span className="hidden text-slate-300 sm:inline">/</span>
       {editingName ? (
         <div className="flex items-center gap-1">
           <input
@@ -92,19 +94,19 @@ export function EditorToolbar({
               if (event.key === 'Enter') commitName();
               if (event.key === 'Escape') cancelName();
             }}
-            className="h-8 w-48 rounded-md border border-violet-300 px-2 text-sm font-semibold outline-none ring-2 ring-violet-100"
+            className="h-8 w-32 rounded-md sm:w-48 border border-violet-300 px-2 text-sm font-semibold outline-none ring-2 ring-violet-100"
             aria-label="Project name"
           />
           <button type="button" onClick={commitName} title="Save project name" className="rounded p-1 text-emerald-600 hover:bg-emerald-50"><Check className="h-4 w-4" /></button>
           <button type="button" onClick={cancelName} title="Cancel project name" className="rounded p-1 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>
         </div>
       ) : (
-        <button type="button" onClick={() => { setDraftName(projectName); setEditingName(true); }} className="group flex max-w-xs items-center gap-1.5 truncate text-left text-sm font-semibold text-slate-900" title="Edit project name">
+        <button type="button" onClick={() => { setDraftName(projectName); setEditingName(true); }} className="group flex min-w-0 max-w-[40vw] items-center gap-1.5 truncate text-left text-sm font-semibold text-slate-900 sm:max-w-xs" title="Edit project name">
           <span className="truncate">{projectName || 'Sin nombre'}</span>
           <Pencil className="h-3 w-3 shrink-0 text-slate-300 transition group-hover:text-violet-600" />
         </button>
       )}
-      <span className="ml-1 text-xs text-slate-400">{state.elements.length} elements</span>
+      <span className="ml-1 hidden text-xs text-slate-400 lg:inline">{state.elements.length} elements</span>
       <div className="ml-4 hidden items-center gap-1 rounded-xl bg-slate-100 p-1 lg:flex">
         {(['2d', '3d', 'loads', 'fem'] as const).map((mode) => (
           <button key={mode} onClick={() => onViewChange(mode)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition ${view === mode ? 'bg-violet-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>
@@ -113,27 +115,33 @@ export function EditorToolbar({
         ))}
       </div>
       <div className="ml-auto flex items-center gap-1.5">
-        <ToolbarButton onClick={actions.undo} disabled={state.past.length === 0} icon={Undo} label="Undo" />
-        <ToolbarButton onClick={actions.redo} disabled={state.future.length === 0} icon={Redo} label="Redo" />
-        <Divider />
-        <ToolbarButton onClick={actions.zoomOut} icon={ZoomOut} label="Zoom out" />
-        <span className="w-12 text-center text-xs text-slate-500">{zoomPct}%</span>
-        <ToolbarButton onClick={actions.zoomIn} icon={ZoomIn} label="Zoom in" />
+        <div className="hidden items-center gap-1.5 lg:flex">
+          <ToolbarButton onClick={actions.undo} disabled={state.past.length === 0} icon={Undo} label="Undo" />
+          <ToolbarButton onClick={actions.redo} disabled={state.future.length === 0} icon={Redo} label="Redo" />
+          <Divider />
+          <ToolbarButton onClick={actions.zoomOut} icon={ZoomOut} label="Zoom out" />
+          <span className="w-12 text-center text-xs text-slate-500">{zoomPct}%</span>
+          <ToolbarButton onClick={actions.zoomIn} icon={ZoomIn} label="Zoom in" />
+        </div>
         <ToolbarButton onClick={actions.fit} icon={Maximize} label="Fit" />
         <ToolbarButton onClick={actions.toggleGrid} icon={Grid3x3} label="Grid" active={state.showGrid} />
         <ToolbarButton onClick={actions.toggleSnap} icon={Magnet} label="Snap" active={state.snapEnabled} />
-        <Divider />
-        <ToolbarButton onClick={onExport} icon={Download} label="Export PNG" />
-        <ToolbarButton onClick={onPrint} icon={Printer} label="Print" />
-        <ToolbarButton onClick={onToggle3D} icon={Box} label="3D view" active={view3D} />
+        <div className="hidden items-center gap-1.5 lg:flex">
+          <Divider />
+          <ToolbarButton onClick={onExport} icon={Download} label="Export PNG" />
+          <ToolbarButton onClick={onPrint} icon={Printer} label="Print" />
+          <ToolbarButton onClick={onToggle3D} icon={Box} label="3D view" active={view3D} />
+        </div>
         <ToolbarButton onClick={actions.toggleCleanMode} icon={state.cleanMode ? Eye : EyeOff} label="Clean mode" />
-        <Divider />
-        <ToolbarButton onClick={actions.deleteSelection} icon={Trash2} label="Delete" disabled={!canDelete} danger />
-        <button onClick={onSave} disabled={saving} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50">
+        <div className="hidden items-center gap-1.5 lg:flex">
+          <Divider />
+          <ToolbarButton onClick={actions.deleteSelection} icon={Trash2} label="Delete" disabled={!canDelete} danger />
+        </div>
+        <button onClick={onSave} disabled={saving} aria-label="Save" className="inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-2 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50 sm:px-3">
           <Save className="h-3.5 w-3.5" />
-          {saving ? 'Saving…' : 'Save'}
+          <span className="hidden sm:inline">{saving ? 'Saving…' : 'Save'}</span>
         </button>
-        <div className="ml-2"><SaveStatus dirty={state.dirty} saving={saving} error={state.error} /></div>
+        <div className="ml-2 hidden sm:block"><SaveStatus dirty={state.dirty} saving={saving} error={state.error} /></div>
       </div>
     </header>
   );

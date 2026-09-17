@@ -11,6 +11,8 @@ import type { ProjectElement } from '@/types/project';
 import type { DisplayUnit } from '@/lib/editor/units';
 import { COLUMN_DEFAULT_DEPTH, COLUMN_DEFAULT_WIDTH } from '@/lib/editor/elements';
 import { snapForWall, snapToNearest } from '@/lib/editor/snapping';
+import { isElementLocked, isElementVisible, layerOf } from '@/lib/editor/layers';
+import type { PlanLayer } from '@/types/project';
 
 const GRID_STEP = 100;
 const MIN_ZOOM = 0.2;
@@ -24,9 +26,11 @@ function isLineType(type: ProjectElement['element_type']): boolean {
   return type === 'wall' || type === 'door' || type === 'window' || type === 'beam';
 }
 
-function colorFor(element: ProjectElement, selected: boolean, hovered: boolean): string {
+function colorFor(element: ProjectElement, selected: boolean, hovered: boolean, layers: PlanLayer[]): string {
   if (selected) return '#1e40af';
   if (hovered) return '#2563eb';
+  const layerColor = layerOf(element, layers)?.color;
+  if (layerColor) return layerColor;
   switch (element.element_type) {
     case 'wall':
       return '#1f2937';
@@ -114,6 +118,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
   const [dragEnd, setDragEnd] = useState<Point | null>(null);
   const [dragging, setDragging] = useState(false);
   const [lengthInput, setLengthInput] = useState('');
+  const pinchRef = useRef<{ distance: number; center: Point } | null>(null);
   const { zoom, pan } = state.viewport;
 
   useEffect(() => {
@@ -164,8 +169,13 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     return () => window.removeEventListener('keydown', handleLengthKeyDown);
   }, [actions, displayUnit, lengthInput, state.draft]);
 
+  const visibleElements = useMemo(
+    () => state.elements.filter((el) => isElementVisible(el, state.layers)),
+    [state.elements, state.layers],
+  );
+
   const intersections = useMemo(() => {
-    const lineElements = state.elements.filter((el) => isLineType(el.element_type));
+    const lineElements = visibleElements.filter((el) => isLineType(el.element_type));
     const result: Point[] = [];
     for (let i = 0; i < lineElements.length; i += 1) {
       for (let j = i + 1; j < lineElements.length; j += 1) {
@@ -181,7 +191,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
       }
     }
     return result;
-  }, [state.elements]);
+  }, [visibleElements]);
 
   const grid = useMemo(
     () => gridPoints(state.showGrid, size.width, size.height, pan, zoom),
@@ -239,8 +249,8 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
       const minY = Math.min(dragStart.y, dragEnd.y);
       const maxX = Math.max(dragStart.x, dragEnd.x);
       const maxY = Math.max(dragStart.y, dragEnd.y);
-      const ids = state.elements
-        .filter((el) => isInsideBox(el, minX, minY, maxX, maxY))
+      const ids = visibleElements
+        .filter((el) => !isElementLocked(el, state.layers) && isInsideBox(el, minX, minY, maxX, maxY))
         .map((el) => el.id);
       if (ids.length) actions.selectMany(ids);
     }
@@ -252,6 +262,57 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     const p1Inside = el.x1 >= minX && el.x1 <= maxX && el.y1 >= minY && el.y1 <= maxY;
     const p2Inside = el.x2 >= minX && el.x2 <= maxX && el.y2 >= minY && el.y2 <= maxY;
     return p1Inside || p2Inside;
+  }
+
+  function touchPoints(event: TouchEvent): Point[] {
+    return Array.from(event.touches).map((touch) => ({ x: touch.clientX, y: touch.clientY }));
+  }
+
+  function applyZoomAt(screen: Point, nextZoom: number) {
+    const world = worldFromScreen(screen, pan, zoom);
+    const bounded = boundZoom(nextZoom);
+    const newPan = { x: screen.x - world.x * bounded, y: screen.y - world.y * bounded };
+    actions.setZoom(bounded);
+    actions.pan({ x: newPan.x - pan.x, y: newPan.y - pan.y });
+  }
+
+  function handleStageTouchStart(e: any) {
+    const event = e.evt as TouchEvent;
+    if (event.touches.length >= 2) {
+      pinchRef.current = null;
+      actions.cancelDraft();
+      setDragging(false);
+      return;
+    }
+    handleStageMouseDown(e);
+  }
+
+  function handleStageTouchMove(e: any) {
+    const event = e.evt as TouchEvent;
+    event.preventDefault();
+    if (event.touches.length >= 2) {
+      const [first, second] = touchPoints(event);
+      const currentDistance = Math.hypot(second.x - first.x, second.y - first.y);
+      const stageBox = (e.target.getStage().container() as HTMLDivElement).getBoundingClientRect();
+      const center = {
+        x: (first.x + second.x) / 2 - stageBox.left,
+        y: (first.y + second.y) / 2 - stageBox.top,
+      };
+      const previous = pinchRef.current;
+      if (previous && previous.distance > 0) {
+        applyZoomAt(center, zoom * (currentDistance / previous.distance));
+        actions.pan({ x: center.x - previous.center.x, y: center.y - previous.center.y });
+      }
+      pinchRef.current = { distance: currentDistance, center };
+      return;
+    }
+    handleStageMouseMove(e);
+  }
+
+  function handleStageTouchEnd(e: any) {
+    const event = e.evt as TouchEvent;
+    if (event.touches.length === 0) pinchRef.current = null;
+    handleStageMouseUp();
   }
 
   function handleStageWheel(e: any) {
@@ -266,7 +327,9 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     actions.pan({ x: newPan.x - pan.x, y: newPan.y - pan.y });
   }
 
-  function handleShapeClick(e: any, id: string) {
+  function handleShapeClick(e: any, element: ProjectElement) {
+    if (isElementLocked(element, state.layers)) return;
+    const id = element.id;
     e.cancelBubble = true;
     if (state.tool === 'wall' || state.tool === 'door' || state.tool === 'window' || state.tool === 'beam') {
       const stage = e.target.getStage();
@@ -274,7 +337,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
       actions.beginDraft(worldFromScreen(pos, pan, zoom));
       return;
     }
-    actions.select(id, e.evt.ctrlKey || e.evt.metaKey);
+    actions.select(id, Boolean(e.evt.ctrlKey || e.evt.metaKey));
     if (state.tool !== 'select') actions.setTool('select');
   }
 
@@ -322,7 +385,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
   }, [state.draft]);
 
   return (
-    <div ref={ref} className="relative h-full w-full cursor-crosshair bg-white">
+    <div ref={ref} className="relative h-full w-full touch-none cursor-crosshair bg-white">
       {size.width > 0 && size.height > 0 && (
         <Stage
           ref={stageRef}
@@ -335,6 +398,9 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
           onMouseDown={handleStageMouseDown}
           onMouseMove={handleStageMouseMove}
           onMouseUp={handleStageMouseUp}
+          onTouchStart={handleStageTouchStart}
+          onTouchMove={handleStageTouchMove}
+          onTouchEnd={handleStageTouchEnd}
           onWheel={handleStageWheel}
           style={{ background: '#ffffff' }}
         >
@@ -350,10 +416,11 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
             {state.showGrid && <Line points={grid} stroke="#e5e7eb" strokeWidth={1 / zoom} listening={false} />}
           </Layer>
           <Layer>
-            {state.elements.map((el) => {
+            {visibleElements.map((el) => {
               const selected = state.selectedIds.includes(el.id);
               const hovered = hoverId === el.id;
-              const stroke = colorFor(el, selected, hovered);
+              const locked = isElementLocked(el, state.layers);
+              const stroke = colorFor(el, selected, hovered, state.layers);
               if (el.element_type === 'column') {
                 const props = el.properties as { width: number; depth: number };
                 const w = props.width * 100;
@@ -369,8 +436,9 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                     offsetY={h / 2}
                     rotation={(el.rotation * 180) / Math.PI}
                     fill={stroke}
-                    opacity={0.9}
-                    onMouseDown={(e) => handleShapeClick(e, el.id)}
+                    opacity={locked ? 0.45 : 0.9}
+                    onMouseDown={(e) => handleShapeClick(e, el)}
+                    onTouchStart={(e) => handleShapeClick(e, el)}
                     onMouseEnter={() => setHoverId(el.id)}
                     onMouseLeave={() => setHoverId(null)}
                   />
@@ -390,9 +458,11 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                   strokeWidth={thickness}
                   lineCap="butt"
                   lineJoin="miter"
-                  draggable={state.tool === 'select' && selected}
+                  opacity={locked ? 0.45 : 1}
+                  draggable={state.tool === 'select' && selected && !locked}
                   onDragEnd={(e) => handleElementDragEnd(e, el)}
-                  onMouseDown={(e) => handleShapeClick(e, el.id)}
+                  onMouseDown={(e) => handleShapeClick(e, el)}
+                  onTouchStart={(e) => handleShapeClick(e, el)}
                   onMouseEnter={() => setHoverId(el.id)}
                   onMouseLeave={() => setHoverId(null)}
                 />
@@ -408,7 +478,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 listening={false}
               />
             ))}
-            {state.elements.map((el) => (
+            {visibleElements.map((el) => (
               <Circle
                 key={`start-${el.id}`}
                 x={el.x1}
@@ -418,7 +488,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 listening={false}
               />
             ))}
-            {state.elements.map((el) => (
+            {visibleElements.map((el) => (
               <Circle
                 key={`end-${el.id}`}
                 x={el.x2}
@@ -428,7 +498,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 listening={false}
               />
             ))}
-            {state.elements.filter((el) => state.selectedIds.includes(el.id) && isLineType(el.element_type)).map((el) => (
+            {visibleElements.filter((el) => state.selectedIds.includes(el.id) && isLineType(el.element_type) && !isElementLocked(el, state.layers)).map((el) => (
               <Fragment key={`handles-${el.id}`}>
                 <Circle
                   key={`handle-start-${el.id}`}

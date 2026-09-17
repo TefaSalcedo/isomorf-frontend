@@ -6,6 +6,14 @@ export type MaterialConstants = {
   elastic_modulus?: number;
 };
 
+export type PlanLayer = {
+  id: string;
+  name: string;
+  color: string;
+  visible: boolean;
+  locked: boolean;
+};
+
 export type DesignSettings = {
   unit?: 'm' | 'ft';
   seismic_zone?: string;
@@ -13,6 +21,7 @@ export type DesignSettings = {
   wind_zone?: string;
   building_code?: string;
   material?: MaterialConstants;
+  layers?: PlanLayer[];
 };
 
 export type BaseElement = {
@@ -28,7 +37,11 @@ export type BaseElement = {
   updated_at: string;
 };
 
-export type WallProperties = {
+export type LayeredProperties = {
+  layer_id?: string | null;
+};
+
+export type WallProperties = LayeredProperties & {
   height: number;
   thickness: number;
   join_mode: 'perpendicular' | '45' | 'free';
@@ -42,7 +55,7 @@ export type WallElement = BaseElement & {
   properties: WallProperties;
 };
 
-export type DoorProperties = {
+export type DoorProperties = LayeredProperties & {
   width?: number;
   swing?: 'left' | 'right';
 };
@@ -52,7 +65,7 @@ export type DoorElement = BaseElement & {
   properties: DoorProperties;
 };
 
-export type WindowProperties = {
+export type WindowProperties = LayeredProperties & {
   width?: number;
   sill_height?: number;
 };
@@ -62,7 +75,57 @@ export type WindowElement = BaseElement & {
   properties: WindowProperties;
 };
 
-export type ColumnProperties = {
+export type ConcreteSpec = {
+  fc: number;
+  fy: number;
+  cover: number;
+};
+
+export type ReinforcementSpec = {
+  bar_count: number;
+  bar_diameter: number;
+  stirrup_diameter: number;
+  stirrup_spacing: number;
+};
+
+export type DesignLoads = {
+  axial: number;
+  distributed: number;
+};
+
+export type DesignStep = {
+  title: string;
+  formula: string;
+  substitution: string;
+  result: string;
+};
+
+export type DesignInputs = {
+  geometry: Record<string, number>;
+  concrete: ConcreteSpec;
+  reinforcement: ReinforcementSpec;
+  loads: DesignLoads;
+};
+
+export type DesignMemory = {
+  calculated_at: string;
+  code: string;
+  inputs: DesignInputs;
+  status: 'ok' | 'review';
+  ratio: number;
+  summary: { label: string; value: string }[];
+  steps: DesignStep[];
+  warnings: string[];
+};
+
+export type DesignableProperties = {
+  concrete?: ConcreteSpec;
+  reinforcement?: ReinforcementSpec;
+  design_loads?: DesignLoads;
+  design_memory?: DesignMemory;
+};
+
+export type ColumnProperties = LayeredProperties & DesignableProperties & {
   width: number;
   depth: number;
   height: number;
@@ -74,7 +137,7 @@ export type ColumnElement = BaseElement & {
   properties: ColumnProperties;
 };
 
-export type BeamProperties = {
+export type BeamProperties = LayeredProperties & DesignableProperties & {
   width: number;
   height: number;
   length: number;
