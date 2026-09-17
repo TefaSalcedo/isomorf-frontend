@@ -220,8 +220,23 @@ export function currentInputs(
   return { geometry, concrete, reinforcement, loads };
 }
 
+function sameNumbers(a: Record<string, number>, b: Record<string, number>): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if (Math.abs((a[key] ?? 0) - (b[key] ?? 0)) > 1e-9) return false;
+  }
+  return true;
+}
+
 export function isMemoryStale(memory: DesignMemory, inputs: DesignInputs): boolean {
-  return JSON.stringify(memory.inputs) !== JSON.stringify(inputs);
+  const stored = memory.inputs;
+  if (!stored) return true;
+  return !(
+    sameNumbers(stored.geometry, inputs.geometry) &&
+    sameNumbers({ ...stored.concrete }, { ...inputs.concrete }) &&
+    sameNumbers({ ...stored.reinforcement }, { ...inputs.reinforcement }) &&
+    sameNumbers({ ...stored.loads }, { ...inputs.loads })
+  );
 }
 
 export function memoryToMarkdown(
