@@ -75,7 +75,49 @@ export type WindowElement = BaseElement & {
   properties: WindowProperties;
 };
 
-export type ColumnProperties = LayeredProperties & {
+export type ConcreteSpec = {
+  fc: number;
+  fy: number;
+  cover: number;
+};
+
+export type ReinforcementSpec = {
+  bar_count: number;
+  bar_diameter: number;
+  stirrup_diameter: number;
+  stirrup_spacing: number;
+};
+
+export type DesignLoads = {
+  axial: number;
+  distributed: number;
+};
+
+export type DesignStep = {
+  title: string;
+  formula: string;
+  substitution: string;
+  result: string;
+};
+
+export type DesignMemory = {
+  calculated_at: string;
+  code: string;
+  status: 'ok' | 'review';
+  ratio: number;
+  summary: { label: string; value: string }[];
+  steps: DesignStep[];
+  warnings: string[];
+};
+
+export type DesignableProperties = {
+  concrete?: ConcreteSpec;
+  reinforcement?: ReinforcementSpec;
+  design_loads?: DesignLoads;
+  design_memory?: DesignMemory;
+};
+
+export type ColumnProperties = LayeredProperties & DesignableProperties & {
   width: number;
   depth: number;
   height: number;
@@ -87,7 +129,7 @@ export type ColumnElement = BaseElement & {
   properties: ColumnProperties;
 };
 
-export type BeamProperties = LayeredProperties & {
+export type BeamProperties = LayeredProperties & DesignableProperties & {
   width: number;
   height: number;
   length: number;

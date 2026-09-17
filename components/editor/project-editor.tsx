@@ -16,6 +16,8 @@ import { LoadEditor } from '@/components/editor/load-editor';
 import { LayersPanel } from '@/components/editor/layers-panel';
 import { MobileToolbar } from '@/components/editor/mobile-toolbar';
 import { FemComingSoon } from '@/components/editor/fem-coming-soon';
+import { MemberDesignPanel, isDesignable } from '@/components/editor/member-design-panel';
+import type { DesignPatch } from '@/components/editor/member-design-panel';
 import { api } from '@/lib/api-client';
 import type { Project, ProjectElement } from '@/types/project';
 import type { ElementPayload } from '@/lib/api-client';
@@ -145,8 +147,23 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     w.document.close();
   }
 
+  const designTarget =
+    activeView === '3d' && selectedElements.length === 1 && isDesignable(selectedElements[0])
+      ? selectedElements[0]
+      : null;
+
   let rightPanel: React.ReactNode = null;
-  if (state.activeSection === 'layers') {
+  if (designTarget) {
+    rightPanel = (
+      <MemberDesignPanel
+        element={designTarget}
+        projectName={projectName}
+        onUpdate={(id, properties: DesignPatch) =>
+          actions.updateElement(id, { properties } as Partial<ProjectElement>)
+        }
+      />
+    );
+  } else if (state.activeSection === 'layers') {
     rightPanel = (
       <LayersPanel
         layers={state.layers}
@@ -171,7 +188,14 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   }
 
   const canvas = activeView === '3d' ? (
-    <Model3DPreview elements={state.elements} />
+    <Model3DPreview
+      elements={state.elements}
+      selectedIds={state.selectedIds}
+      onSelectElement={(id) => {
+        actions.select(id, false);
+        if (compact) setMobilePanel('inspector');
+      }}
+    />
   ) : activeView === 'loads' ? (
     <LoadEditor projectId={initialProject.id} state={state} />
   ) : activeView === 'fem' ? (
@@ -224,7 +248,10 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
           view={activeView}
           onViewChange={setActiveView}
           onOpenTools={() => setMobilePanel('tools')}
-          onOpenInspector={() => setMobilePanel('inspector')}
+          onOpenInspector={() => {
+            if (state.activeSection === 'layers') actions.setSection('draw');
+            setMobilePanel('inspector');
+          }}
           onOpenLayers={() => { actions.setSection('layers'); setMobilePanel('inspector'); }}
         />
       )}
