@@ -38,6 +38,23 @@ For the fastest bind-mount workflow on Windows, keep the repository inside the L
 
 The existing `frontend_node_modules` volume is not removed by this setup. It remains available for rollback; do not use `docker compose down -v` when preserving local development data.
 
+## Testing
+
+Unit and component tests run on [Vitest](https://vitest.dev) with Testing Library:
+
+```bash
+pnpm test            # single run
+pnpm test:watch      # watch mode
+pnpm test:coverage   # coverage report
+```
+
+End-to-end tests run on [Playwright](https://playwright.dev) against the real stack. They need the backend API listening on `NEXT_PUBLIC_API_URL` (the `docker compose up --watch` development stack provides it) and a Next server on `http://localhost:3000`, which Playwright starts or reuses automatically:
+
+```bash
+pnpm exec playwright install chromium   # first time only
+pnpm test:e2e
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
