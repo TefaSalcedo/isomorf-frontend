@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Check, Eye, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/lib/auth/auth-context';
@@ -66,9 +66,13 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   const router = useRouter();
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
+  const submittingRef = useRef(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setError(''); setPending(true);
+    event.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setError(''); setPending(true);
     const data = Object.fromEntries(new FormData(event.currentTarget));
     try {
       if (mode === 'login') await login(String(data.email), String(data.password));
@@ -76,7 +80,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
       router.replace('/dashboard');
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : 'Unable to authenticate');
-    } finally { setPending(false); }
+    } finally { submittingRef.current = false; setPending(false); }
   }
 
   return (
@@ -95,7 +99,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
           <form onSubmit={submit} className="space-y-4">
             {mode === 'register' && <div className="grid gap-4 sm:grid-cols-2"><Field name="first_name" label="First name" placeholder="Thomas" /><Field name="last_name" label="Last name" placeholder="Sanchez" /></div>}
             <Field name="email" label={mode === 'login' ? 'Corporate email / license' : 'Work email'} placeholder="name@company.com" type="email" icon={Mail} />
-            {mode === 'login' && (<div><div className="mb-2 flex items-center justify-between"><label className="text-xs font-bold uppercase tracking-wide text-slate-600" htmlFor="password">Password</label>{mode === 'login' && <Link className="text-xs font-semibold text-violet-600" href="/forgot-password">Forgot password?</Link>}</div><div className="relative"><LockKeyhole className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input id="password" required minLength={8} type="password" name="password" placeholder="At least 8 characters" className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-500/10" /><Eye className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /></div></div>)}
+            <div><div className="mb-2 flex items-center justify-between"><label className="text-xs font-bold uppercase tracking-wide text-slate-600" htmlFor="password">Password</label>{mode === 'login' && <Link className="text-xs font-semibold text-violet-600" href="/forgot-password">Forgot password?</Link>}</div><div className="relative"><LockKeyhole className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input id="password" required minLength={8} type="password" name="password" placeholder="At least 8 characters" className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-500/10" /><Eye className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /></div></div>
             {mode === 'register' && <div className="flex items-start gap-2 text-xs leading-5 text-slate-500"><input type="checkbox" required className="mt-1 accent-violet-600" />I accept the <a className="font-semibold text-violet-600" href="#terms">Terms and Privacy Policy</a>.</div>}
             {mode === 'login' && <div className="flex items-center justify-between text-xs text-slate-500"><label className="flex items-center gap-2"><input type="checkbox" className="accent-violet-600" />Keep me signed in</label><span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 font-semibold text-emerald-700"><ShieldCheck className="h-3 w-3" /> Secure session</span></div>}
             {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</p>}

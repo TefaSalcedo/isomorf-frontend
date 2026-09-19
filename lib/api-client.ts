@@ -1,4 +1,4 @@
-import { getOrCreateDeviceIdentity, signDeviceRequest } from '@/lib/device/identity';
+import { getOrCreateDeviceIdentity, regenerateDeviceIdentity, signDeviceRequest } from '@/lib/device/identity';
 import type { DeviceSession, User } from '@/types/auth';
 import type { Folder } from '@/types/folder';
 import type { ElementLoad, LoadCase } from '@/types/structural-load';
@@ -7,6 +7,13 @@ import type { DesignSettings, ElementType, Project, ProjectElement } from '@/typ
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 type DevicePayload = { key_id: string; public_key: string; fingerprint: string; device_name: string };
+
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
 
 async function devicePayload(): Promise<DevicePayload> {
   const identity = await getOrCreateDeviceIdentity();
@@ -26,17 +33,29 @@ async function request<T>(path: string, init: RequestInit = {}, proof = false): 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     if (response.status >= 500) {
-      throw new Error('The API could not complete the request. Check that the database and backend services are running.');
+      throw new ApiError(response.status, 'The API could not complete the request. Check that the database and backend services are running.');
     }
-    throw new Error(body.detail ?? 'Request failed');
+    throw new ApiError(response.status, body.detail ?? 'Request failed');
   }
   if (response.status === 204) return undefined as T;
   return response.json();
 }
 
+async function withDeviceRetry<T>(action: () => Promise<T>): Promise<T> {
+  try {
+    return await action();
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409 && error.message === 'Device key is already registered') {
+      await regenerateDeviceIdentity();
+      return action();
+    }
+    throw error;
+  }
+}
+
 export const api = {
-  register: async (payload: { email: string; password: string; first_name: string; last_name: string }) => request<{ user: User; session_id: string }>('/api/auth/register', { method: 'POST', body: JSON.stringify({ ...payload, device: await devicePayload() }) }),
-  login: async (payload: { email: string; password: string }) => request<{ user: User; session_id: string }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ ...payload, device: await devicePayload() }) }),
+  register: async (payload: { email: string; password: string; first_name: string; last_name: string }) => withDeviceRetry(async () => request<{ user: User; session_id: string }>('/api/auth/register', { method: 'POST', body: JSON.stringify({ ...payload, device: await devicePayload() }) })),
+  login: async (payload: { email: string; password: string }) => withDeviceRetry(async () => request<{ user: User; session_id: string }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ ...payload, device: await devicePayload() }) })),
   logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
   me: () => request<User>('/api/auth/me'),
   sessions: () => request<DeviceSession[]>('/api/auth/sessions'),
