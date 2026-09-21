@@ -83,6 +83,7 @@ jobs:
         working-directory: backend
         env:
           DATABASE_URL: postgresql+psycopg://isomorf:isomorf@localhost:5432/isomorf
+          JWT_SECRET_KEY: ci-test-secret
 
       - name: Start backend
         run: uvicorn app.main:app --host 0.0.0.0 --port 8000 &
