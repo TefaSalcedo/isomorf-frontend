@@ -4,10 +4,12 @@ export function SaveStatus({
   dirty,
   saving,
   error,
+  revision,
 }: {
   dirty: boolean;
   saving: boolean;
   error: string;
+  revision?: number;
 }) {
   if (error) {
     return (
@@ -36,7 +38,7 @@ export function SaveStatus({
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600">
       <CheckCircle className="h-3.5 w-3.5" />
-      Saved
+      Saved{revision ? ` · v${revision}` : ''}
     </span>
   );
 }
