@@ -4,7 +4,7 @@ import type { Project, ProjectElement } from '@/types/project';
 import { useEditorState } from './use-editor-state';
 
 function project(elements: ProjectElement[] = []): Project {
-  return { id: 'p1', public_id: 'pub-1', name: 'P', description: '', design_settings: {}, created_at: '', updated_at: '', elements };
+  return { id: 'p1', public_id: 'pub-1', name: 'P', description: '', design_settings: {}, created_at: '', updated_at: '', elements, current_revision: 1, head_revision: 1 };
 }
 
 function drawWall(result: { current: ReturnType<typeof useEditorState> }) {
@@ -35,13 +35,23 @@ describe('useEditorState', () => {
     expect(state.tool).toBe('select');
   });
 
-  it('supports undo and redo', () => {
+  it('seeds revision pointers from the loaded project', () => {
+    const { result } = renderHook(() => useEditorState({ ...project(), current_revision: 3, head_revision: 5 }));
+    expect(result.current.state.revision).toBe(3);
+    expect(result.current.state.headRevision).toBe(5);
+  });
+
+  it('applyDocument replaces elements, updates revisions and clears dirty', () => {
     const { result } = renderHook(() => useEditorState(project()));
     drawWall(result);
-    expect(result.current.state.elements).toHaveLength(1);
-    act(() => result.current.actions.undo());
+    expect(result.current.state.dirty).toBe(true);
+    const wall = result.current.state.elements[0];
+    act(() => result.current.actions.applyDocument([], {}, 2, 4));
     expect(result.current.state.elements).toHaveLength(0);
-    act(() => result.current.actions.redo());
+    expect(result.current.state.revision).toBe(2);
+    expect(result.current.state.headRevision).toBe(4);
+    expect(result.current.state.dirty).toBe(false);
+    act(() => result.current.actions.applyDocument([wall], {}, 3, 4));
     expect(result.current.state.elements).toHaveLength(1);
   });
 
