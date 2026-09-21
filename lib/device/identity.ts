@@ -51,14 +51,20 @@ async function buildFingerprint(): Promise<string> {
   return digest(navigatorData);
 }
 
-export async function getOrCreateDeviceIdentity(): Promise<DeviceIdentity> {
-  const existing = await readIdentity();
-  if (existing) return existing;
+async function createIdentity(): Promise<DeviceIdentity> {
   const keyPair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign', 'verify']);
   const publicKey = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
   const identity = { keyId: crypto.randomUUID(), publicKey, privateKey: keyPair.privateKey, fingerprint: await buildFingerprint() };
   await saveIdentity(identity);
   return identity;
+}
+
+export async function getOrCreateDeviceIdentity(): Promise<DeviceIdentity> {
+  return (await readIdentity()) ?? createIdentity();
+}
+
+export async function regenerateDeviceIdentity(): Promise<DeviceIdentity> {
+  return createIdentity();
 }
 
 export function base64UrlEncode(value: ArrayBuffer): string {
