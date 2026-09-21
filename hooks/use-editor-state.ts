@@ -38,6 +38,7 @@ export type ActiveSection =
   | 'structure'
   | 'layers'
   | 'calculations'
+  | 'history'
   | 'settings';
 
 export type DraftState = {
@@ -63,8 +64,9 @@ export type EditorState = {
   activeSection: ActiveSection;
   layers: PlanLayer[];
   activeLayerId: string;
-  past: ProjectElement[][];
-  future: ProjectElement[][];
+  revision: number;
+  headRevision: number;
+  historyBusy: boolean;
   dirty: boolean;
   error: string;
 };
@@ -91,8 +93,9 @@ export type EditorAction =
   | { type: 'cancelDraft' }
   | { type: 'updateElement'; id: string; changes: Partial<ProjectElement> }
   | { type: 'deleteSelection' }
-  | { type: 'undo' }
-  | { type: 'redo' }
+  | { type: 'applyDocument'; elements: ProjectElement[]; designSettings: Project['design_settings']; revision: number; headRevision: number }
+  | { type: 'markSaved'; revision: number; headRevision: number; keepDirty?: boolean }
+  | { type: 'setHistoryBusy'; busy: boolean }
   | { type: 'addLayer' }
   | { type: 'updateLayer'; id: string; changes: Partial<PlanLayer> }
   | { type: 'removeLayer'; id: string }
@@ -256,8 +259,9 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         selectedIds: [],
         draft: null,
         dirty: false,
-        past: [],
-        future: [],
+        revision: action.project.current_revision ?? 0,
+        headRevision: action.project.head_revision ?? 0,
+        historyBusy: false,
       };
     }
     case 'setTool':
@@ -304,8 +308,6 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         elements,
         activeLayerId: state.activeLayerId === action.id ? fallbackId : state.activeLayerId,
         dirty: true,
-        past: [...state.past, state.elements],
-        future: [],
       };
     }
     case 'setActiveLayer':
@@ -315,7 +317,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       const elements = state.elements.map((element) =>
         state.selectedIds.includes(element.id) ? withLayer(element, action.id) : element,
       );
-      return { ...state, elements, dirty: true, past: [...state.past, state.elements], future: [] };
+      return { ...state, elements, dirty: true };
     }
     case 'clearSelection':
       return { ...state, selectedIds: [] };
@@ -433,8 +435,6 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         draft: null,
         tool: 'select',
         dirty: true,
-        past: [...state.past, state.elements],
-        future: [],
       };
     }
     case 'cancelDraft':
@@ -466,8 +466,6 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         ...state,
         elements: nextElements,
         dirty: true,
-        past: [...state.past, state.elements],
-        future: [],
       };
     }
     case 'deleteSelection': {
@@ -483,36 +481,33 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         elements: remaining,
         selectedIds: [],
         dirty: true,
-        past: [...state.past, state.elements],
-        future: [],
       };
     }
-    case 'undo': {
-      if (state.past.length === 0) return state;
-      const previous = state.past[state.past.length - 1];
+    case 'applyDocument': {
+      const layers = ensureLayers(action.designSettings?.layers);
+      const activeLayerStillExists = layers.some((layer) => layer.id === state.activeLayerId);
       return {
         ...state,
-        elements: previous,
-        past: state.past.slice(0, -1),
-        future: [state.elements, ...state.future],
+        elements: action.elements.map(normalizeElement),
+        layers,
+        activeLayerId: activeLayerStillExists ? state.activeLayerId : layers[0].id,
         selectedIds: [],
         draft: null,
-        dirty: true,
+        revision: action.revision,
+        headRevision: action.headRevision,
+        historyBusy: false,
+        dirty: false,
       };
     }
-    case 'redo': {
-      if (state.future.length === 0) return state;
-      const next = state.future[0];
+    case 'markSaved':
       return {
         ...state,
-        elements: next,
-        past: [...state.past, state.elements],
-        future: state.future.slice(1),
-        selectedIds: [],
-        draft: null,
-        dirty: true,
+        dirty: action.keepDirty ? state.dirty : false,
+        revision: action.revision,
+        headRevision: action.headRevision,
       };
-    }
+    case 'setHistoryBusy':
+      return { ...state, historyBusy: action.busy };
     case 'markClean':
       return { ...state, dirty: false };
     case 'setError':
@@ -536,8 +531,9 @@ const initialState: EditorState = {
   activeSection: 'draw',
   layers: ensureLayers(undefined),
   activeLayerId: ensureLayers(undefined)[0].id,
-  past: [],
-  future: [],
+  revision: 0,
+  headRevision: 0,
+  historyBusy: false,
   dirty: false,
   error: '',
 };
@@ -576,8 +572,10 @@ export function useEditorState(project: Project) {
       cancelDraft: () => dispatch({ type: 'cancelDraft' }),
       updateElement: (id: string, changes: Partial<ProjectElement>) => dispatch({ type: 'updateElement', id, changes }),
       deleteSelection: () => dispatch({ type: 'deleteSelection' }),
-      undo: () => dispatch({ type: 'undo' }),
-      redo: () => dispatch({ type: 'redo' }),
+      applyDocument: (elements: ProjectElement[], designSettings: Project['design_settings'], revision: number, headRevision: number) =>
+        dispatch({ type: 'applyDocument', elements, designSettings, revision, headRevision }),
+      markSaved: (revision: number, headRevision: number, keepDirty = false) => dispatch({ type: 'markSaved', revision, headRevision, keepDirty }),
+      setHistoryBusy: (busy: boolean) => dispatch({ type: 'setHistoryBusy', busy }),
       addLayer: () => dispatch({ type: 'addLayer' }),
       updateLayer: (id: string, changes: Partial<PlanLayer>) => dispatch({ type: 'updateLayer', id, changes }),
       removeLayer: (id: string) => dispatch({ type: 'removeLayer', id }),

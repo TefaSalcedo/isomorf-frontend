@@ -166,4 +166,34 @@ export type Project = {
   created_at: string;
   updated_at: string;
   elements?: ProjectElement[];
+  current_revision?: number;
+  head_revision?: number;
+};
+
+export type DocumentState = {
+  revision: number;
+  head_revision: number;
+  can_undo: boolean;
+  can_redo: boolean;
+  elements: ProjectElement[];
+  design_settings: DesignSettings;
+};
+
+export type RevisionChange = {
+  element_id: string;
+  operation: 'baseline' | 'create' | 'update' | 'delete';
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
+};
+
+export type RevisionEntry = {
+  revision: number;
+  created_at: string;
+  changes: RevisionChange[];
+};
+
+export type HistoryResponse = {
+  current_revision: number;
+  head_revision: number;
+  revisions: RevisionEntry[];
 };
