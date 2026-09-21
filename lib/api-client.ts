@@ -2,7 +2,7 @@ import { getOrCreateDeviceIdentity, regenerateDeviceIdentity, signDeviceRequest 
 import type { DeviceSession, User } from '@/types/auth';
 import type { Folder } from '@/types/folder';
 import type { ElementLoad, LoadCase } from '@/types/structural-load';
-import type { DesignSettings, ElementType, Project, ProjectElement } from '@/types/project';
+import type { DesignSettings, DocumentState, ElementType, HistoryResponse, Project, ProjectElement } from '@/types/project';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
@@ -78,6 +78,13 @@ export const api = {
   createElement: (projectId: string, payload: ElementPayload) => request<ProjectElement>(`/api/projects/${projectId}/elements`, { method: 'POST', body: JSON.stringify(payload) }, true),
   updateElement: (projectId: string, id: string, payload: Omit<ElementPayload, 'id'>) => request<ProjectElement>(`/api/projects/${projectId}/elements/${id}`, { method: 'PUT', body: JSON.stringify(payload) }, true),
   deleteElement: (projectId: string, id: string) => request<void>(`/api/projects/${projectId}/elements/${id}`, { method: 'DELETE' }, true),
+  saveDocument: (projectId: string, payload: DocumentPayload) => request<DocumentState>(`/api/projects/${projectId}/document`, { method: 'PUT', body: JSON.stringify(payload) }, true),
+  documentHistory: (projectId: string, limit = 100) => request<HistoryResponse>(`/api/projects/${projectId}/history?limit=${limit}`),
+  undoDocument: (projectId: string) => request<DocumentState>(`/api/projects/${projectId}/history/undo`, { method: 'POST' }, true),
+  redoDocument: (projectId: string) => request<DocumentState>(`/api/projects/${projectId}/history/redo`, { method: 'POST' }, true),
+  restoreRevision: (projectId: string, revision: number) => request<DocumentState>(`/api/projects/${projectId}/history/${revision}/restore`, { method: 'POST' }, true),
 };
+
+export type DocumentPayload = { name?: string; design_settings?: DesignSettings; elements: ElementPayload[] };
 
 export type ElementPayload = { id?: string; element_type: ElementType; x1: number; y1: number; x2: number; y2: number; length: number; rotation: number; properties: Record<string, unknown> };

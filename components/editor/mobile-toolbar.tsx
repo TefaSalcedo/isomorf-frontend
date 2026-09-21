@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, DoorOpen, GripVertical, Layers3, Minus, MousePointer2, Redo, SlidersHorizontal, Square, Trash2, Undo } from 'lucide-react';
+import { Box, DoorOpen, GripVertical, History, Layers3, Minus, MousePointer2, Redo, SlidersHorizontal, Square, Trash2, Undo } from 'lucide-react';
 import type { EditorState, Tool } from '@/hooks/use-editor-state';
 
 type EditorView = '2d' | '3d' | 'loads' | 'fem';
@@ -22,6 +22,7 @@ export function MobileToolbar({
   onOpenTools,
   onOpenInspector,
   onOpenLayers,
+  onOpenHistory,
 }: {
   state: EditorState;
   actions: { setTool: (tool: Tool) => void; undo: () => void; redo: () => void; deleteSelection: () => void };
@@ -30,6 +31,7 @@ export function MobileToolbar({
   onOpenTools: () => void;
   onOpenInspector: () => void;
   onOpenLayers: () => void;
+  onOpenHistory: () => void;
 }) {
   return (
     <nav className="shrink-0 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]">
@@ -51,8 +53,9 @@ export function MobileToolbar({
           <BarButton key={id} label={label} icon={Icon} active={state.tool === id} onClick={() => actions.setTool(id)} />
         ))}
         <span className="mx-1 h-8 w-px shrink-0 bg-slate-200" />
-        <BarButton label="Deshacer" icon={Undo} disabled={state.past.length === 0} onClick={actions.undo} />
-        <BarButton label="Rehacer" icon={Redo} disabled={state.future.length === 0} onClick={actions.redo} />
+        <BarButton label="Deshacer" icon={Undo} disabled={state.revision <= 1 || state.historyBusy} onClick={actions.undo} />
+        <BarButton label="Rehacer" icon={Redo} disabled={state.revision >= state.headRevision || state.historyBusy} onClick={actions.redo} />
+        <BarButton label="Historial" icon={History} onClick={onOpenHistory} />
         <BarButton label="Eliminar" icon={Trash2} disabled={state.selectedIds.length === 0} onClick={actions.deleteSelection} />
         <span className="mx-1 h-8 w-px shrink-0 bg-slate-200" />
         <BarButton label="Capas" icon={Layers3} onClick={onOpenLayers} />

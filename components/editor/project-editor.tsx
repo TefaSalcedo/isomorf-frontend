@@ -16,11 +16,11 @@ import { LoadEditor } from '@/components/editor/load-editor';
 import { LayersPanel } from '@/components/editor/layers-panel';
 import { MobileToolbar } from '@/components/editor/mobile-toolbar';
 import { FemComingSoon } from '@/components/editor/fem-coming-soon';
+import { HistoryPanel } from '@/components/editor/history-panel';
 import { MemberDesignPanel, isDesignable } from '@/components/editor/member-design-panel';
 import type { DesignPatch } from '@/components/editor/member-design-panel';
 import { api } from '@/lib/api-client';
-import type { Project, ProjectElement } from '@/types/project';
-import type { ElementPayload } from '@/lib/api-client';
+import type { DocumentState, Project, ProjectElement } from '@/types/project';
 import { defaultDesignSettings } from '@/lib/editor/elements';
 import { ensureLayers } from '@/lib/editor/layers';
 
@@ -41,11 +41,19 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   const [activeView, setActiveView] = useState<EditorView>('2d');
   const [mobilePanel, setMobilePanel] = useState<'none' | 'tools' | 'inspector'>('none');
   const compact = useIsCompact();
-  const original = useRef(new Map((initialProject.elements ?? []).map((element) => [element.id, element])));
   const stageRef = useRef<Konva.Stage | null>(null);
   const savingRef = useRef(false);
   const pendingSaveRef = useRef(false);
+  const savePromiseRef = useRef<Promise<void> | null>(null);
   const saveRef = useRef<() => Promise<void>>(async () => undefined);
+  const undoRef = useRef<() => Promise<void>>(async () => undefined);
+  const redoRef = useRef<() => Promise<void>>(async () => undefined);
+  const stateRef = useRef(state);
+  const projectNameRef = useRef(projectName);
+  const designSettingsRef = useRef(designSettings);
+  stateRef.current = state;
+  projectNameRef.current = projectName;
+  designSettingsRef.current = designSettings;
   const initialNameRef = useRef(initialProject.name || 'Sin nombre');
   const initialSettingsRef = useRef(
     JSON.stringify({
@@ -54,63 +62,140 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     }),
   );
 
-  async function save() {
+  function hasUnsavedChanges(): boolean {
+    const current = stateRef.current;
+    return (
+      current.dirty ||
+      projectNameRef.current.trim() !== initialNameRef.current ||
+      JSON.stringify({ ...designSettingsRef.current, layers: current.layers }) !== initialSettingsRef.current
+    );
+  }
+
+  async function save(): Promise<void> {
     if (savingRef.current) {
       pendingSaveRef.current = true;
-      return;
+      return savePromiseRef.current ?? Promise.resolve();
     }
     savingRef.current = true;
     setSaving(true);
     actions.clearError();
-    try {
-      const currentIds = new Set(state.elements.map((el) => el.id));
-      const settingsToSave = { ...designSettings, layers: state.layers };
-      const updatedProject = await api.updateProject(initialProject.id, {
-        name: projectName.trim() || 'Sin nombre',
-        design_settings: settingsToSave,
-      });
-      for (const element of original.current.values()) {
-        if (!currentIds.has(element.id)) {
-          await api.deleteElement(initialProject.id, element.id);
-        }
+    const elementsSnapshot = state.elements;
+    const layersSnapshot = state.layers;
+    const run = (async () => {
+      try {
+        const settingsToSave = { ...designSettingsRef.current, layers: layersSnapshot };
+        const nameToSave = projectNameRef.current.trim() || 'Sin nombre';
+        const doc = await api.saveDocument(initialProject.id, {
+          name: nameToSave,
+          design_settings: settingsToSave,
+          elements: elementsSnapshot.map((element) => ({
+            id: element.id,
+            element_type: element.element_type,
+            x1: element.x1,
+            y1: element.y1,
+            x2: element.x2,
+            y2: element.y2,
+            length: element.length,
+            rotation: element.rotation,
+            properties: element.properties as Record<string, unknown>,
+          })),
+        });
+        initialNameRef.current = nameToSave;
+        initialSettingsRef.current = JSON.stringify(settingsToSave);
+        const stillDirty = stateRef.current.elements !== elementsSnapshot || stateRef.current.layers !== layersSnapshot;
+        actions.markSaved(doc.revision, doc.head_revision, stillDirty);
+      } catch (saveError) {
+        actions.setError(saveError instanceof Error ? saveError.message : 'Unable to save changes');
+      } finally {
+        savingRef.current = false;
+        setSaving(false);
       }
-      const persisted: ProjectElement[] = [];
-      for (const element of state.elements) {
-        const base: Omit<ElementPayload, 'id'> = {
-          element_type: element.element_type,
-          x1: element.x1,
-          y1: element.y1,
-          x2: element.x2,
-          y2: element.y2,
-          length: element.length,
-          rotation: element.rotation,
-          properties: element.properties as Record<string, unknown>,
-        };
-        const savedElement = original.current.has(element.id)
-          ? await api.updateElement(initialProject.id, element.id, base)
-          : await api.createElement(initialProject.id, { id: element.id, ...base });
-        persisted.push(savedElement);
-      }
-      original.current = new Map(persisted.map((element) => [element.id, element]));
-      setProjectName(updatedProject.name || 'Sin nombre');
-      initialNameRef.current = updatedProject.name || 'Sin nombre';
-      initialSettingsRef.current = JSON.stringify(settingsToSave);
-      actions.markClean();
-    } catch (saveError) {
-      actions.setError(saveError instanceof Error ? saveError.message : 'Unable to save changes');
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
-      if (pendingSaveRef.current) {
-        pendingSaveRef.current = false;
-        window.setTimeout(() => void saveRef.current(), 0);
-      }
+    })();
+    savePromiseRef.current = run;
+    await run;
+    savePromiseRef.current = null;
+    if (pendingSaveRef.current) {
+      pendingSaveRef.current = false;
+      await save();
     }
+  }
+
+  async function flushPendingSave(): Promise<boolean> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      if (savePromiseRef.current) {
+        await savePromiseRef.current;
+        continue;
+      }
+      if (!hasUnsavedChanges()) return true;
+      await save();
+    }
+    return !hasUnsavedChanges();
+  }
+
+  function applyDocumentState(doc: DocumentState) {
+    setDesignSettings(doc.design_settings);
+    initialSettingsRef.current = JSON.stringify({
+      ...doc.design_settings,
+      layers: ensureLayers(doc.design_settings?.layers),
+    });
+    actions.applyDocument(doc.elements, doc.design_settings, doc.revision, doc.head_revision);
+  }
+
+  async function runHistoryAction(action: () => Promise<DocumentState>) {
+    if (stateRef.current.historyBusy) return;
+    const flushed = await flushPendingSave();
+    if (!flushed) {
+      actions.setError('Unable to save pending changes before changing revision');
+      return;
+    }
+    actions.setHistoryBusy(true);
+    try {
+      applyDocumentState(await action());
+    } catch (historyError) {
+      actions.setError(historyError instanceof Error ? historyError.message : 'Unable to change revision');
+    } finally {
+      actions.setHistoryBusy(false);
+    }
+  }
+
+  async function handleUndo() {
+    if (stateRef.current.revision <= 1) return;
+    await runHistoryAction(() => api.undoDocument(initialProject.id));
+  }
+
+  async function handleRedo() {
+    if (stateRef.current.revision >= stateRef.current.headRevision) return;
+    await runHistoryAction(() => api.redoDocument(initialProject.id));
+  }
+
+  async function handleRestore(revision: number) {
+    if (revision === stateRef.current.revision) return;
+    await runHistoryAction(() => api.restoreRevision(initialProject.id, revision));
   }
 
   useEffect(() => {
     saveRef.current = save;
+    undoRef.current = handleUndo;
+    redoRef.current = handleRedo;
   });
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return;
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        void undoRef.current();
+      } else if ((key === 'z' && event.shiftKey) || key === 'y') {
+        event.preventDefault();
+        void redoRef.current();
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   useEffect(() => {
     const projectChanged =
@@ -173,6 +258,16 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         actions={actions}
       />
     );
+  } else if (state.activeSection === 'history') {
+    rightPanel = (
+      <HistoryPanel
+        projectId={initialProject.id}
+        revision={state.revision}
+        headRevision={state.headRevision}
+        busy={state.historyBusy}
+        onRestore={(revision) => void handleRestore(revision)}
+      />
+    );
   } else if (state.activeSection === 'settings') {
     rightPanel = (
       <ProjectSettingsPanel
@@ -221,6 +316,9 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         projectName={projectName}
         state={state}
         actions={actions}
+        onUndo={() => void handleUndo()}
+        onRedo={() => void handleRedo()}
+        onOpenHistory={() => actions.setSection('history')}
         view={activeView}
         onViewChange={setActiveView}
         view3D={activeView === '3d'}
@@ -244,15 +342,16 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
       {compact && !state.cleanMode && (
         <MobileToolbar
           state={state}
-          actions={actions}
+          actions={{ ...actions, undo: () => void handleUndo(), redo: () => void handleRedo() }}
           view={activeView}
           onViewChange={setActiveView}
           onOpenTools={() => setMobilePanel('tools')}
           onOpenInspector={() => {
-            if (state.activeSection === 'layers') actions.setSection('draw');
+            if (state.activeSection === 'layers' || state.activeSection === 'history') actions.setSection('draw');
             setMobilePanel('inspector');
           }}
           onOpenLayers={() => { actions.setSection('layers'); setMobilePanel('inspector'); }}
+          onOpenHistory={() => { actions.setSection('history'); setMobilePanel('inspector'); }}
         />
       )}
 

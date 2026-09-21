@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   Undo,
   Redo,
+  History,
   Grid3x3,
   Magnet,
   ZoomIn,
@@ -34,6 +35,9 @@ export function EditorToolbar({
   onViewChange,
   view3D,
   onToggle3D,
+  onUndo,
+  onRedo,
+  onOpenHistory,
   onProjectNameCommit,
   onSave,
   onExport,
@@ -43,8 +47,6 @@ export function EditorToolbar({
   projectName: string;
   state: EditorState;
   actions: {
-    undo: () => void;
-    redo: () => void;
     toggleGrid: () => void;
     toggleSnap: () => void;
     zoomIn: () => void;
@@ -54,6 +56,9 @@ export function EditorToolbar({
     deleteSelection: () => void;
     setTool: (tool: Tool) => void;
   };
+  onUndo: () => void;
+  onRedo: () => void;
+  onOpenHistory: () => void;
   view: EditorView;
   onViewChange: (view: EditorView) => void;
   view3D: boolean;
@@ -116,8 +121,9 @@ export function EditorToolbar({
       </div>
       <div className="ml-auto flex items-center gap-1.5">
         <div className="hidden items-center gap-1.5 lg:flex">
-          <ToolbarButton onClick={actions.undo} disabled={state.past.length === 0} icon={Undo} label="Undo" />
-          <ToolbarButton onClick={actions.redo} disabled={state.future.length === 0} icon={Redo} label="Redo" />
+          <ToolbarButton onClick={onUndo} disabled={state.revision <= 1 || state.historyBusy} icon={Undo} label="Undo" />
+          <ToolbarButton onClick={onRedo} disabled={state.revision >= state.headRevision || state.historyBusy} icon={Redo} label="Redo" />
+          <ToolbarButton onClick={onOpenHistory} icon={History} label="History" active={state.activeSection === 'history'} />
           <Divider />
           <ToolbarButton onClick={actions.zoomOut} icon={ZoomOut} label="Zoom out" />
           <span className="w-12 text-center text-xs text-slate-500">{zoomPct}%</span>
@@ -141,7 +147,7 @@ export function EditorToolbar({
           <Save className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">{saving ? 'Saving…' : 'Save'}</span>
         </button>
-        <div className="ml-2 hidden sm:block"><SaveStatus dirty={state.dirty} saving={saving} error={state.error} /></div>
+        <div className="ml-2 hidden sm:block"><SaveStatus dirty={state.dirty} saving={saving} error={state.error} revision={state.revision} /></div>
       </div>
     </header>
   );

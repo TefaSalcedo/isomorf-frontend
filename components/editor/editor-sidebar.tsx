@@ -29,6 +29,7 @@ import {
   Zap,
   Trash2,
   Layers3,
+  History,
 } from 'lucide-react';
 import type { EditorState, Tool, ActiveSection } from '@/hooks/use-editor-state';
 
@@ -41,6 +42,7 @@ const SECTIONS: { id: ActiveSection; label: string; icon: typeof Home }[] = [
   { id: 'structure', label: 'Structure', icon: Columns3 },
   { id: 'layers', label: 'Capas', icon: Layers3 },
   { id: 'calculations', label: 'Calculations', icon: Calculator },
+  { id: 'history', label: 'Historial', icon: History },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
