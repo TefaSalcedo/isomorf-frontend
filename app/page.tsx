@@ -5,9 +5,12 @@ import Link from 'next/link';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
+import { useTranslations } from 'next-intl';
 import { Building2, Calculator, FileCheck, Play, Users } from 'lucide-react';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
 
 export default function Home() {
+  const t = useTranslations('landing');
   const heroRef = useRef<HTMLElement>(null);
   const blockRef = useRef<SVGGElement>(null);
   const cableRef = useRef<SVGLineElement>(null);
@@ -74,6 +77,9 @@ export default function Home() {
         ref={heroRef}
         className="grid-bg-light relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center"
       >
+        <div className="absolute right-6 top-6 z-10">
+          <LanguageSwitcher />
+        </div>
         <svg
           className="absolute inset-0 z-0 h-full w-full opacity-75"
           viewBox="0 0 1440 900"
@@ -312,24 +318,24 @@ export default function Home() {
 
         <div className="relative z-10 max-w-3xl">
           <p className="mb-5 font-mono text-sm uppercase tracking-[.35em] text-cyan-600">
-            Structural integration workspace
+            {t('eyebrow')}
           </p>
           <h1 className="text-6xl font-semibold tracking-tight text-slate-900 md:text-8xl">ISOMORF</h1>
           <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-600">
-            A technical environment for turning structural concepts into precise, editable geometry.
+            {t('subtitle')}
           </p>
           <div className="mt-10 flex justify-center gap-4">
             <Link
               className="rounded-lg bg-cyan-400 px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300"
               href="/register"
             >
-              Create workspace
+              {t('createWorkspace')}
             </Link>
             <Link
               className="rounded-lg border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:border-cyan-500 hover:text-cyan-600"
               href="/login"
             >
-              Sign in
+              {t('signIn')}
             </Link>
           </div>
         </div>
@@ -337,31 +343,31 @@ export default function Home() {
 
       <section className="mx-auto max-w-6xl px-6 py-24">
         <div className="mb-12 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">What we offer</h2>
+          <h2 className="text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">{t('offerTitle')}</h2>
           <p className="mx-auto mt-4 max-w-2xl text-slate-600">
-            A modern workspace built for structural and BIM teams.
+            {t('offerSubtitle')}
           </p>
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <ValueCard
             icon={Building2}
-            title="Integrated modeling"
-            description="Build structural geometry and link it directly to BIM data without switching tools."
+            title={t('features.modeling.title')}
+            description={t('features.modeling.description')}
           />
           <ValueCard
             icon={Calculator}
-            title="Cloud calculation"
-            description="Run load cases and preview FEM analysis from any browser, with results synced in real time."
+            title={t('features.calculation.title')}
+            description={t('features.calculation.description')}
           />
           <ValueCard
             icon={Users}
-            title="Team collaboration"
-            description="Share projects, plans and models with engineers, architects and reviewers in one place."
+            title={t('features.collaboration.title')}
+            description={t('features.collaboration.description')}
           />
           <ValueCard
             icon={FileCheck}
-            title="Technical deliverables"
-            description="Export drawings, reports and documentation ready for construction and code review."
+            title={t('features.deliverables.title')}
+            description={t('features.deliverables.description')}
           />
         </div>
       </section>
@@ -372,7 +378,7 @@ export default function Home() {
             <div className="grid h-20 w-20 place-items-center rounded-full border border-slate-200 bg-white/80 text-cyan-600 backdrop-blur">
               <Play className="h-8 w-8 fill-current" />
             </div>
-            <p className="mt-4 text-sm font-semibold uppercase tracking-wider text-slate-500">Video coming soon</p>
+            <p className="mt-4 text-sm font-semibold uppercase tracking-wider text-slate-500">{t('videoComingSoon')}</p>
           </div>
         </div>
       </section>

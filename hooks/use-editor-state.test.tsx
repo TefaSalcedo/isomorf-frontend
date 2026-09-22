@@ -1,7 +1,12 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { LocaleProvider } from '@/lib/i18n/locale-context';
 import type { Project, ProjectElement } from '@/types/project';
 import { useEditorState } from './use-editor-state';
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <LocaleProvider>{children}</LocaleProvider>
+);
 
 function project(elements: ProjectElement[] = []): Project {
   return { id: 'p1', public_id: 'pub-1', name: 'P', description: '', design_settings: {}, created_at: '', updated_at: '', elements, current_revision: 1, head_revision: 1 };
@@ -18,14 +23,14 @@ function drawWall(result: { current: ReturnType<typeof useEditorState> }) {
 
 describe('useEditorState', () => {
   it('loads project elements and default layers', () => {
-    const { result } = renderHook(() => useEditorState(project()));
+    const { result } = renderHook(() => useEditorState(project()), { wrapper });
     expect(result.current.state.layers).toHaveLength(3);
     expect(result.current.state.elements).toHaveLength(0);
     expect(result.current.state.dirty).toBe(false);
   });
 
   it('creates a wall through the draft flow and marks the project dirty', () => {
-    const { result } = renderHook(() => useEditorState(project()));
+    const { result } = renderHook(() => useEditorState(project()), { wrapper });
     drawWall(result);
     const { state } = result.current;
     expect(state.elements).toHaveLength(1);
@@ -36,13 +41,13 @@ describe('useEditorState', () => {
   });
 
   it('seeds revision pointers from the loaded project', () => {
-    const { result } = renderHook(() => useEditorState({ ...project(), current_revision: 3, head_revision: 5 }));
+    const { result } = renderHook(() => useEditorState({ ...project(), current_revision: 3, head_revision: 5 }), { wrapper });
     expect(result.current.state.revision).toBe(3);
     expect(result.current.state.headRevision).toBe(5);
   });
 
   it('applyDocument replaces elements, updates revisions and clears dirty', () => {
-    const { result } = renderHook(() => useEditorState(project()));
+    const { result } = renderHook(() => useEditorState(project()), { wrapper });
     drawWall(result);
     expect(result.current.state.dirty).toBe(true);
     const wall = result.current.state.elements[0];
@@ -56,14 +61,14 @@ describe('useEditorState', () => {
   });
 
   it('deletes the current selection', () => {
-    const { result } = renderHook(() => useEditorState(project()));
+    const { result } = renderHook(() => useEditorState(project()), { wrapper });
     drawWall(result);
     act(() => result.current.actions.deleteSelection());
     expect(result.current.state.elements).toHaveLength(0);
   });
 
   it('clamps zoom between 0.2 and 5', () => {
-    const { result } = renderHook(() => useEditorState(project()));
+    const { result } = renderHook(() => useEditorState(project()), { wrapper });
     act(() => result.current.actions.setZoom(100));
     expect(result.current.state.viewport.zoom).toBe(5);
     act(() => result.current.actions.setZoom(0.01));
@@ -71,7 +76,7 @@ describe('useEditorState', () => {
   });
 
   it('keeps at least one layer when removing layers', () => {
-    const { result } = renderHook(() => useEditorState(project()));
+    const { result } = renderHook(() => useEditorState(project()), { wrapper });
     act(() => {
       for (const layer of result.current.state.layers) result.current.actions.removeLayer(layer.id);
     });
@@ -79,7 +84,7 @@ describe('useEditorState', () => {
   });
 
   it('ignores element updates on locked layers', () => {
-    const { result } = renderHook(() => useEditorState(project()));
+    const { result } = renderHook(() => useEditorState(project()), { wrapper });
     drawWall(result);
     const wall = result.current.state.elements[0];
     const layerId = (wall.properties as { layer_id?: string }).layer_id!;

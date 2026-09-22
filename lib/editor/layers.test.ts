@@ -36,9 +36,14 @@ describe('defaultLayerFor', () => {
 describe('createLayer', () => {
   it('names the layer and cycles the palette', () => {
     const layer = createLayer(1);
-    expect(layer.name).toBe('Capa 2');
+    expect(layer.name).toBe('Layer 2');
     expect(layer.color).toBe(LAYER_PALETTE[1]);
     expect(layer.visible).toBe(true);
+  });
+
+  it('names layers in Spanish when locale is es', () => {
+    expect(createLayer(1, 'es').name).toBe('Capa 2');
+    expect(defaultLayers('es').map((layer) => layer.name)).toEqual(['Arquitectura', 'Estructura', 'Vanos']);
   });
 });
 

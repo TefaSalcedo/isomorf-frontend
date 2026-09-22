@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { ProjectElement } from '@/types/project';
 import { cmToMeters, metersToCm } from '@/lib/editor/geometry';
 
@@ -10,17 +11,20 @@ export function PropertiesPanel({
   elements: ProjectElement[];
   onUpdate: (id: string, changes: Partial<ProjectElement>) => void;
 }) {
+  const t = useTranslations('editor.panels.properties');
+  const tt = useTranslations('editor.tools');
+
   if (elements.length === 0) {
     return (
       <div className="h-full overflow-y-auto p-5">
-        <p className="text-sm text-slate-500">Select an element to edit its properties.</p>
+        <p className="text-sm text-slate-500">{t('empty')}</p>
       </div>
     );
   }
   if (elements.length > 1) {
     return (
       <div className="h-full overflow-y-auto p-5">
-        <p className="text-sm text-slate-500">{elements.length} elements selected. Use the right panel to edit one at a time or open Calculations for a summary.</p>
+        <p className="text-sm text-slate-500">{t('multi', { count: elements.length })}</p>
       </div>
     );
   }
@@ -28,8 +32,8 @@ export function PropertiesPanel({
 
   return (
     <div className="h-full overflow-y-auto p-5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Properties</p>
-      <p className="mt-1 text-sm font-medium capitalize text-slate-900">{el.element_type}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{t('title')}</p>
+      <p className="mt-1 text-sm font-medium capitalize text-slate-900">{tt(el.element_type)}</p>
       <div className="mt-5 space-y-4">
         {el.element_type === 'wall' && (
           <WallFields wall={el} onUpdate={onUpdate} />
@@ -134,31 +138,32 @@ function WallFields({
   wall: Extract<ProjectElement, { element_type: 'wall' }>;
   onUpdate: (id: string, changes: Partial<ProjectElement>) => void;
 }) {
+  const t = useTranslations('editor.panels.properties');
   const p = wall.properties;
   return (
     <>
       <Field
-        label="Length (m)"
+        label={t('length')}
         value={cmToMeters(wall.length).toFixed(2)}
         onChange={(v) => onUpdate(wall.id, { length: metersToCm(v) })}
       />
       <Field
-        label="Height (m)"
+        label={t('height')}
         value={p.height}
         onChange={(v) => onUpdate(wall.id, { properties: { height: v } } as Partial<ProjectElement>)}
       />
       <Field
-        label="Thickness (m)"
+        label={t('thickness')}
         value={p.thickness}
         onChange={(v) => onUpdate(wall.id, { properties: { thickness: v } } as Partial<ProjectElement>)}
       />
       <SelectField
-        label="Join mode"
+        label={t('joinMode')}
         value={p.join_mode}
         options={[
-          { value: 'perpendicular', label: '90°' },
-          { value: '45', label: '45°' },
-          { value: 'free', label: 'Free' },
+          { value: 'perpendicular', label: t('joinPerpendicular') },
+          { value: '45', label: t('join45') },
+          { value: 'free', label: t('joinFree') },
         ]}
         onChange={(v) =>
           onUpdate(wall.id, { properties: { join_mode: v as 'perpendicular' | '45' | 'free' } } as Partial<ProjectElement>)
@@ -166,7 +171,7 @@ function WallFields({
       />
       {p.join_mode === 'free' && (
         <Field
-          label="Join angle (°)"
+          label={t('joinAngle')}
           value={p.join_angle}
           onChange={(v) => onUpdate(wall.id, { properties: { join_angle: v } } as Partial<ProjectElement>)}
         />
@@ -182,13 +187,14 @@ function ColumnFields({
   column: Extract<ProjectElement, { element_type: 'column' }>;
   onUpdate: (id: string, changes: Partial<ProjectElement>) => void;
 }) {
+  const t = useTranslations('editor.panels.properties');
   const p = column.properties;
   return (
     <>
-      <Field label="Width (m)" value={p.width} onChange={(v) => onUpdate(column.id, { properties: { width: v } } as Partial<ProjectElement>)} />
-      <Field label="Depth (m)" value={p.depth} onChange={(v) => onUpdate(column.id, { properties: { depth: v } } as Partial<ProjectElement>)} />
-      <Field label="Height (m)" value={p.height} onChange={(v) => onUpdate(column.id, { properties: { height: v } } as Partial<ProjectElement>)} />
-      <TextField label="Material" value={p.material} onChange={(v) => onUpdate(column.id, { properties: { material: v } } as Partial<ProjectElement>)} />
+      <Field label={t('width')} value={p.width} onChange={(v) => onUpdate(column.id, { properties: { width: v } } as Partial<ProjectElement>)} />
+      <Field label={t('depth')} value={p.depth} onChange={(v) => onUpdate(column.id, { properties: { depth: v } } as Partial<ProjectElement>)} />
+      <Field label={t('height')} value={p.height} onChange={(v) => onUpdate(column.id, { properties: { height: v } } as Partial<ProjectElement>)} />
+      <TextField label={t('material')} value={p.material} onChange={(v) => onUpdate(column.id, { properties: { material: v } } as Partial<ProjectElement>)} />
     </>
   );
 }
@@ -200,13 +206,14 @@ function BeamFields({
   beam: Extract<ProjectElement, { element_type: 'beam' }>;
   onUpdate: (id: string, changes: Partial<ProjectElement>) => void;
 }) {
+  const t = useTranslations('editor.panels.properties');
   const p = beam.properties;
   return (
     <>
-      <Field label="Width (m)" value={p.width} onChange={(v) => onUpdate(beam.id, { properties: { width: v } } as Partial<ProjectElement>)} />
-      <Field label="Height (m)" value={p.height} onChange={(v) => onUpdate(beam.id, { properties: { height: v } } as Partial<ProjectElement>)} />
-      <Field label="Length (m)" value={p.length} onChange={(v) => onUpdate(beam.id, { properties: { length: v }, length: metersToCm(v) } as Partial<ProjectElement>)} />
-      <TextField label="Material" value={p.material} onChange={(v) => onUpdate(beam.id, { properties: { material: v } } as Partial<ProjectElement>)} />
+      <Field label={t('width')} value={p.width} onChange={(v) => onUpdate(beam.id, { properties: { width: v } } as Partial<ProjectElement>)} />
+      <Field label={t('height')} value={p.height} onChange={(v) => onUpdate(beam.id, { properties: { height: v } } as Partial<ProjectElement>)} />
+      <Field label={t('length')} value={p.length} onChange={(v) => onUpdate(beam.id, { properties: { length: v }, length: metersToCm(v) } as Partial<ProjectElement>)} />
+      <TextField label={t('material')} value={p.material} onChange={(v) => onUpdate(beam.id, { properties: { material: v } } as Partial<ProjectElement>)} />
     </>
   );
 }
@@ -218,16 +225,17 @@ function DoorFields({
   door: Extract<ProjectElement, { element_type: 'door' }>;
   onUpdate: (id: string, changes: Partial<ProjectElement>) => void;
 }) {
+  const t = useTranslations('editor.panels.properties');
   const p = door.properties;
   return (
     <>
-      <Field label="Width (m)" value={p.width ?? 0} onChange={(v) => onUpdate(door.id, { properties: { width: v } } as Partial<ProjectElement>)} />
+      <Field label={t('width')} value={p.width ?? 0} onChange={(v) => onUpdate(door.id, { properties: { width: v } } as Partial<ProjectElement>)} />
       <SelectField
-        label="Swing"
+        label={t('swing')}
         value={p.swing ?? 'left'}
         options={[
-          { value: 'left', label: 'Left' },
-          { value: 'right', label: 'Right' },
+          { value: 'left', label: t('swingLeft') },
+          { value: 'right', label: t('swingRight') },
         ]}
         onChange={(v) => onUpdate(door.id, { properties: { swing: v as 'left' | 'right' } } as Partial<ProjectElement>)}
       />
@@ -242,11 +250,12 @@ function WindowFields({
   window: Extract<ProjectElement, { element_type: 'window' }>;
   onUpdate: (id: string, changes: Partial<ProjectElement>) => void;
 }) {
+  const t = useTranslations('editor.panels.properties');
   const p = window.properties;
   return (
     <>
-      <Field label="Width (m)" value={p.width ?? 0} onChange={(v) => onUpdate(window.id, { properties: { width: v } } as Partial<ProjectElement>)} />
-      <Field label="Sill height (m)" value={p.sill_height ?? 0.9} onChange={(v) => onUpdate(window.id, { properties: { sill_height: v } } as Partial<ProjectElement>)} />
+      <Field label={t('width')} value={p.width ?? 0} onChange={(v) => onUpdate(window.id, { properties: { width: v } } as Partial<ProjectElement>)} />
+      <Field label={t('sillHeight')} value={p.sill_height ?? 0.9} onChange={(v) => onUpdate(window.id, { properties: { sill_height: v } } as Partial<ProjectElement>)} />
     </>
   );
 }

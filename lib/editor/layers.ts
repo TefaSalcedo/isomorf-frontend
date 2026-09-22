@@ -1,3 +1,4 @@
+import { translate, type Locale } from '@/lib/i18n/messages';
 import type { PlanLayer, ProjectElement } from '@/types/project';
 
 export const LAYER_PALETTE = [
@@ -11,16 +12,16 @@ export const LAYER_PALETTE = [
   '#db2777',
 ];
 
-export function defaultLayers(): PlanLayer[] {
+export function defaultLayers(locale: Locale = 'en'): PlanLayer[] {
   return [
-    { id: 'architecture', name: 'Arquitectura', color: '#1f2937', visible: true, locked: false },
-    { id: 'structure', name: 'Estructura', color: '#7c3aed', visible: true, locked: false },
-    { id: 'openings', name: 'Vanos', color: '#0891b2', visible: true, locked: false },
+    { id: 'architecture', name: translate(locale, 'layers.architecture'), color: '#1f2937', visible: true, locked: false },
+    { id: 'structure', name: translate(locale, 'layers.structure'), color: '#7c3aed', visible: true, locked: false },
+    { id: 'openings', name: translate(locale, 'layers.openings'), color: '#0891b2', visible: true, locked: false },
   ];
 }
 
-export function ensureLayers(layers: PlanLayer[] | undefined): PlanLayer[] {
-  return layers && layers.length > 0 ? layers : defaultLayers();
+export function ensureLayers(layers: PlanLayer[] | undefined, locale: Locale = 'en'): PlanLayer[] {
+  return layers && layers.length > 0 ? layers : defaultLayers(locale);
 }
 
 export function defaultLayerFor(elementType: ProjectElement['element_type']): string {
@@ -29,10 +30,10 @@ export function defaultLayerFor(elementType: ProjectElement['element_type']): st
   return 'architecture';
 }
 
-export function createLayer(index: number): PlanLayer {
+export function createLayer(index: number, locale: Locale = 'en'): PlanLayer {
   return {
     id: crypto.randomUUID(),
-    name: `Capa ${index + 1}`,
+    name: translate(locale, 'layers.newName', { index: index + 1 }),
     color: LAYER_PALETTE[index % LAYER_PALETTE.length],
     visible: true,
     locked: false,
