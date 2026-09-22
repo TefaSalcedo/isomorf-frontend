@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import type { ProjectElement, WallElement, ColumnElement, BeamElement } from '@/types/project';
@@ -108,6 +109,7 @@ export function Model3DPreview({
   selectedIds?: string[];
   onSelectElement?: (id: string) => void;
 }) {
+  const t = useTranslations('editor.canvas');
   const walls = useMemo(
     () => elements.filter((el) => el.element_type === 'wall') as WallElement[],
     [elements],
@@ -125,13 +127,22 @@ export function Model3DPreview({
   const cameraY = Math.max(bounds.size * 0.6, 6);
 
   return (
-    <div className="relative h-full w-full bg-slate-50">
+    <div
+      className="relative h-full w-full bg-slate-50"
+      role="application"
+      aria-label={t('label3d')}
+      aria-describedby="canvas-3d-help"
+    >
+      <p id="canvas-3d-help" className="sr-only">{t('help3d')}</p>
+      <p className="sr-only" role="status" aria-live="polite">
+        {t('status3d', { elements: elements.length, selected: selectedIds.length })}
+      </p>
       <Canvas
         camera={{
           position: [bounds.center.x + cameraDistance, cameraY, bounds.center.z + cameraDistance],
           fov: 45,
         }}
-        shadows
+        shadows="percentage"
       >
         <ambientLight intensity={0.55} />
         <directionalLight

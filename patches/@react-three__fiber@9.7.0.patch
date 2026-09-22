@@ -1,0 +1,186 @@
+diff --git a/dist/events-156d8d12.esm.js b/dist/events-156d8d12.esm.js
+index 9681d0c62238d67f2d5ad389307dfd45ee8ba7ba..3f5395b84cafde347b6a562509f45369d41af8a6 100644
+--- a/dist/events-156d8d12.esm.js
++++ b/dist/events-156d8d12.esm.js
+@@ -7,6 +7,48 @@ import Tb, { unstable_getCurrentPriorityLevel, unstable_IdlePriority, unstable_L
+ import { jsx, Fragment } from 'react/jsx-runtime';
+ import { useFiber, useContextBridge, traverseFiber } from 'its-fine';
+ 
++
++// Patched: drop-in replacement for the deprecated THREE.Clock (deprecated in three r185).
++// Reimplements the exact Clock API surface the frameloop relies on, backed by
++// performance.now(), so no deprecation warning is emitted.
++class CompatClock {
++  constructor(autoStart = true) {
++    this.autoStart = autoStart;
++    this.startTime = 0;
++    this.oldTime = 0;
++    this.elapsedTime = 0;
++    this.running = false;
++  }
++  start() {
++    this.startTime = performance.now();
++    this.oldTime = this.startTime;
++    this.elapsedTime = 0;
++    this.running = true;
++  }
++  stop() {
++    this.getElapsedTime();
++    this.running = false;
++    this.autoStart = false;
++  }
++  getElapsedTime() {
++    this.getDelta();
++    return this.elapsedTime;
++  }
++  getDelta() {
++    let diff = 0;
++    if (this.autoStart && !this.running) {
++      this.start();
++      return 0;
++    }
++    if (this.running) {
++      const newTime = performance.now();
++      diff = (newTime - this.oldTime) / 1000;
++      this.oldTime = newTime;
++      this.elapsedTime += diff;
++    }
++    return diff;
++  }
++}
+ var threeTypes = /*#__PURE__*/Object.freeze({
+   __proto__: null
+ });
+@@ -1013,7 +1055,7 @@ const createStore = (invalidate, advance) => {
+       linear: false,
+       flat: false,
+       controls: null,
+-      clock: new THREE.Clock(),
++      clock: new CompatClock(),
+       pointer,
+       mouse: pointer,
+       frameloop: 'always',
+diff --git a/dist/events-4c71f21f.cjs.prod.js b/dist/events-4c71f21f.cjs.prod.js
+index 65e702ef67d954387307b168529752690a586fd0..101ebfbddc0fd7051237217c89044d8125cc1c68 100644
+--- a/dist/events-4c71f21f.cjs.prod.js
++++ b/dist/events-4c71f21f.cjs.prod.js
+@@ -29,6 +29,48 @@ function _interopNamespace(e) {
+ }
+ 
+ var React__namespace = /*#__PURE__*/_interopNamespace(React);
++
++// Patched: drop-in replacement for the deprecated THREE.Clock (deprecated in three r185).
++// Reimplements the exact Clock API surface the frameloop relies on, backed by
++// performance.now(), so no deprecation warning is emitted.
++class CompatClock {
++  constructor(autoStart = true) {
++    this.autoStart = autoStart;
++    this.startTime = 0;
++    this.oldTime = 0;
++    this.elapsedTime = 0;
++    this.running = false;
++  }
++  start() {
++    this.startTime = performance.now();
++    this.oldTime = this.startTime;
++    this.elapsedTime = 0;
++    this.running = true;
++  }
++  stop() {
++    this.getElapsedTime();
++    this.running = false;
++    this.autoStart = false;
++  }
++  getElapsedTime() {
++    this.getDelta();
++    return this.elapsedTime;
++  }
++  getDelta() {
++    let diff = 0;
++    if (this.autoStart && !this.running) {
++      this.start();
++      return 0;
++    }
++    if (this.running) {
++      const newTime = performance.now();
++      diff = (newTime - this.oldTime) / 1000;
++      this.oldTime = newTime;
++      this.elapsedTime += diff;
++    }
++    return diff;
++  }
++}
+ var THREE__namespace = /*#__PURE__*/_interopNamespace(THREE);
+ var Tb__default = /*#__PURE__*/_interopDefault(Tb);
+ 
+@@ -1038,7 +1080,7 @@ const createStore = (invalidate, advance) => {
+       linear: false,
+       flat: false,
+       controls: null,
+-      clock: new THREE__namespace.Clock(),
++      clock: new CompatClock(),
+       pointer,
+       mouse: pointer,
+       frameloop: 'always',
+diff --git a/dist/events-b1bdeb1a.cjs.dev.js b/dist/events-b1bdeb1a.cjs.dev.js
+index 7785529f79299cdefe706c0df1d5c756817ca274..c85465e1cc71834e399bf9f3b29cfafb3664afa1 100644
+--- a/dist/events-b1bdeb1a.cjs.dev.js
++++ b/dist/events-b1bdeb1a.cjs.dev.js
+@@ -29,6 +29,48 @@ function _interopNamespace(e) {
+ }
+ 
+ var React__namespace = /*#__PURE__*/_interopNamespace(React);
++
++// Patched: drop-in replacement for the deprecated THREE.Clock (deprecated in three r185).
++// Reimplements the exact Clock API surface the frameloop relies on, backed by
++// performance.now(), so no deprecation warning is emitted.
++class CompatClock {
++  constructor(autoStart = true) {
++    this.autoStart = autoStart;
++    this.startTime = 0;
++    this.oldTime = 0;
++    this.elapsedTime = 0;
++    this.running = false;
++  }
++  start() {
++    this.startTime = performance.now();
++    this.oldTime = this.startTime;
++    this.elapsedTime = 0;
++    this.running = true;
++  }
++  stop() {
++    this.getElapsedTime();
++    this.running = false;
++    this.autoStart = false;
++  }
++  getElapsedTime() {
++    this.getDelta();
++    return this.elapsedTime;
++  }
++  getDelta() {
++    let diff = 0;
++    if (this.autoStart && !this.running) {
++      this.start();
++      return 0;
++    }
++    if (this.running) {
++      const newTime = performance.now();
++      diff = (newTime - this.oldTime) / 1000;
++      this.oldTime = newTime;
++      this.elapsedTime += diff;
++    }
++    return diff;
++  }
++}
+ var THREE__namespace = /*#__PURE__*/_interopNamespace(THREE);
+ var Tb__default = /*#__PURE__*/_interopDefault(Tb);
+ 
+@@ -1038,7 +1080,7 @@ const createStore = (invalidate, advance) => {
+       linear: false,
+       flat: false,
+       controls: null,
+-      clock: new THREE__namespace.Clock(),
++      clock: new CompatClock(),
+       pointer,
+       mouse: pointer,
+       frameloop: 'always',
