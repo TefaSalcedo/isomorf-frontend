@@ -22,6 +22,8 @@ import {
 } from '@/lib/editor/geometry';
 import { calculateSelectionSummary } from '@/lib/editor/calculations';
 import { createLayer, defaultLayerFor, ensureLayers, isElementLocked } from '@/lib/editor/layers';
+import { useLocale } from '@/lib/i18n/locale-context';
+import type { Locale } from '@/lib/i18n/messages';
 
 export type Tool =
   | 'select'
@@ -72,7 +74,7 @@ export type EditorState = {
 };
 
 export type EditorAction =
-  | { type: 'load'; project: Project }
+  | { type: 'load'; project: Project; locale?: Locale }
   | { type: 'setTool'; tool: Tool }
   | { type: 'setSection'; section: ActiveSection }
   | { type: 'select'; id: string; add: boolean }
@@ -93,10 +95,10 @@ export type EditorAction =
   | { type: 'cancelDraft' }
   | { type: 'updateElement'; id: string; changes: Partial<ProjectElement> }
   | { type: 'deleteSelection' }
-  | { type: 'applyDocument'; elements: ProjectElement[]; designSettings: Project['design_settings']; revision: number; headRevision: number }
+  | { type: 'applyDocument'; elements: ProjectElement[]; designSettings: Project['design_settings']; revision: number; headRevision: number; locale?: Locale }
   | { type: 'markSaved'; revision: number; headRevision: number; keepDirty?: boolean }
   | { type: 'setHistoryBusy'; busy: boolean }
-  | { type: 'addLayer' }
+  | { type: 'addLayer'; locale?: Locale }
   | { type: 'updateLayer'; id: string; changes: Partial<PlanLayer> }
   | { type: 'removeLayer'; id: string }
   | { type: 'setActiveLayer'; id: string }
@@ -250,7 +252,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case 'load': {
       const elements = (action.project.elements ?? []).map(normalizeElement);
-      const layers = ensureLayers(action.project.design_settings?.layers);
+      const layers = ensureLayers(action.project.design_settings?.layers, action.locale);
       return {
         ...state,
         elements,
@@ -284,7 +286,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     case 'selectBox':
       return { ...state, selectedIds: action.ids };
     case 'addLayer': {
-      const layer = createLayer(state.layers.length);
+      const layer = createLayer(state.layers.length, action.locale);
       return { ...state, layers: [...state.layers, layer], activeLayerId: layer.id, dirty: true };
     }
     case 'updateLayer':
@@ -484,7 +486,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       };
     }
     case 'applyDocument': {
-      const layers = ensureLayers(action.designSettings?.layers);
+      const layers = ensureLayers(action.designSettings?.layers, action.locale);
       const activeLayerStillExists = layers.some((layer) => layer.id === state.activeLayerId);
       return {
         ...state,
@@ -539,8 +541,9 @@ const initialState: EditorState = {
 };
 
 export function useEditorState(project: Project) {
+  const { locale } = useLocale();
   const [state, dispatch] = useReducer(editorReducer, initialState, (init) =>
-    editorReducer(init, { type: 'load', project }),
+    editorReducer(init, { type: 'load', project, locale }),
   );
 
   const selectedElements = useMemo(
@@ -573,10 +576,10 @@ export function useEditorState(project: Project) {
       updateElement: (id: string, changes: Partial<ProjectElement>) => dispatch({ type: 'updateElement', id, changes }),
       deleteSelection: () => dispatch({ type: 'deleteSelection' }),
       applyDocument: (elements: ProjectElement[], designSettings: Project['design_settings'], revision: number, headRevision: number) =>
-        dispatch({ type: 'applyDocument', elements, designSettings, revision, headRevision }),
+        dispatch({ type: 'applyDocument', elements, designSettings, revision, headRevision, locale }),
       markSaved: (revision: number, headRevision: number, keepDirty = false) => dispatch({ type: 'markSaved', revision, headRevision, keepDirty }),
       setHistoryBusy: (busy: boolean) => dispatch({ type: 'setHistoryBusy', busy }),
-      addLayer: () => dispatch({ type: 'addLayer' }),
+      addLayer: () => dispatch({ type: 'addLayer', locale }),
       updateLayer: (id: string, changes: Partial<PlanLayer>) => dispatch({ type: 'updateLayer', id, changes }),
       removeLayer: (id: string) => dispatch({ type: 'removeLayer', id }),
       setActiveLayer: (id: string) => dispatch({ type: 'setActiveLayer', id }),
@@ -584,9 +587,9 @@ export function useEditorState(project: Project) {
       markClean: () => dispatch({ type: 'markClean' }),
       setError: (error: string) => dispatch({ type: 'setError', error }),
       clearError: () => dispatch({ type: 'clearError' }),
-      loadProject: (p: Project) => dispatch({ type: 'load', project: p }),
+      loadProject: (p: Project) => dispatch({ type: 'load', project: p, locale }),
     }),
-    [],
+    [locale],
   );
 
   return { state, actions, selectedElements, summary };

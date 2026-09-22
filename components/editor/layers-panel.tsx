@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Check, Eye, EyeOff, Layers3, Lock, Plus, Trash2, Unlock } from 'lucide-react';
 import type { PlanLayer, ProjectElement } from '@/types/project';
 import { LAYER_PALETTE, countElementsByLayer } from '@/lib/editor/layers';
@@ -20,6 +21,7 @@ type LayersPanelProps = {
 };
 
 export function LayersPanel({ layers, activeLayerId, elements, selectionCount, actions }: LayersPanelProps) {
+  const t = useTranslations('editor.panels.layers');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
 
@@ -38,10 +40,10 @@ export function LayersPanel({ layers, activeLayerId, elements, selectionCount, a
     <div className="flex h-full flex-col overflow-y-auto p-4">
       <div className="flex items-center gap-2">
         <Layers3 className="h-4 w-4 text-violet-600" />
-        <h2 className="text-sm font-bold text-slate-800">Capas del plano 2D</h2>
+        <h2 className="text-sm font-bold text-slate-800">{t('title')}</h2>
       </div>
       <p className="mt-1 text-[11px] text-slate-400">
-        Los elementos nuevos se dibujan en la capa activa. Renombra, cambia el color, oculta o bloquea cada capa.
+        {t('subtitle')}
       </p>
 
       <button
@@ -50,7 +52,7 @@ export function LayersPanel({ layers, activeLayerId, elements, selectionCount, a
         className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 py-2 text-xs font-semibold text-white hover:bg-violet-700"
       >
         <Plus className="h-3.5 w-3.5" />
-        Nueva capa
+        {t('newLayer')}
       </button>
 
       <ul className="mt-3 space-y-2">
@@ -63,13 +65,13 @@ export function LayersPanel({ layers, activeLayerId, elements, selectionCount, a
               className={`rounded-xl border p-2.5 transition ${active ? 'border-violet-400 bg-violet-50' : 'border-slate-200 bg-white'}`}
             >
               <div className="flex items-center gap-2">
-                <label className="relative h-6 w-6 shrink-0 cursor-pointer rounded-md border border-slate-200" style={{ background: layer.color }} title={`Color de ${layer.name}`}>
+                <label className="relative h-6 w-6 shrink-0 cursor-pointer rounded-md border border-slate-200" style={{ background: layer.color }} title={t('layerColor', { name: layer.name })}>
                   <input
                     type="color"
                     value={layer.color}
                     onChange={(event) => actions.updateLayer(layer.id, { color: event.target.value })}
                     className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                    aria-label={`Color de la capa ${layer.name}`}
+                    aria-label={t('colorInputLabel', { name: layer.name })}
                   />
                 </label>
                 {editingId === layer.id ? (
@@ -83,14 +85,14 @@ export function LayersPanel({ layers, activeLayerId, elements, selectionCount, a
                       if (event.key === 'Escape') setEditingId(null);
                     }}
                     className="min-w-0 flex-1 rounded-md border border-violet-300 px-2 py-1 text-xs outline-none"
-                    aria-label="Nombre de la capa"
+                    aria-label={t('layerName')}
                   />
                 ) : (
                   <button
                     type="button"
                     onClick={() => { actions.setActiveLayer(layer.id); startRename(layer); }}
                     className="min-w-0 flex-1 truncate text-left text-xs font-semibold text-slate-700"
-                    title="Renombrar capa"
+                    title={t('rename')}
                   >
                     {layer.name}
                   </button>
@@ -98,19 +100,19 @@ export function LayersPanel({ layers, activeLayerId, elements, selectionCount, a
                 <span className="shrink-0 text-[10px] text-slate-400">{count}</span>
                 <IconToggle
                   onClick={() => actions.updateLayer(layer.id, { visible: !layer.visible })}
-                  label={layer.visible ? `Ocultar ${layer.name}` : `Mostrar ${layer.name}`}
+                  label={layer.visible ? t('hide', { name: layer.name }) : t('show', { name: layer.name })}
                   icon={layer.visible ? Eye : EyeOff}
                   muted={!layer.visible}
                 />
                 <IconToggle
                   onClick={() => actions.updateLayer(layer.id, { locked: !layer.locked })}
-                  label={layer.locked ? `Desbloquear ${layer.name}` : `Bloquear ${layer.name}`}
+                  label={layer.locked ? t('unlock', { name: layer.name }) : t('lock', { name: layer.name })}
                   icon={layer.locked ? Lock : Unlock}
                   muted={layer.locked}
                 />
                 <IconToggle
                   onClick={() => actions.removeLayer(layer.id)}
-                  label={`Eliminar ${layer.name}`}
+                  label={t('delete', { name: layer.name })}
                   icon={Trash2}
                   disabled={layers.length <= 1}
                   danger
@@ -124,7 +126,7 @@ export function LayersPanel({ layers, activeLayerId, elements, selectionCount, a
                     onClick={() => actions.updateLayer(layer.id, { color })}
                     className="h-4 w-4 rounded-full border border-white shadow-sm"
                     style={{ background: color }}
-                    aria-label={`Aplicar color ${color} a ${layer.name}`}
+                    aria-label={t('applyColor', { color, name: layer.name })}
                   />
                 ))}
                 {!active && (
@@ -133,13 +135,13 @@ export function LayersPanel({ layers, activeLayerId, elements, selectionCount, a
                     onClick={() => actions.setActiveLayer(layer.id)}
                     className="ml-auto text-[10px] font-semibold text-violet-600"
                   >
-                    Activar
+                    {t('activate')}
                   </button>
                 )}
                 {active && (
                   <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-violet-600">
                     <Check className="h-3 w-3" />
-                    Activa
+                    {t('active')}
                   </span>
                 )}
               </div>
@@ -149,7 +151,7 @@ export function LayersPanel({ layers, activeLayerId, elements, selectionCount, a
                   onClick={() => actions.assignSelectionToLayer(layer.id)}
                   className="mt-2 w-full rounded-lg border border-dashed border-violet-300 py-1.5 text-[10px] font-semibold text-violet-600 hover:bg-violet-50"
                 >
-                  Mover selección ({selectionCount}) a esta capa
+                  {t('moveSelection', { count: selectionCount })}
                 </button>
               )}
             </li>

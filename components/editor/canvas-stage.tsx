@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
+import { useTranslations } from 'next-intl';
 import { Stage, Layer, Line, Circle, Rect, Text } from 'react-konva';
 import type Konva from 'konva';
 import type { EditorState } from '@/hooks/use-editor-state';
@@ -112,6 +113,7 @@ type CanvasStageProps = {
 };
 
 export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasStageProps) {
+  const t = useTranslations('editor.canvas');
   const { ref, size } = useContainerSize();
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<Point | null>(null);
@@ -385,7 +387,17 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
   }, [state.draft]);
 
   return (
-    <div ref={ref} className="relative h-full w-full touch-none cursor-crosshair bg-white">
+    <div
+      ref={ref}
+      className="relative h-full w-full touch-none cursor-crosshair bg-white"
+      role="application"
+      aria-label={t('label2d')}
+      aria-describedby="canvas-2d-help"
+    >
+      <p id="canvas-2d-help" className="sr-only">{t('help2d')}</p>
+      <p className="sr-only" role="status" aria-live="polite">
+        {t('status', { elements: state.elements.length, selected: state.selectedIds.length })}
+      </p>
       {size.width > 0 && size.height > 0 && (
         <Stage
           ref={stageRef}

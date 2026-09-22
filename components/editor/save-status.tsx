@@ -1,3 +1,6 @@
+'use client';
+
+import { useTranslations } from 'next-intl';
 import { AlertCircle, CheckCircle, Loader2, CircleDot } from 'lucide-react';
 
 export function SaveStatus({
@@ -11,11 +14,13 @@ export function SaveStatus({
   error: string;
   revision?: number;
 }) {
+  const t = useTranslations('editor.saveStatus');
+
   if (error) {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-red-600">
         <AlertCircle className="h-3.5 w-3.5" />
-        Save failed
+        {t('failed')}
       </span>
     );
   }
@@ -23,7 +28,7 @@ export function SaveStatus({
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Saving…
+        {t('saving')}
       </span>
     );
   }
@@ -31,14 +36,14 @@ export function SaveStatus({
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-amber-600">
         <CircleDot className="h-3.5 w-3.5" />
-        Unsaved changes
+        {t('unsaved')}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600">
       <CheckCircle className="h-3.5 w-3.5" />
-      Saved{revision ? ` · v${revision}` : ''}
+      {revision ? t('savedRevision', { revision }) : t('saved')}
     </span>
   );
 }

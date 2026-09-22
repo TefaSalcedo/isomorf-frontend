@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import type { Project } from '@/types/project';
 
 export function ProjectCard({ project }: { project: Project }) {
+  const t = useTranslations('projectCard');
   return (
     <Link
       href={`/projects/${project.public_id}`}
@@ -11,16 +13,16 @@ export function ProjectCard({ project }: { project: Project }) {
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-mono uppercase tracking-widest text-cyan-600">Project</p>
+          <p className="text-xs font-mono uppercase tracking-widest text-cyan-600">{t('project')}</p>
           <h3 className="mt-2 text-lg font-semibold text-slate-900">{project.name}</h3>
         </div>
-        <span className="text-xs text-cyan-600">Open →</span>
+        <span className="text-xs text-cyan-600">{t('open')}</span>
       </div>
       <p className="mt-3 line-clamp-2 text-sm text-slate-500">
-        {project.description || 'No description provided.'}
+        {project.description || t('noDescription')}
       </p>
       <p className="mt-6 text-xs text-slate-400">
-        Updated {new Date(project.updated_at).toLocaleDateString()}
+        {t('updated', { date: new Date(project.updated_at).toLocaleDateString() })}
       </p>
     </Link>
   );

@@ -29,7 +29,7 @@ test.describe('document history', () => {
     await createProject(page, `History ${Date.now()}`);
 
     await drawWall(page);
-    await expect(page.getByText('1 elements')).toBeVisible();
+    await expect(page.getByText('1 element', { exact: true })).toBeVisible();
     await expect(page.getByText(/Saved/)).toBeVisible({ timeout: 15_000 });
 
     const undoButton = page.getByRole('button', { name: 'Undo' });
@@ -38,15 +38,15 @@ test.describe('document history', () => {
     await expect(redoButton).toBeDisabled();
 
     await undoButton.click();
-    await expect(page.getByText('0 elements')).toBeVisible();
+    await expect(page.getByText('0 elements', { exact: true })).toBeVisible();
     await expect(redoButton).toBeEnabled();
 
     // The persisted document must still report the older revision after reload.
     await page.reload();
-    await expect(page.getByText('0 elements')).toBeVisible();
+    await expect(page.getByText('0 elements', { exact: true })).toBeVisible();
     await expect(redoButton).toBeEnabled();
 
     await redoButton.click();
-    await expect(page.getByText('1 elements')).toBeVisible();
+    await expect(page.getByText('1 element', { exact: true })).toBeVisible();
   });
 });

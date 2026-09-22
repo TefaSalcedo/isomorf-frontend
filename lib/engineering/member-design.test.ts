@@ -29,14 +29,19 @@ describe('columnDesign', () => {
   it('flags the low reinforcement ratio as review', () => {
     // rho = 804.25 / 90000 = 0.89% < 1% minimum
     expect(memory.status).toBe('review');
-    expect(memory.warnings.some((warning) => warning.includes('Cuantía'))).toBe(true);
+    expect(memory.warnings.some((warning) => warning.includes('Reinforcement ratio'))).toBe(true);
   });
 
   it('produces summary entries and calculation steps', () => {
     expect(memory.steps).toHaveLength(8);
-    const dc = memory.summary.find((item) => item.label === 'Demanda/Capacidad');
+    const dc = memory.summary.find((item) => item.label === 'Demand/Capacity');
     expect(dc?.value).toBe('0.405');
     expect(memory.inputs.geometry).toEqual({ width: 0.3, depth: 0.3, height: 2.5 });
+  });
+
+  it('renders warnings in Spanish when locale is es', () => {
+    const memoryEs = columnDesign(column, DEFAULT_CONCRETE, DEFAULT_COLUMN_REINFORCEMENT, DEFAULT_COLUMN_LOADS, 'es');
+    expect(memoryEs.warnings.some((warning) => warning.includes('Cuantía'))).toBe(true);
   });
 });
 
@@ -48,7 +53,7 @@ describe('beamDesign', () => {
     // wu = 25 + 1.2*1.44 = 26.728 kN/m; Mu = 53.46 kNm; phiMn = 47.2 kNm
     expect(memory.ratio).toBeCloseTo(1.13, 2);
     expect(memory.status).toBe('review');
-    expect(memory.warnings.some((warning) => warning.includes('Mu supera'))).toBe(true);
+    expect(memory.warnings.some((warning) => warning.includes('Ultimate moment'))).toBe(true);
   });
 
   it('records geometry inputs in meters', () => {
@@ -67,10 +72,10 @@ describe('isMemoryStale', () => {
 describe('memoryToMarkdown', () => {
   it('exports a readable calculation memory', () => {
     const memory = beamDesign(beam, DEFAULT_CONCRETE, DEFAULT_BEAM_REINFORCEMENT, DEFAULT_BEAM_LOADS);
-    const markdown = memoryToMarkdown(memory, { projectName: 'Frame', elementLabel: 'Viga B-1' });
-    expect(markdown).toContain('# Memoria de cálculo — Viga B-1');
-    expect(markdown).toContain('Proyecto: Frame');
-    expect(markdown).toContain('## Desarrollo');
-    expect(markdown).toContain('Momento último');
+    const markdown = memoryToMarkdown(memory, { projectName: 'Frame', elementLabel: 'Beam B-1' });
+    expect(markdown).toContain('# Calculation memory — Beam B-1');
+    expect(markdown).toContain('Project: Frame');
+    expect(markdown).toContain('## Development');
+    expect(markdown).toContain('Ultimate moment');
   });
 });

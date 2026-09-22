@@ -1,4 +1,11 @@
 allowBuilds:
+  '@parcel/watcher': false
+  '@swc/core': false
   esbuild: true
   sharp: false
   unrs-resolver: false
+overrides:
+  use-intl: 4.14.3
+  icu-minify: 4.14.3
+patchedDependencies:
+  '@react-three/fiber@9.7.0': patches/@react-three__fiber@9.7.0.patch

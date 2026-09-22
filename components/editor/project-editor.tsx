@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import type Konva from 'konva';
 import { Layers3, PanelRightClose, SlidersHorizontal, X } from 'lucide-react';
@@ -32,8 +33,10 @@ const Model3DPreview = dynamic(
 );
 
 export function ProjectEditor({ initialProject }: { initialProject: Project }) {
+  const t = useTranslations('editor');
+  const tm = useTranslations('editor.mobile');
   const { state, actions, selectedElements, summary } = useEditorState(initialProject);
-  const [projectName, setProjectName] = useState(initialProject.name || 'Sin nombre');
+  const [projectName, setProjectName] = useState(initialProject.name || t('defaults.projectName'));
   const [saving, setSaving] = useState(false);
   const [designSettings, setDesignSettings] = useState<Project['design_settings']>(
     initialProject.design_settings ?? defaultDesignSettings(),
@@ -54,7 +57,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   stateRef.current = state;
   projectNameRef.current = projectName;
   designSettingsRef.current = designSettings;
-  const initialNameRef = useRef(initialProject.name || 'Sin nombre');
+  const initialNameRef = useRef(initialProject.name || t('defaults.projectName'));
   const initialSettingsRef = useRef(
     JSON.stringify({
       ...(initialProject.design_settings ?? defaultDesignSettings()),
@@ -84,7 +87,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     const run = (async () => {
       try {
         const settingsToSave = { ...designSettingsRef.current, layers: layersSnapshot };
-        const nameToSave = projectNameRef.current.trim() || 'Sin nombre';
+        const nameToSave = projectNameRef.current.trim() || t('defaults.projectName');
         const doc = await api.saveDocument(initialProject.id, {
           name: nameToSave,
           design_settings: settingsToSave,
@@ -105,7 +108,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         const stillDirty = stateRef.current.elements !== elementsSnapshot || stateRef.current.layers !== layersSnapshot;
         actions.markSaved(doc.revision, doc.head_revision, stillDirty);
       } catch (saveError) {
-        actions.setError(saveError instanceof Error ? saveError.message : 'Unable to save changes');
+        actions.setError(saveError instanceof Error ? saveError.message : t('errors.saveFailed'));
       } finally {
         savingRef.current = false;
         setSaving(false);
@@ -145,14 +148,14 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     if (stateRef.current.historyBusy) return;
     const flushed = await flushPendingSave();
     if (!flushed) {
-      actions.setError('Unable to save pending changes before changing revision');
+      actions.setError(t('errors.pendingSave'));
       return;
     }
     actions.setHistoryBusy(true);
     try {
       applyDocumentState(await action());
     } catch (historyError) {
-      actions.setError(historyError instanceof Error ? historyError.message : 'Unable to change revision');
+      actions.setError(historyError instanceof Error ? historyError.message : t('errors.historyFailed'));
     } finally {
       actions.setHistoryBusy(false);
     }
@@ -207,7 +210,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   }, [state.dirty, state.layers, projectName, designSettings, initialProject.name]);
 
   function commitProjectName(value: string) {
-    setProjectName(value.trim() || 'Sin nombre');
+    setProjectName(value.trim() || t('defaults.projectName'));
   }
 
   function handleExport() {
@@ -357,12 +360,12 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
 
       {compact && mobilePanel !== 'none' && (
         <div className="fixed inset-0 z-40 flex flex-col justify-end bg-slate-950/30" role="dialog" aria-modal="true">
-          <button type="button" aria-label="Cerrar panel" className="flex-1" onClick={() => setMobilePanel('none')} />
+          <button type="button" aria-label={tm('closePanel')} className="flex-1" onClick={() => setMobilePanel('none')} />
           <section className="max-h-[80dvh] overflow-hidden rounded-t-2xl bg-white shadow-2xl">
             <header className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
               {mobilePanel === 'tools' ? <SlidersHorizontal className="h-4 w-4 text-violet-600" /> : state.activeSection === 'layers' ? <Layers3 className="h-4 w-4 text-violet-600" /> : <PanelRightClose className="h-4 w-4 text-violet-600" />}
-              <h2 className="text-sm font-bold">{mobilePanel === 'tools' ? 'Herramientas' : state.activeSection === 'layers' ? 'Capas' : 'Propiedades'}</h2>
-              <button type="button" onClick={() => setMobilePanel('none')} className="ml-auto rounded-md p-1 text-slate-400 hover:bg-slate-100" aria-label="Cerrar panel">
+              <h2 className="text-sm font-bold">{mobilePanel === 'tools' ? tm('tools') : state.activeSection === 'layers' ? tm('layers') : tm('properties')}</h2>
+              <button type="button" onClick={() => setMobilePanel('none')} className="ml-auto rounded-md p-1 text-slate-400 hover:bg-slate-100" aria-label={tm('closePanel')}>
                 <X className="h-4 w-4" />
               </button>
             </header>

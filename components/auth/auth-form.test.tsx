@@ -1,6 +1,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { LocaleProvider } from '@/lib/i18n/locale-context';
 import { AuthForm } from './auth-form';
+
+function renderForm(mode: 'login' | 'register') {
+  return render(
+    <LocaleProvider>
+      <AuthForm mode={mode} />
+    </LocaleProvider>,
+  );
+}
 
 const mocks = vi.hoisted(() => ({
   login: vi.fn(),
@@ -31,18 +40,18 @@ function fillRegisterForm(container: HTMLElement) {
 
 describe('AuthForm', () => {
   it('renders a password field in register mode', () => {
-    const { container } = render(<AuthForm mode="register" />);
+    const { container } = renderForm('register');
     expect(container.querySelector('input[name="password"]')).not.toBeNull();
     expect(container.querySelector('input[name="first_name"]')).not.toBeNull();
   });
 
   it('renders a password field in login mode', () => {
-    const { container } = render(<AuthForm mode="login" />);
+    const { container } = renderForm('login');
     expect(container.querySelector('input[name="password"]')).not.toBeNull();
   });
 
   it('submits the typed credentials and navigates to the dashboard', async () => {
-    const { container } = render(<AuthForm mode="register" />);
+    const { container } = renderForm('register');
     fillRegisterForm(container);
     fireEvent.submit(container.querySelector('form')!);
 
@@ -59,7 +68,7 @@ describe('AuthForm', () => {
     let resolveRegister: () => void = () => undefined;
     mocks.register.mockImplementation(() => new Promise<void>((resolve) => { resolveRegister = resolve; }));
 
-    const { container } = render(<AuthForm mode="register" />);
+    const { container } = renderForm('register');
     fillRegisterForm(container);
     const form = container.querySelector('form')!;
     fireEvent.submit(form);
@@ -71,7 +80,7 @@ describe('AuthForm', () => {
 
   it('shows the error message when registration fails', async () => {
     mocks.register.mockRejectedValue(new Error('Email is already registered'));
-    const { container } = render(<AuthForm mode="register" />);
+    const { container } = renderForm('register');
     fillRegisterForm(container);
     fireEvent.submit(container.querySelector('form')!);
 
