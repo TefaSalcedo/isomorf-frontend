@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import type Konva from 'konva';
-import { Layers3, PanelRightClose, SlidersHorizontal, X } from 'lucide-react';
+import { Eye, Layers3, PanelRightClose, SlidersHorizontal, X } from 'lucide-react';
 import { useEditorState } from '@/hooks/use-editor-state';
 import { useIsCompact } from '@/hooks/use-media-query';
 import { CanvasStage } from '@/components/editor/canvas-stage';
@@ -35,6 +35,7 @@ const Model3DPreview = dynamic(
 export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   const t = useTranslations('editor');
   const tm = useTranslations('editor.mobile');
+  const readOnly = initialProject.access_role === 'viewer';
   const { state, actions, selectedElements, summary } = useEditorState(initialProject);
   const [projectName, setProjectName] = useState(initialProject.name || t('defaults.projectName'));
   const [saving, setSaving] = useState(false);
@@ -75,6 +76,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   }
 
   async function save(): Promise<void> {
+    if (readOnly) return;
     if (savingRef.current) {
       pendingSaveRef.current = true;
       return savePromiseRef.current ?? Promise.resolve();
@@ -145,7 +147,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   }
 
   async function runHistoryAction(action: () => Promise<DocumentState>) {
-    if (stateRef.current.historyBusy) return;
+    if (readOnly || stateRef.current.historyBusy) return;
     const flushed = await flushPendingSave();
     if (!flushed) {
       actions.setError(t('errors.pendingSave'));
@@ -204,10 +206,10 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     const projectChanged =
       projectName.trim() !== initialNameRef.current ||
       JSON.stringify({ ...designSettings, layers: state.layers }) !== initialSettingsRef.current;
-    if (!state.dirty && !projectChanged) return undefined;
+    if (readOnly || (!state.dirty && !projectChanged)) return undefined;
     const timeout = window.setTimeout(() => void saveRef.current(), 700);
     return () => window.clearTimeout(timeout);
-  }, [state.dirty, state.layers, projectName, designSettings, initialProject.name]);
+  }, [state.dirty, state.layers, projectName, designSettings, initialProject.name, readOnly]);
 
   function commitProjectName(value: string) {
     setProjectName(value.trim() || t('defaults.projectName'));
@@ -332,6 +334,11 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         onPrint={handlePrint}
         saving={saving}
       />
+      {readOnly && (
+        <p className="flex items-center justify-center gap-2 bg-amber-50 px-4 py-1.5 text-xs font-semibold text-amber-800" role="status" data-testid="read-only-banner">
+          <Eye className="h-3.5 w-3.5" />{t('readOnly')}
+        </p>
+      )}
       <div className="flex min-h-0 flex-1">
         {!state.cleanMode && !compact && sidebar}
         <div className="relative min-h-0 flex-1">{canvas}</div>

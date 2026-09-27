@@ -168,6 +168,7 @@ export type Project = {
   elements?: ProjectElement[];
   current_revision?: number;
   head_revision?: number;
+  access_role?: 'owner' | 'editor' | 'viewer';
 };
 
 export type DocumentState = {

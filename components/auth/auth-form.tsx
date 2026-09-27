@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FormEvent, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { pendingInviteRedirect } from '@/lib/teams/pending-invite';
 import { ArrowRight, Check, Eye, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/lib/auth/auth-context';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
@@ -83,7 +84,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
     try {
       if (mode === 'login') await login(String(data.email), String(data.password));
       else await register({ email: String(data.email), password: String(data.password), first_name: String(data.first_name), last_name: String(data.last_name) });
-      router.replace('/dashboard');
+      router.replace(pendingInviteRedirect());
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : t('authError'));
     } finally { submittingRef.current = false; setPending(false); }
