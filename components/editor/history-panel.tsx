@@ -72,20 +72,20 @@ export function HistoryPanel({
   return (
     <div className="flex flex-col gap-3 p-4">
       <div className="flex items-center gap-2">
-        <History className="h-4 w-4 text-violet-600" />
-        <h2 className="text-sm font-bold text-slate-800">{t('title')}</h2>
+        <History className="h-4 w-4 text-cyan-400" />
+        <h2 className="text-sm font-bold text-slate-200">{t('title')}</h2>
       </div>
-      <p className="text-[11px] leading-4 text-slate-500">
+      <p className="text-[11px] leading-4 text-slate-400">
         {t('subtitle')}
       </p>
       {loading && (
-        <div className="flex items-center gap-2 py-6 text-xs text-slate-400" role="status">
+        <div className="flex items-center gap-2 py-6 text-xs text-slate-500" role="status">
           <Loader2 className="h-4 w-4 animate-spin" /> {t('loading')}
         </div>
       )}
-      {error && <p className="rounded-lg bg-red-50 p-2 text-xs text-red-600" role="alert">{error}</p>}
+      {error && <p className="rounded-lg bg-red-950/60 p-2 text-xs text-red-400" role="alert">{error}</p>}
       {!loading && !error && entries.length === 0 && (
-        <p className="rounded-xl border border-dashed border-slate-200 p-4 text-center text-xs text-slate-400">
+        <p className="rounded-xl border border-dashed border-slate-800 p-4 text-center text-xs text-slate-500">
           {t('empty')}
         </p>
       )}
@@ -95,12 +95,12 @@ export function HistoryPanel({
           return (
             <li
               key={entry.revision}
-              className={`rounded-xl border p-3 text-xs transition ${isCurrent ? 'border-violet-300 bg-violet-50/60' : 'border-slate-200 bg-white'}`}
+              className={`rounded-xl border p-3 text-xs transition ${isCurrent ? 'border-cyan-700 bg-cyan-950/50/60' : 'border-slate-800 bg-slate-950'}`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-slate-800">{t('revision', { revision: entry.revision })}</span>
+                <span className="font-semibold text-slate-200">{t('revision', { revision: entry.revision })}</span>
                 {isCurrent ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-cyan-950 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">
                     <Check className="h-3 w-3" /> {t('current')}
                   </span>
                 ) : (
@@ -108,14 +108,14 @@ export function HistoryPanel({
                     type="button"
                     onClick={() => onRestore(entry.revision)}
                     disabled={busy}
-                    className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:bg-violet-100 hover:text-violet-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-400 transition hover:bg-cyan-950 hover:text-cyan-300 disabled:opacity-50"
                   >
                     <RotateCcw className="h-3 w-3" /> {t('restore')}
                   </button>
                 )}
               </div>
-              <p className="mt-1 text-[11px] text-slate-500">{summarize(entry.changes, t)}</p>
-              <p className="mt-1 text-[10px] text-slate-400">{formatTime(entry.created_at)}</p>
+              <p className="mt-1 text-[11px] text-slate-400">{summarize(entry.changes, t)}</p>
+              <p className="mt-1 text-[10px] text-slate-500">{formatTime(entry.created_at)}</p>
             </li>
           );
         })}

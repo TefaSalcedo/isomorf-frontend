@@ -1,14 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import type { WallElement } from '@/types/project';
+import type { ElementType, StairElement, WallElement } from '@/types/project';
 import {
   createBeam,
+  createBrace,
   createColumn,
   createDoor,
+  createFooting,
+  createGradeBeam,
+  createJoist,
+  createOpening,
+  createPile,
+  createRamp,
+  createSlab,
+  createStair,
   createWall,
   createWindow,
   defaultDesignSettings,
+  defaultPropertiesFor,
+  drawModeOf,
   normalizeElement,
+  rectSize,
   updateBeamLength,
+  updateRectSize,
   updateWallLength,
   wallLengthInMeters,
   WALL_DEFAULT_HEIGHT,
@@ -116,5 +129,127 @@ describe('defaultDesignSettings', () => {
     const settings = defaultDesignSettings();
     expect(settings.unit).toBe('m');
     expect(settings.material).toBeDefined();
+  });
+});
+
+describe('drawModeOf', () => {
+  it('assigns a draw mode to every element type', () => {
+    const types: ElementType[] = [
+      'wall', 'door', 'window', 'column', 'beam', 'joist', 'grade_beam',
+      'brace', 'pile', 'slab', 'footing', 'stair', 'ramp', 'opening',
+    ];
+    for (const type of types) expect(drawModeOf(type)).toMatch(/line|point|rect/);
+  });
+
+  it('classifies line, point and rect tools', () => {
+    expect(drawModeOf('wall')).toBe('line');
+    expect(drawModeOf('joist')).toBe('line');
+    expect(drawModeOf('grade_beam')).toBe('line');
+    expect(drawModeOf('brace')).toBe('line');
+    expect(drawModeOf('column')).toBe('point');
+    expect(drawModeOf('pile')).toBe('point');
+    expect(drawModeOf('slab')).toBe('rect');
+    expect(drawModeOf('footing')).toBe('rect');
+    expect(drawModeOf('stair')).toBe('rect');
+    expect(drawModeOf('ramp')).toBe('rect');
+    expect(drawModeOf('opening')).toBe('rect');
+  });
+});
+
+describe('line factories', () => {
+  it('creates a joist with spacing default', () => {
+    const joist = createJoist('j1', 'p1', { x: 0, y: 0 }, { x: 500, y: 0 });
+    expect(joist.element_type).toBe('joist');
+    expect(joist.length).toBe(500);
+    expect(joist.properties.spacing).toBeCloseTo(0.45);
+  });
+
+  it('creates a grade beam at ground elevation', () => {
+    const beam = createGradeBeam('g1', 'p1', { x: 0, y: 0 }, { x: 400, y: 0 });
+    expect(beam.element_type).toBe('grade_beam');
+    expect(beam.properties.top_elevation).toBe(0);
+  });
+
+  it('creates a brace spanning a story height', () => {
+    const brace = createBrace('x1', 'p1', { x: 0, y: 0 }, { x: 300, y: 0 });
+    expect(brace.element_type).toBe('brace');
+    expect(brace.properties.bottom_z).toBe(0);
+    expect(brace.properties.top_z).toBeGreaterThan(0);
+  });
+});
+
+describe('createPile', () => {
+  it('places a pile centered on the point', () => {
+    const pile = createPile('pl1', 'p1', { x: 80, y: 120 });
+    expect(pile.element_type).toBe('pile');
+    expect(pile.x1).toBe(80);
+    expect(pile.y1).toBe(120);
+    expect(pile.properties.diameter).toBeCloseTo(0.4);
+    expect(pile.properties.pile_length).toBe(12);
+  });
+});
+
+describe('rect factories', () => {
+  it('creates a slab normalized from inverted corners', () => {
+    const slab = createSlab('s1', 'p1', { x: 300, y: 200 }, { x: 0, y: 0 });
+    expect(slab.element_type).toBe('slab');
+    expect(slab.x1).toBe(0);
+    expect(slab.y1).toBe(0);
+    expect(slab.x2).toBe(300);
+    expect(slab.y2).toBe(200);
+    expect(slab.rotation).toBe(0);
+    expect(slab.properties.thickness).toBeCloseTo(0.15);
+  });
+
+  it('creates footing, stair, ramp and opening with defaults', () => {
+    const footing = createFooting('f1', 'p1', { x: 0, y: 0 }, { x: 150, y: 150 });
+    expect(footing.properties.depth).toBeCloseTo(0.4);
+    const stair = createStair('st1', 'p1', { x: 0, y: 0 }, { x: 100, y: 400 });
+    expect(stair.properties.step_count).toBe(14);
+    expect(stair.properties.run_axis).toBe('x');
+    const ramp = createRamp('r1', 'p1', { x: 0, y: 0 }, { x: 100, y: 600 });
+    expect(ramp.properties.slope_percent).toBeCloseTo(12.5);
+    const opening = createOpening('o1', 'p1', { x: 0, y: 0 }, { x: 80, y: 80 });
+    expect(opening.element_type).toBe('opening');
+  });
+});
+
+describe('rectSize / updateRectSize', () => {
+  it('reads footprint size and resizes keeping the min corner', () => {
+    const slab = createSlab('s1', 'p1', { x: 10, y: 20 }, { x: 310, y: 220 });
+    expect(rectSize(slab)).toEqual({ width: 300, depth: 200 });
+    const resized = updateRectSize(slab, 500, 400);
+    expect(resized.x1).toBe(10);
+    expect(resized.y1).toBe(20);
+    expect(resized.x2).toBe(510);
+    expect(resized.y2).toBe(420);
+    expect(resized.length).toBe(500);
+    expect(resized.rotation).toBe(0);
+  });
+});
+
+describe('normalizeElement for new types', () => {
+  it('fills stair defaults and null catalog references', () => {
+    const raw = {
+      id: 'st1', project_id: 'p1', element_type: 'stair', x1: 0, y1: 0, x2: 100, y2: 400,
+      length: 100, rotation: 0, properties: { step_count: 10 }, created_at: '', updated_at: '',
+    } as never;
+    const normalized = normalizeElement(raw);
+    if (normalized.element_type !== 'stair') throw new Error('expected a stair');
+    const stair = normalized as StairElement;
+    expect(stair.properties.step_count).toBe(10);
+    expect(stair.properties.tread).toBeCloseTo(0.28);
+    expect(stair.material_id).toBeNull();
+    expect(stair.section_id).toBeNull();
+  });
+});
+
+describe('defaultPropertiesFor', () => {
+  it('returns defaults for every element type', () => {
+    const types: ElementType[] = [
+      'wall', 'door', 'window', 'column', 'beam', 'joist', 'grade_beam',
+      'brace', 'pile', 'slab', 'footing', 'stair', 'ramp', 'opening',
+    ];
+    for (const type of types) expect(defaultPropertiesFor(type)).toBeTypeOf('object');
   });
 });

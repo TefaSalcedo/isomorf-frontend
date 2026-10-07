@@ -13,7 +13,7 @@ async function drawWall(page: Page) {
   const canvas = page.locator('canvas').first();
   const box = await canvas.boundingBox();
   if (!box) throw new Error('Canvas not visible');
-  await page.getByRole('button', { name: 'Wall / slab' }).click();
+  await page.getByRole('button', { name: 'Wall', exact: true }).click();
   // The editor draws with two clicks: first sets the start, second commits.
   await page.mouse.move(box.x + 200, box.y + 250);
   await page.mouse.down();

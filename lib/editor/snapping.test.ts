@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createColumn, createWall } from './elements';
+import { createColumn, createPile, createSlab, createWall } from './elements';
 import {
   findColumnContainingPoint,
   isPointInsideColumn,
@@ -79,6 +79,29 @@ describe('snapForColumn', () => {
 
   it('returns null with no walls', () => {
     expect(snapForColumn({ x: 0, y: 0 }, [], 1, 1)).toBeNull();
+  });
+});
+
+describe('rect and point element snapping', () => {
+  const slab = createSlab('s1', 'p1', { x: 100, y: 100 }, { x: 300, y: 250 });
+  const pile = createPile('pl1', 'p1', { x: 500, y: 500 });
+
+  it('snaps to rect corners and center', () => {
+    // (x1,y1) and (x2,y2) coincide with the generic start/end anchors, so the
+    // free corner (x2,y1) is the one that must resolve as 'corner'.
+    const corner = snapToNearest({ x: 303, y: 102 }, [slab], 1, 1);
+    expect(corner?.target.type).toBe('corner');
+    expect(corner?.point).toEqual({ x: 300, y: 100 });
+    const center = snapToNearest({ x: 202, y: 174 }, [slab], 1, 1);
+    expect(center?.target.type).toBe('center');
+    expect(center?.point).toEqual({ x: 200, y: 175 });
+  });
+
+  it('snaps to the pile location', () => {
+    // A point element's start and center anchors coincide at (x1, y1).
+    const result = snapToNearest({ x: 499, y: 499 }, [pile], 1, 1);
+    expect(['start', 'center']).toContain(result?.target.type);
+    expect(result?.point).toEqual({ x: 500, y: 500 });
   });
 });
 

@@ -32,7 +32,12 @@ export type SnapCandidate = {
 export type SnapResult = SnapCandidate & { distance: number };
 
 function isLineType(type: ElementType): boolean {
-  return type === 'wall' || type === 'door' || type === 'window' || type === 'beam';
+  return type === 'wall' || type === 'door' || type === 'window' || type === 'beam'
+    || type === 'joist' || type === 'grade_beam' || type === 'brace';
+}
+
+function isRectType(type: ElementType): boolean {
+  return type === 'slab' || type === 'footing' || type === 'stair' || type === 'ramp' || type === 'opening';
 }
 
 function anchorPointsFor(element: ProjectElement): SnapCandidate[] {
@@ -60,6 +65,19 @@ function anchorPointsFor(element: ProjectElement): SnapCandidate[] {
       { x: center.x - half.x, y: center.y + half.y },
     ];
     corners.forEach((p, index) => candidates.push({ point: p, target: { type: 'corner', elementId: element.id, index } }));
+  }
+  if (element.element_type === 'pile') {
+    candidates.push({ point: { x: element.x1, y: element.y1 }, target: { type: 'center', elementId: element.id } });
+  }
+  if (isRectType(element.element_type)) {
+    const corners = [
+      { x: element.x1, y: element.y1 },
+      { x: element.x2, y: element.y1 },
+      { x: element.x2, y: element.y2 },
+      { x: element.x1, y: element.y2 },
+    ];
+    corners.forEach((p, index) => candidates.push({ point: p, target: { type: 'corner', elementId: element.id, index } }));
+    candidates.push({ point: midpoint({ x: element.x1, y: element.y1 }, { x: element.x2, y: element.y2 }), target: { type: 'center', elementId: element.id } });
   }
   return candidates;
 }

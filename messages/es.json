@@ -229,7 +229,8 @@
       "2d": "2D",
       "3d": "3D",
       "loads": "Cargas",
-      "fem": "FEM"
+      "fem": "FEM",
+      "table": "Tabla"
     },
     "saveStatus": {
       "failed": "Error al guardar",
@@ -247,7 +248,8 @@
         "layers": "Capas",
         "calculations": "Cálculos",
         "history": "Historial",
-        "settings": "Configuración"
+        "settings": "Configuración",
+        "catalog": "Catálogo"
       },
       "collapse": "Contraer menú",
       "expand": "Expandir menú",
@@ -267,7 +269,14 @@
       "settingsTitle": "Configuración",
       "workspaceTitle": "Espacio de trabajo",
       "fallbackSubtitle": "Usa los controles de vista para continuar",
-      "fallbackBody": "Cambia a 2D o 3D para acceder al menú contextual del editor."
+      "fallbackBody": "Cambia a 2D o 3D para acceder al menú contextual del editor.",
+      "toolGroups": {
+        "select": "Selección",
+        "structure": "Estructura",
+        "foundation": "Cimentación",
+        "floors": "Losas y circulación",
+        "envelope": "Cerramiento"
+      }
     },
     "tools": {
       "select": "Seleccionar",
@@ -289,7 +298,14 @@
       "level": "Nivel",
       "text": "Texto",
       "paletteTitle": "Herramientas",
-      "paletteHelp": "Elige una herramienta de dibujo y haz clic en dos puntos del lienzo. Las coordenadas se guardan en unidades del mundo."
+      "paletteHelp": "Elige una herramienta de dibujo y haz clic en dos puntos del lienzo. Las coordenadas se guardan en unidades del mundo.",
+      "joist": "Vigueta",
+      "grade_beam": "Viga de riostra",
+      "brace": "Arriostre",
+      "pile": "Pilote",
+      "footing": "Zapata",
+      "stair": "Escalera",
+      "ramp": "Rampa"
     },
     "loadTypes": {
       "dead": "Muerta",
@@ -331,7 +347,81 @@
         "swing": "Apertura",
         "swingLeft": "Izquierda",
         "swingRight": "Derecha",
-        "sillHeight": "Altura de antepecho (m)"
+        "sillHeight": "Altura de antepecho (m)",
+        "rotation": "Rotación (°)",
+        "tag": "Marca",
+        "layer": "Capa",
+        "section": "Sección",
+        "none": "Ninguno",
+        "mixed": "Varios",
+        "baseElevation": "Elevación base (m)",
+        "topElevation": "Elevación superior (m)",
+        "bottomZ": "z inferior (m)",
+        "topZ": "z superior (m)",
+        "diameter": "Diámetro (m)",
+        "pileLength": "Longitud del pilote (m)",
+        "capacity": "Capacidad (kN)",
+        "spacing": "Separación (m)",
+        "shape": "Forma",
+        "shapeRect": "Rectangular",
+        "shapeCircular": "Circular",
+        "wallType": "Tipo de muro",
+        "wallTypes": {
+          "bearing": "Portante",
+          "shear": "De corte",
+          "partition": "Tabique",
+          "masonry": "Mampostería"
+        },
+        "slabType": "Tipo de losa",
+        "slabTypes": {
+          "solid": "Maciza",
+          "waffle": "Aligerada casetones",
+          "ribbed": "Aligerada",
+          "mat": "Placa de cimentación"
+        },
+        "diaphragm": "Diafragma",
+        "diaphragms": {
+          "none": "Ninguno",
+          "rigid": "Rígido",
+          "semirigid": "Semirrígido"
+        },
+        "soilCapacity": "Capacidad del suelo (kPa)",
+        "stepCount": "Huellas",
+        "tread": "Huella (m)",
+        "riser": "Contra huella (m)",
+        "runAxis": "Sentido de recorrido",
+        "runAxisX": "En X",
+        "runAxisY": "En Y",
+        "slope": "Pendiente (%)",
+        "openingHint": "Un hueco es un vacío en el área de la losa. Cambia su tamaño arrastrando las esquinas.",
+        "bulkTypeHint": "Selecciona elementos del mismo tipo para editar dimensiones compartidas.",
+        "sections": {
+          "identity": "Identidad",
+          "position": "Posición",
+          "geometry": "Geometría",
+          "material": "Material y sección",
+          "layer": "Capa"
+        },
+        "bulk": {
+          "height": "Altura (m)",
+          "thickness": "Espesor (m)",
+          "width": "Ancho (m)",
+          "depth": "Peralte (m)",
+          "diameter": "Diámetro (m)",
+          "base_elevation": "Elevación base (m)",
+          "top_elevation": "Elevación superior (m)",
+          "bottom_z": "z inferior (m)",
+          "top_z": "z superior (m)",
+          "spacing": "Separación (m)",
+          "pile_length": "Longitud del pilote (m)",
+          "capacity_kn": "Capacidad (kN)",
+          "soil_capacity_kpa": "Capacidad del suelo (kPa)",
+          "step_count": "Huellas",
+          "tread": "Huella (m)",
+          "riser": "Contra huella (m)",
+          "slope_percent": "Pendiente (%)",
+          "sill_height": "Antepecho (m)"
+        }
       },
       "layers": {
         "title": "Capas del plano 2D",
@@ -445,6 +535,56 @@
         "downloadMemory": "Descargar memoria",
         "notes": "Observaciones",
         "modalTitle": "Memoria de cálculo — {element}"
+      },
+      "catalog": {
+        "title": "Materiales y secciones",
+        "subtitle": "Catálogo del proyecto. Los elementos pueden referenciar estas entradas o los presets.",
+        "materials": "Materiales",
+        "sections": "Secciones",
+        "presets": "Presets",
+        "newMaterial": "Nombre del material",
+        "newSection": "Nombre de la sección",
+        "category": "Categoría",
+        "shape": "Forma",
+        "addMaterial": "Agregar material",
+        "addSection": "Agregar sección",
+        "delete": "Eliminar",
+        "emptyMaterials": "Sin materiales del proyecto.",
+        "emptySections": "Sin secciones del proyecto.",
+        "categories": {
+          "concrete": "Concreto",
+          "steel": "Acero",
+          "masonry": "Mampostería",
+          "timber": "Madera",
+          "aluminum": "Aluminio",
+          "generic": "Genérico"
+        },
+        "shapes": {
+          "rectangular": "Rectangular",
+          "circular": "Circular",
+          "i_shape": "Perfil I",
+          "t_shape": "Perfil T",
+          "l_shape": "Perfil L",
+          "box": "Cajón",
+          "pipe": "Tubo",
+          "custom": "Personalizada"
+        }
+      },
+      "table": {
+        "title": "Tabla de elementos",
+        "filterType": "Filtrar por tipo",
+        "allTypes": "Todos ({count})",
+        "checked": "{count} marcados",
+        "bulkMaterial": "Asignar material…",
+        "bulkLayer": "Asignar capa…",
+        "deleteChecked": "Eliminar",
+        "colTag": "Marca",
+        "colType": "Tipo",
+        "colRotation": "Rot (°)",
+        "colMaterial": "Material",
+        "colLayer": "Capa",
+        "checkRow": "Seleccionar {tag}",
+        "empty": "Sin elementos. Dibuja algo en la vista 2D primero."
       }
     },
     "defaults": {
@@ -495,7 +635,16 @@
         "door": "Insertar puerta",
         "window": "Insertar ventana",
         "column": "Insertar columna",
-        "beam": "Dibujar eje de viga"
+        "beam": "Dibujar eje de viga",
+        "joist": "Dibujar vigueta",
+        "grade_beam": "Dibujar viga de riostra",
+        "brace": "Dibujar arriostre",
+        "pile": "Insertar pilote",
+        "slab": "Dibujar losa",
+        "footing": "Dibujar zapata",
+        "stair": "Dibujar escalera",
+        "ramp": "Dibujar rampa",
+        "opening": "Dibujar hueco"
       },
       "action": {
         "undo": "Deshacer",
@@ -514,13 +663,15 @@
         "2d": "Ir al editor 2D",
         "3d": "Ir a vista 3D",
         "loads": "Ir a cargas",
-        "fem": "Ir a análisis FEM"
+        "fem": "Ir a análisis FEM",
+        "table": "Ir a la tabla de elementos"
       },
       "section": {
         "layers": "Abrir capas",
         "history": "Abrir historial",
         "settings": "Abrir configuración",
-        "calculations": "Abrir cálculos"
+        "calculations": "Abrir cálculos",
+        "catalog": "Abrir catálogo"
       },
       "doc": {
         "export": "Exportar como PNG",

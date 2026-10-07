@@ -21,13 +21,14 @@ import { HistoryPanel } from '@/components/editor/history-panel';
 import { MemberDesignPanel, isDesignable } from '@/components/editor/member-design-panel';
 import type { DesignPatch } from '@/components/editor/member-design-panel';
 import { CommandPalette } from '@/components/editor/command-palette';
-import { buildEditorCommands } from '@/lib/editor/commands';
+import { CatalogPanel } from '@/components/editor/catalog-panel';
+import { ElementTable } from '@/components/editor/element-table';
+import { buildEditorCommands, type EditorView } from '@/lib/editor/commands';
 import { api } from '@/lib/api-client';
-import type { DocumentState, Project, ProjectElement } from '@/types/project';
+import { emptyCatalog, type CatalogData } from '@/lib/editor/catalog';
+import type { DocumentState, MaterialCategory, Project, ProjectElement, SectionShape } from '@/types/project';
 import { defaultDesignSettings } from '@/lib/editor/elements';
 import { ensureLayers } from '@/lib/editor/layers';
-
-type EditorView = '2d' | '3d' | 'loads' | 'fem';
 
 const Model3DPreview = dynamic(
   () => import('@/components/editor/model-3d-preview').then((mod) => mod.Model3DPreview),
@@ -44,6 +45,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     initialProject.design_settings ?? defaultDesignSettings(),
   );
   const [activeView, setActiveView] = useState<EditorView>('2d');
+  const [catalog, setCatalog] = useState<CatalogData>(emptyCatalog);
   const [mobilePanel, setMobilePanel] = useState<'none' | 'tools' | 'inspector'>('none');
   const [palette, setPalette] = useState<{ open: boolean; seed: string }>({ open: false, seed: '' });
   const openPalette = useCallback((seed = '') => setPalette({ open: true, seed }), []);
@@ -105,6 +107,8 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
             y2: element.y2,
             length: element.length,
             rotation: element.rotation,
+            material_id: element.material_id ?? null,
+            section_id: element.section_id ?? null,
             properties: element.properties as Record<string, unknown>,
           })),
         });
@@ -186,6 +190,37 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     undoRef.current = handleUndo;
     redoRef.current = handleRedo;
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([api.materials(initialProject.id), api.sections(initialProject.id), api.catalogPresets()])
+      .then(([materials, sections, presets]) => {
+        if (!cancelled) setCatalog({ materials, sections, presets });
+      })
+      .catch(() => {
+        if (!cancelled) setCatalog(emptyCatalog());
+      });
+    return () => { cancelled = true; };
+  }, [initialProject.id]);
+
+  const catalogActions = useMemo(() => ({
+    addMaterial: async (payload: { name: string; category: MaterialCategory }) => {
+      const created = await api.createMaterial(initialProject.id, payload);
+      setCatalog((prev) => ({ ...prev, materials: [...prev.materials, created] }));
+    },
+    removeMaterial: async (id: string) => {
+      await api.deleteMaterial(initialProject.id, id);
+      setCatalog((prev) => ({ ...prev, materials: prev.materials.filter((material) => material.id !== id) }));
+    },
+    addSection: async (payload: { name: string; shape: SectionShape; dimensions: Record<string, number> }) => {
+      const created = await api.createSection(initialProject.id, payload);
+      setCatalog((prev) => ({ ...prev, sections: [...prev.sections, created] }));
+    },
+    removeSection: async (id: string) => {
+      await api.deleteSection(initialProject.id, id);
+      setCatalog((prev) => ({ ...prev, sections: prev.sections.filter((section) => section.id !== id) }));
+    },
+  }), [initialProject.id]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -306,6 +341,8 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         readOnly={readOnly}
       />
     );
+  } else if (state.activeSection === 'catalog') {
+    rightPanel = <CatalogPanel catalog={catalog} actions={catalogActions} readOnly={readOnly} />;
   } else if (state.activeSection === 'history') {
     rightPanel = (
       <HistoryPanel
@@ -325,10 +362,19 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         readOnly={readOnly}
       />
     );
-  } else if (state.activeSection === 'calculations' || selectedElements.length > 1) {
+  } else if (state.activeSection === 'calculations') {
     rightPanel = <SelectionSummary summary={summary} />;
   } else {
-    rightPanel = <PropertiesPanel elements={selectedElements} onUpdate={actions.updateElement} readOnly={readOnly} />;
+    rightPanel = (
+      <PropertiesPanel
+        elements={selectedElements}
+        layers={state.layers}
+        catalog={catalog}
+        onUpdate={actions.updateElement}
+        onUpdateMany={actions.updateMany}
+        readOnly={readOnly}
+      />
+    );
   }
 
   const canvas = activeView === '3d' ? (
@@ -339,6 +385,15 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         actions.select(id, false);
         if (compact) setMobilePanel('inspector');
       }}
+    />
+  ) : activeView === 'table' ? (
+    <ElementTable
+      elements={state.elements}
+      layers={state.layers}
+      catalog={catalog}
+      selectedIds={state.selectedIds}
+      actions={actions}
+      readOnly={readOnly}
     />
   ) : activeView === 'loads' ? (
     <LoadEditor projectId={initialProject.id} state={state} readOnly={readOnly} />
@@ -362,7 +417,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   );
 
   return (
-    <main className="flex h-[100dvh] w-full flex-col overflow-hidden bg-slate-50 text-slate-900">
+    <main className="flex h-[100dvh] w-full flex-col overflow-hidden bg-slate-950 text-slate-100">
       <EditorToolbar
         projectName={projectName}
         state={state}
@@ -385,7 +440,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         {!state.cleanMode && !compact && sidebar}
         <div className="relative min-h-0 flex-1">{canvas}</div>
         {!state.cleanMode && !compact && (
-          <aside className="w-72 shrink-0 overflow-y-auto border-l border-slate-200 bg-white">
+          <aside className="w-72 shrink-0 overflow-y-auto border-l border-slate-800 bg-slate-950">
             {rightPanel}
           </aside>
         )}
@@ -411,11 +466,11 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
       {compact && mobilePanel !== 'none' && (
         <div className="fixed inset-0 z-40 flex flex-col justify-end bg-slate-950/30" role="dialog" aria-modal="true">
           <button type="button" aria-label={tm('closePanel')} className="flex-1" onClick={() => setMobilePanel('none')} />
-          <section className="max-h-[80dvh] overflow-hidden rounded-t-2xl bg-white shadow-2xl">
-            <header className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
-              {mobilePanel === 'tools' ? <SlidersHorizontal className="h-4 w-4 text-violet-600" /> : state.activeSection === 'layers' ? <Layers3 className="h-4 w-4 text-violet-600" /> : <PanelRightClose className="h-4 w-4 text-violet-600" />}
-              <h2 className="text-sm font-bold">{mobilePanel === 'tools' ? tm('tools') : state.activeSection === 'layers' ? tm('layers') : tm('properties')}</h2>
-              <button type="button" onClick={() => setMobilePanel('none')} className="ml-auto rounded-md p-1 text-slate-400 hover:bg-slate-100" aria-label={tm('closePanel')}>
+          <section className="max-h-[80dvh] overflow-hidden rounded-t-2xl bg-slate-950 shadow-2xl">
+            <header className="flex items-center gap-2 border-b border-slate-800 px-4 py-3">
+              {mobilePanel === 'tools' ? <SlidersHorizontal className="h-4 w-4 text-cyan-400" /> : state.activeSection === 'layers' ? <Layers3 className="h-4 w-4 text-cyan-400" /> : <PanelRightClose className="h-4 w-4 text-cyan-400" />}
+              <h2 className="text-sm font-bold text-slate-100">{mobilePanel === 'tools' ? tm('tools') : state.activeSection === 'layers' ? tm('layers') : tm('properties')}</h2>
+              <button type="button" onClick={() => setMobilePanel('none')} className="ml-auto rounded-md p-1 text-slate-400 hover:bg-slate-800" aria-label={tm('closePanel')}>
                 <X className="h-4 w-4" />
               </button>
             </header>

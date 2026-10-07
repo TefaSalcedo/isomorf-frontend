@@ -229,7 +229,8 @@
       "2d": "2D",
       "3d": "3D",
       "loads": "Loads",
-      "fem": "FEM"
+      "fem": "FEM",
+      "table": "Table"
     },
     "saveStatus": {
       "failed": "Save failed",
@@ -247,7 +248,8 @@
         "layers": "Layers",
         "calculations": "Calculations",
         "history": "History",
-        "settings": "Settings"
+        "settings": "Settings",
+        "catalog": "Catalog"
       },
       "collapse": "Collapse menu",
       "expand": "Expand menu",
@@ -267,7 +269,14 @@
       "settingsTitle": "Settings",
       "workspaceTitle": "Workspace",
       "fallbackSubtitle": "Use the view controls to continue",
-      "fallbackBody": "Switch to 2D or 3D to access the contextual editor menu."
+      "fallbackBody": "Switch to 2D or 3D to access the contextual editor menu.",
+      "toolGroups": {
+        "select": "Select",
+        "structure": "Structure",
+        "foundation": "Foundation",
+        "floors": "Slabs & circulation",
+        "envelope": "Envelope"
+      }
     },
     "tools": {
       "select": "Select",
@@ -289,7 +298,14 @@
       "level": "Level",
       "text": "Text",
       "paletteTitle": "Tools",
-      "paletteHelp": "Choose a drawing tool, then click two points on the canvas. Coordinates are stored in world units."
+      "paletteHelp": "Choose a drawing tool, then click two points on the canvas. Coordinates are stored in world units.",
+      "joist": "Joist",
+      "grade_beam": "Grade beam",
+      "brace": "Brace",
+      "pile": "Pile",
+      "footing": "Footing",
+      "stair": "Stair",
+      "ramp": "Ramp"
     },
     "loadTypes": {
       "dead": "Dead",
@@ -331,7 +347,81 @@
         "swing": "Swing",
         "swingLeft": "Left",
         "swingRight": "Right",
-        "sillHeight": "Sill height (m)"
+        "sillHeight": "Sill height (m)",
+        "rotation": "Rotation (°)",
+        "tag": "Tag",
+        "layer": "Layer",
+        "section": "Section",
+        "none": "None",
+        "mixed": "Mixed",
+        "baseElevation": "Base elevation (m)",
+        "topElevation": "Top elevation (m)",
+        "bottomZ": "Bottom z (m)",
+        "topZ": "Top z (m)",
+        "diameter": "Diameter (m)",
+        "pileLength": "Pile length (m)",
+        "capacity": "Capacity (kN)",
+        "spacing": "Spacing (m)",
+        "shape": "Shape",
+        "shapeRect": "Rectangular",
+        "shapeCircular": "Circular",
+        "wallType": "Wall type",
+        "wallTypes": {
+          "bearing": "Bearing",
+          "shear": "Shear",
+          "partition": "Partition",
+          "masonry": "Masonry"
+        },
+        "slabType": "Slab type",
+        "slabTypes": {
+          "solid": "Solid",
+          "waffle": "Waffle",
+          "ribbed": "Ribbed",
+          "mat": "Mat"
+        },
+        "diaphragm": "Diaphragm",
+        "diaphragms": {
+          "none": "None",
+          "rigid": "Rigid",
+          "semirigid": "Semi-rigid"
+        },
+        "soilCapacity": "Soil capacity (kPa)",
+        "stepCount": "Steps",
+        "tread": "Tread (m)",
+        "riser": "Riser (m)",
+        "runAxis": "Run direction",
+        "runAxisX": "Along X",
+        "runAxisY": "Along Y",
+        "slope": "Slope (%)",
+        "openingHint": "An opening is a void in the slab area. Resize it by dragging its corners.",
+        "bulkTypeHint": "Select elements of the same type to edit shared dimensions.",
+        "sections": {
+          "identity": "Identity",
+          "position": "Position",
+          "geometry": "Geometry",
+          "material": "Material & section",
+          "layer": "Layer"
+        },
+        "bulk": {
+          "height": "Height (m)",
+          "thickness": "Thickness (m)",
+          "width": "Width (m)",
+          "depth": "Depth (m)",
+          "diameter": "Diameter (m)",
+          "base_elevation": "Base elevation (m)",
+          "top_elevation": "Top elevation (m)",
+          "bottom_z": "Bottom z (m)",
+          "top_z": "Top z (m)",
+          "spacing": "Spacing (m)",
+          "pile_length": "Pile length (m)",
+          "capacity_kn": "Capacity (kN)",
+          "soil_capacity_kpa": "Soil capacity (kPa)",
+          "step_count": "Steps",
+          "tread": "Tread (m)",
+          "riser": "Riser (m)",
+          "slope_percent": "Slope (%)",
+          "sill_height": "Sill height (m)"
+        }
       },
       "layers": {
         "title": "2D plan layers",
@@ -445,6 +535,56 @@
         "downloadMemory": "Download memory",
         "notes": "Notes",
         "modalTitle": "Calculation memory — {element}"
+      },
+      "catalog": {
+        "title": "Materials & sections",
+        "subtitle": "Project catalog. Elements reference these entries or the built-in presets.",
+        "materials": "Materials",
+        "sections": "Sections",
+        "presets": "Presets",
+        "newMaterial": "New material name",
+        "newSection": "New section name",
+        "category": "Category",
+        "shape": "Shape",
+        "addMaterial": "Add material",
+        "addSection": "Add section",
+        "delete": "Delete",
+        "emptyMaterials": "No project materials yet.",
+        "emptySections": "No project sections yet.",
+        "categories": {
+          "concrete": "Concrete",
+          "steel": "Steel",
+          "masonry": "Masonry",
+          "timber": "Timber",
+          "aluminum": "Aluminum",
+          "generic": "Generic"
+        },
+        "shapes": {
+          "rectangular": "Rectangular",
+          "circular": "Circular",
+          "i_shape": "I shape",
+          "t_shape": "T shape",
+          "l_shape": "L shape",
+          "box": "Box",
+          "pipe": "Pipe",
+          "custom": "Custom"
+        }
+      },
+      "table": {
+        "title": "Element table",
+        "filterType": "Filter by type",
+        "allTypes": "All types ({count})",
+        "checked": "{count} checked",
+        "bulkMaterial": "Set material…",
+        "bulkLayer": "Set layer…",
+        "deleteChecked": "Delete",
+        "colTag": "Tag",
+        "colType": "Type",
+        "colRotation": "Rot (°)",
+        "colMaterial": "Material",
+        "colLayer": "Layer",
+        "checkRow": "Select {tag}",
+        "empty": "No elements. Draw something in the 2D view first."
       }
     },
     "defaults": {
@@ -495,7 +635,16 @@
         "door": "Insert door",
         "window": "Insert window",
         "column": "Insert column",
-        "beam": "Draw beam axis"
+        "beam": "Draw beam axis",
+        "joist": "Draw joist",
+        "grade_beam": "Draw grade beam",
+        "brace": "Draw brace",
+        "pile": "Insert pile",
+        "slab": "Draw slab",
+        "footing": "Draw footing",
+        "stair": "Draw stair",
+        "ramp": "Draw ramp",
+        "opening": "Draw opening"
       },
       "action": {
         "undo": "Undo",
@@ -514,13 +663,15 @@
         "2d": "Go to 2D editor",
         "3d": "Go to 3D view",
         "loads": "Go to loads",
-        "fem": "Go to FEM analysis"
+        "fem": "Go to FEM analysis",
+        "table": "Go to element table"
       },
       "section": {
         "layers": "Open layers",
         "history": "Open history",
         "settings": "Open settings",
-        "calculations": "Open calculations"
+        "calculations": "Open calculations",
+        "catalog": "Open catalog"
       },
       "doc": {
         "export": "Export as PNG",

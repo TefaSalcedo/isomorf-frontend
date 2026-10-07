@@ -17,7 +17,7 @@ export function ProjectSettingsPanel({
   const t = useTranslations('editor.panels.settings');
   return (
     <div className="h-full overflow-y-auto p-5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{t('title')}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{t('title')}</p>
       <fieldset disabled={readOnly} className="mt-5 min-w-0 space-y-4 border-0 p-0 disabled:opacity-60">
         <SelectField
           label={t('displayUnit')}
@@ -48,7 +48,7 @@ export function ProjectSettingsPanel({
           value={settings.building_code ?? ''}
           onChange={(v) => onChange({ ...settings, building_code: v })}
         />
-        <p className="text-sm font-medium text-slate-900">{t('materialConstants')}</p>
+        <p className="text-sm font-medium text-slate-100">{t('materialConstants')}</p>
         <NumberField
           label={t('compressiveStrength')}
           value={settings.material?.compressive_strength}
@@ -102,13 +102,13 @@ function TextField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="block text-sm text-slate-700">
-      <span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>
+    <label className="block text-sm text-slate-300">
+      <span className="mb-1 block text-xs font-medium text-slate-400">{label}</span>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-slate-400"
+        className="w-full rounded-md border border-slate-800 px-2.5 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-600"
       />
     </label>
   );
@@ -126,12 +126,12 @@ function SelectField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="block text-sm text-slate-700">
-      <span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>
+    <label className="block text-sm text-slate-300">
+      <span className="mb-1 block text-xs font-medium text-slate-400">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-slate-400"
+        className="w-full rounded-md border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-600"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -153,14 +153,14 @@ function NumberField({
   onChange: (value: number | undefined) => void;
 }) {
   return (
-    <label className="block text-sm text-slate-700">
-      <span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>
+    <label className="block text-sm text-slate-300">
+      <span className="mb-1 block text-xs font-medium text-slate-400">{label}</span>
       <input
         type="number"
         step="0.01"
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-        className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-slate-400"
+        className="w-full rounded-md border border-slate-800 px-2.5 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-600"
       />
     </label>
   );

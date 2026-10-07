@@ -1,4 +1,22 @@
-export type ElementType = 'wall' | 'door' | 'window' | 'column' | 'beam';
+export type ElementType =
+  | 'wall'
+  | 'door'
+  | 'window'
+  | 'column'
+  | 'beam'
+  | 'slab'
+  | 'footing'
+  | 'stair'
+  | 'ramp'
+  | 'opening'
+  | 'joist'
+  | 'grade_beam'
+  | 'brace'
+  | 'pile';
+
+/** How an element is drawn on the plan: two-point line, single click point,
+ *  or corner-to-corner rectangle (x1,y1 = min corner, x2,y2 = max corner). */
+export type DrawMode = 'line' | 'point' | 'rect';
 
 export type MaterialConstants = {
   compressive_strength?: number;
@@ -33,6 +51,8 @@ export type BaseElement = {
   y2: number;
   length: number;
   rotation: number;
+  material_id: string | null;
+  section_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -41,9 +61,16 @@ export type LayeredProperties = {
   layer_id?: string | null;
 };
 
-export type WallProperties = LayeredProperties & {
+/** Identity fields common to every element. */
+export type TaggedProperties = {
+  tag?: string;
+};
+
+export type WallProperties = LayeredProperties & TaggedProperties & {
   height: number;
   thickness: number;
+  wall_type?: 'bearing' | 'shear' | 'partition' | 'masonry';
+  base_elevation?: number;
   join_mode: 'perpendicular' | '45' | 'free';
   join_angle: number;
   join_target: 'start' | 'end' | null;
@@ -55,8 +82,9 @@ export type WallElement = BaseElement & {
   properties: WallProperties;
 };
 
-export type DoorProperties = LayeredProperties & {
+export type DoorProperties = LayeredProperties & TaggedProperties & {
   width?: number;
+  height?: number;
   swing?: 'left' | 'right';
 };
 
@@ -65,8 +93,9 @@ export type DoorElement = BaseElement & {
   properties: DoorProperties;
 };
 
-export type WindowProperties = LayeredProperties & {
+export type WindowProperties = LayeredProperties & TaggedProperties & {
   width?: number;
+  height?: number;
   sill_height?: number;
 };
 
@@ -125,11 +154,16 @@ export type DesignableProperties = {
   design_memory?: DesignMemory;
 };
 
-export type ColumnProperties = LayeredProperties & DesignableProperties & {
+export type ColumnProperties = LayeredProperties & TaggedProperties & DesignableProperties & {
+  shape?: 'rectangular' | 'circular';
   width: number;
   depth: number;
+  /** Circular columns use diameter instead of width/depth. */
+  diameter?: number;
   height: number;
-  material: string;
+  base_elevation?: number;
+  /** Legacy free-text material; superseded by element.material_id / material_preset. */
+  material?: string;
 };
 
 export type ColumnElement = BaseElement & {
@@ -137,11 +171,13 @@ export type ColumnElement = BaseElement & {
   properties: ColumnProperties;
 };
 
-export type BeamProperties = LayeredProperties & DesignableProperties & {
+export type BeamProperties = LayeredProperties & TaggedProperties & DesignableProperties & {
   width: number;
   height: number;
   length: number;
-  material: string;
+  /** Elevation of the beam top, in meters. */
+  top_elevation?: number;
+  material?: string;
 };
 
 export type BeamElement = BaseElement & {
@@ -149,12 +185,170 @@ export type BeamElement = BaseElement & {
   properties: BeamProperties;
 };
 
+export type JoistProperties = LayeredProperties & TaggedProperties & {
+  width: number;
+  height: number;
+  spacing: number;
+  top_elevation?: number;
+};
+
+export type JoistElement = BaseElement & {
+  element_type: 'joist';
+  properties: JoistProperties;
+};
+
+export type GradeBeamProperties = LayeredProperties & TaggedProperties & DesignableProperties & {
+  width: number;
+  height: number;
+  top_elevation?: number;
+};
+
+export type GradeBeamElement = BaseElement & {
+  element_type: 'grade_beam';
+  properties: GradeBeamProperties;
+};
+
+export type BraceProperties = LayeredProperties & TaggedProperties & {
+  width: number;
+  depth: number;
+  bottom_z: number;
+  top_z: number;
+};
+
+export type BraceElement = BaseElement & {
+  element_type: 'brace';
+  properties: BraceProperties;
+};
+
+export type SlabProperties = LayeredProperties & TaggedProperties & {
+  thickness: number;
+  slab_type: 'solid' | 'waffle' | 'ribbed' | 'mat';
+  /** Elevation of the slab top surface, in meters. */
+  top_elevation: number;
+  diaphragm?: 'none' | 'rigid' | 'semirigid';
+};
+
+export type SlabElement = BaseElement & {
+  element_type: 'slab';
+  properties: SlabProperties;
+};
+
+export type FootingProperties = LayeredProperties & TaggedProperties & {
+  /** Footing thickness (vertical dimension), in meters. */
+  depth: number;
+  /** Elevation of the footing top, in meters. */
+  top_elevation: number;
+  soil_capacity_kpa?: number;
+};
+
+export type FootingElement = BaseElement & {
+  element_type: 'footing';
+  properties: FootingProperties;
+};
+
+export type StairProperties = LayeredProperties & TaggedProperties & {
+  step_count: number;
+  tread: number;
+  riser: number;
+  base_elevation: number;
+  /** Plan axis along which the stair ascends. */
+  run_axis: 'x' | 'y';
+};
+
+export type StairElement = BaseElement & {
+  element_type: 'stair';
+  properties: StairProperties;
+};
+
+export type RampProperties = LayeredProperties & TaggedProperties & {
+  slope_percent: number;
+  thickness: number;
+  base_elevation: number;
+};
+
+export type RampElement = BaseElement & {
+  element_type: 'ramp';
+  properties: RampProperties;
+};
+
+export type OpeningProperties = LayeredProperties & TaggedProperties & {
+  notes?: string;
+};
+
+export type OpeningElement = BaseElement & {
+  element_type: 'opening';
+  properties: OpeningProperties;
+};
+
+export type PileProperties = LayeredProperties & TaggedProperties & {
+  diameter: number;
+  /** Pile length below its top elevation, in meters. */
+  pile_length: number;
+  top_elevation: number;
+  capacity_kn?: number;
+};
+
+export type PileElement = BaseElement & {
+  element_type: 'pile';
+  properties: PileProperties;
+};
+
 export type ProjectElement =
   | WallElement
   | DoorElement
   | WindowElement
   | ColumnElement
-  | BeamElement;
+  | BeamElement
+  | JoistElement
+  | GradeBeamElement
+  | BraceElement
+  | PileElement
+  | SlabElement
+  | FootingElement
+  | StairElement
+  | RampElement
+  | OpeningElement;
+
+export type MaterialCategory = 'concrete' | 'steel' | 'masonry' | 'timber' | 'aluminum' | 'generic';
+
+export type Material = {
+  id: string;
+  project_id: string;
+  name: string;
+  category: MaterialCategory;
+  properties: Record<string, number | string | undefined>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SectionShape = 'rectangular' | 'circular' | 'i_shape' | 't_shape' | 'l_shape' | 'box' | 'pipe' | 'custom';
+
+export type Section = {
+  id: string;
+  project_id: string;
+  name: string;
+  shape: SectionShape;
+  material_id: string | null;
+  dimensions: Record<string, number | undefined>;
+  properties: Record<string, number | string | undefined>;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Read-only catalog entry referenced as ``preset:<key>``. */
+export type CatalogPreset = {
+  key: string;
+  name: string;
+  category?: string | null;
+  shape?: string | null;
+  properties?: Record<string, number>;
+  dimensions?: Record<string, number>;
+};
+
+export type CatalogPresets = {
+  materials: CatalogPreset[];
+  sections: CatalogPreset[];
+};
 
 export type Project = {
   id: string;
