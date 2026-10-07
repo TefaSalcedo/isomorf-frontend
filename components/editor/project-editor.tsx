@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import type Konva from 'konva';
@@ -20,6 +20,8 @@ import { FemComingSoon } from '@/components/editor/fem-coming-soon';
 import { HistoryPanel } from '@/components/editor/history-panel';
 import { MemberDesignPanel, isDesignable } from '@/components/editor/member-design-panel';
 import type { DesignPatch } from '@/components/editor/member-design-panel';
+import { CommandPalette } from '@/components/editor/command-palette';
+import { buildEditorCommands } from '@/lib/editor/commands';
 import { api } from '@/lib/api-client';
 import type { DocumentState, Project, ProjectElement } from '@/types/project';
 import { defaultDesignSettings } from '@/lib/editor/elements';
@@ -43,6 +45,8 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   );
   const [activeView, setActiveView] = useState<EditorView>('2d');
   const [mobilePanel, setMobilePanel] = useState<'none' | 'tools' | 'inspector'>('none');
+  const [palette, setPalette] = useState<{ open: boolean; seed: string }>({ open: false, seed: '' });
+  const openPalette = useCallback((seed = '') => setPalette({ open: true, seed }), []);
   const compact = useIsCompact();
   const stageRef = useRef<Konva.Stage | null>(null);
   const savingRef = useRef(false);
@@ -75,6 +79,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   }
 
   async function save(): Promise<void> {
+    if (stateRef.current.readOnly) return;
     if (savingRef.current) {
       pendingSaveRef.current = true;
       return savePromiseRef.current ?? Promise.resolve();
@@ -145,7 +150,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   }
 
   async function runHistoryAction(action: () => Promise<DocumentState>) {
-    if (stateRef.current.historyBusy) return;
+    if (stateRef.current.readOnly || stateRef.current.historyBusy) return;
     const flushed = await flushPendingSave();
     if (!flushed) {
       actions.setError(t('errors.pendingSave'));
@@ -186,30 +191,46 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return;
-      if (!(event.ctrlKey || event.metaKey)) return;
       const key = event.key.toLowerCase();
+      if ((event.ctrlKey || event.metaKey) && key === 'k') {
+        event.preventDefault();
+        openPalette();
+        return;
+      }
+      if (!(event.ctrlKey || event.metaKey)) {
+        if (!event.altKey && /^[a-z]$/.test(key) && !stateRef.current.draft) {
+          event.preventDefault();
+          openPalette(key);
+        }
+        return;
+      }
       if (key === 'z' && !event.shiftKey) {
         event.preventDefault();
         void undoRef.current();
       } else if ((key === 'z' && event.shiftKey) || key === 'y') {
         event.preventDefault();
         void redoRef.current();
+      } else if (key === 's') {
+        event.preventDefault();
+        void saveRef.current();
       }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [openPalette]);
 
   useEffect(() => {
+    if (state.readOnly) return undefined;
     const projectChanged =
       projectName.trim() !== initialNameRef.current ||
       JSON.stringify({ ...designSettings, layers: state.layers }) !== initialSettingsRef.current;
     if (!state.dirty && !projectChanged) return undefined;
     const timeout = window.setTimeout(() => void saveRef.current(), 700);
     return () => window.clearTimeout(timeout);
-  }, [state.dirty, state.layers, projectName, designSettings, initialProject.name]);
+  }, [state.dirty, state.readOnly, state.layers, projectName, designSettings, initialProject.name]);
 
   function commitProjectName(value: string) {
+    if (state.readOnly) return;
     setProjectName(value.trim() || t('defaults.projectName'));
   }
 
@@ -240,12 +261,35 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
       ? selectedElements[0]
       : null;
 
+  const readOnly = state.readOnly;
+
+  const commands = buildEditorCommands({
+    setTool: actions.setTool,
+    setSection: actions.setSection,
+    setView: setActiveView,
+    undo: () => void undoRef.current(),
+    redo: () => void redoRef.current(),
+    save: () => void saveRef.current(),
+    deleteSelection: actions.deleteSelection,
+    zoomIn: actions.zoomIn,
+    zoomOut: actions.zoomOut,
+    fit: actions.fit,
+    toggleGrid: actions.toggleGrid,
+    toggleSnap: actions.toggleSnap,
+    togglePolar: actions.togglePolar,
+    toggleCleanMode: actions.toggleCleanMode,
+    exportPng: handleExport,
+    print: handlePrint,
+  });
+  const visibleCommands = readOnly ? commands.filter((command) => !command.requiresEdit) : commands;
+
   let rightPanel: React.ReactNode = null;
   if (designTarget) {
     rightPanel = (
       <MemberDesignPanel
         element={designTarget}
         projectName={projectName}
+        readOnly={readOnly}
         onUpdate={(id, properties: DesignPatch) =>
           actions.updateElement(id, { properties } as Partial<ProjectElement>)
         }
@@ -259,6 +303,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         elements={state.elements}
         selectionCount={state.selectedIds.length}
         actions={actions}
+        readOnly={readOnly}
       />
     );
   } else if (state.activeSection === 'history') {
@@ -277,12 +322,13 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         settings={designSettings}
         onChange={setDesignSettings}
         onSave={() => void saveRef.current()}
+        readOnly={readOnly}
       />
     );
   } else if (state.activeSection === 'calculations' || selectedElements.length > 1) {
     rightPanel = <SelectionSummary summary={summary} />;
   } else {
-    rightPanel = <PropertiesPanel elements={selectedElements} onUpdate={actions.updateElement} />;
+    rightPanel = <PropertiesPanel elements={selectedElements} onUpdate={actions.updateElement} readOnly={readOnly} />;
   }
 
   const canvas = activeView === '3d' ? (
@@ -295,7 +341,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
       }}
     />
   ) : activeView === 'loads' ? (
-    <LoadEditor projectId={initialProject.id} state={state} />
+    <LoadEditor projectId={initialProject.id} state={state} readOnly={readOnly} />
   ) : activeView === 'fem' ? (
     <FemComingSoon />
   ) : (
@@ -310,6 +356,8 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
       onOpenLoads={() => { setActiveView('loads'); setMobilePanel('none'); }}
       compact={compact}
       onClose={() => setMobilePanel('none')}
+      readOnly={readOnly}
+      onOpenPalette={() => openPalette()}
     />
   );
 
@@ -331,6 +379,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         onExport={handleExport}
         onPrint={handlePrint}
         saving={saving}
+        readOnly={readOnly}
       />
       <div className="flex min-h-0 flex-1">
         {!state.cleanMode && !compact && sidebar}
@@ -345,6 +394,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
       {compact && !state.cleanMode && (
         <MobileToolbar
           state={state}
+          readOnly={readOnly}
           actions={{ ...actions, undo: () => void handleUndo(), redo: () => void handleRedo() }}
           view={activeView}
           onViewChange={setActiveView}
@@ -375,6 +425,13 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
           </section>
         </div>
       )}
+
+      <CommandPalette
+        open={palette.open}
+        initialQuery={palette.seed}
+        commands={visibleCommands}
+        onClose={() => setPalette((current) => ({ ...current, open: false }))}
+      />
     </main>
   );
 }

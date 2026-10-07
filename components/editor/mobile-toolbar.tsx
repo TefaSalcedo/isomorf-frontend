@@ -25,8 +25,10 @@ export function MobileToolbar({
   onOpenInspector,
   onOpenLayers,
   onOpenHistory,
+  readOnly,
 }: {
   state: EditorState;
+  readOnly?: boolean;
   actions: { setTool: (tool: Tool) => void; undo: () => void; redo: () => void; deleteSelection: () => void };
   view: EditorView;
   onViewChange: (view: EditorView) => void;
@@ -57,13 +59,13 @@ export function MobileToolbar({
       </div>
       <div className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-2 py-2">
         {view === '2d' && TOOLS.map(({ id, icon: Icon }) => (
-          <BarButton key={id} label={tt(id)} icon={Icon} active={state.tool === id} onClick={() => actions.setTool(id)} />
+          <BarButton key={id} label={tt(id)} icon={Icon} active={state.tool === id} disabled={readOnly && id !== 'select'} onClick={() => actions.setTool(id)} />
         ))}
         <span className="mx-1 h-8 w-px shrink-0 bg-slate-200" />
-        <BarButton label={t('undo')} icon={Undo} disabled={state.revision <= 1 || state.historyBusy} onClick={actions.undo} />
-        <BarButton label={t('redo')} icon={Redo} disabled={state.revision >= state.headRevision || state.historyBusy} onClick={actions.redo} />
+        <BarButton label={t('undo')} icon={Undo} disabled={readOnly || state.revision <= 1 || state.historyBusy} onClick={actions.undo} />
+        <BarButton label={t('redo')} icon={Redo} disabled={readOnly || state.revision >= state.headRevision || state.historyBusy} onClick={actions.redo} />
         <BarButton label={t('history')} icon={History} onClick={onOpenHistory} />
-        <BarButton label={t('delete')} icon={Trash2} disabled={state.selectedIds.length === 0} onClick={actions.deleteSelection} />
+        <BarButton label={t('delete')} icon={Trash2} disabled={readOnly || state.selectedIds.length === 0} onClick={actions.deleteSelection} />
         <span className="mx-1 h-8 w-px shrink-0 bg-slate-200" />
         <BarButton label={t('layers')} icon={Layers3} onClick={onOpenLayers} />
         <BarButton label={t('tools')} icon={SlidersHorizontal} onClick={onOpenTools} />

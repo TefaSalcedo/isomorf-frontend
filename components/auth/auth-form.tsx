@@ -66,13 +66,15 @@ function SsoButton({ children }: { children: React.ReactNode }) {
   return <button type="button" disabled className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-500 opacity-80 transition hover:border-violet-300"><span className="text-violet-600">✦</span>{children}<span className="text-[10px] font-medium text-slate-400">{t('soon')}</span></button>;
 }
 
-export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
+export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: string }) {
   const { login, register } = useAuth();
   const router = useRouter();
   const t = useTranslations('auth');
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   const submittingRef = useRef(false);
+  const target = next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
+  const switchHref = `${mode === 'login' ? '/register' : '/login'}${next ? `?next=${encodeURIComponent(next)}` : ''}`;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -83,7 +85,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
     try {
       if (mode === 'login') await login(String(data.email), String(data.password));
       else await register({ email: String(data.email), password: String(data.password), first_name: String(data.first_name), last_name: String(data.last_name) });
-      router.replace('/dashboard');
+      router.replace(target);
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : t('authError'));
     } finally { submittingRef.current = false; setPending(false); }
@@ -95,7 +97,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
         <Brand />
         <div className="flex items-center gap-4">
           <LanguageSwitcher />
-          <p className="text-sm text-slate-500">{mode === 'login' ? t('needAccount') : t('alreadyRegistered')} <Link className="font-semibold text-violet-600 hover:text-violet-800" href={mode === 'login' ? '/register' : '/login'}>{mode === 'login' ? t('createAccount') : t('signIn')}</Link></p>
+          <p className="text-sm text-slate-500">{mode === 'login' ? t('needAccount') : t('alreadyRegistered')} <Link className="font-semibold text-violet-600 hover:text-violet-800" href={switchHref}>{mode === 'login' ? t('createAccount') : t('signIn')}</Link></p>
         </div>
       </header>
       <section className="mx-auto my-10 grid max-w-[1360px] overflow-hidden rounded-3xl border border-violet-100 bg-white shadow-[0_18px_60px_rgba(76,29,149,.10)] lg:grid-cols-12">

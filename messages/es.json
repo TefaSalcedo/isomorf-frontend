@@ -24,10 +24,22 @@
     "offerTitle": "Qué ofrecemos",
     "offerSubtitle": "Un espacio de trabajo moderno para equipos de estructuras y BIM.",
     "features": {
-      "modeling": { "title": "Modelado integrado", "description": "Construye geometría estructural y vincúlala directamente a datos BIM sin cambiar de herramienta." },
-      "calculation": { "title": "Cálculo en la nube", "description": "Ejecuta casos de carga y previsualiza análisis FEM desde cualquier navegador, con resultados sincronizados en tiempo real." },
-      "collaboration": { "title": "Colaboración en equipo", "description": "Comparte proyectos, planos y modelos con ingenieros, arquitectos y revisores en un solo lugar." },
-      "deliverables": { "title": "Entregables técnicos", "description": "Exporta planos, informes y documentación listos para construcción y revisión de norma." }
+      "modeling": {
+        "title": "Modelado integrado",
+        "description": "Construye geometría estructural y vincúlala directamente a datos BIM sin cambiar de herramienta."
+      },
+      "calculation": {
+        "title": "Cálculo en la nube",
+        "description": "Ejecuta casos de carga y previsualiza análisis FEM desde cualquier navegador, con resultados sincronizados en tiempo real."
+      },
+      "collaboration": {
+        "title": "Colaboración en equipo",
+        "description": "Comparte proyectos, planos y modelos con ingenieros, arquitectos y revisores en un solo lugar."
+      },
+      "deliverables": {
+        "title": "Entregables técnicos",
+        "description": "Exporta planos, informes y documentación listos para construcción y revisión de norma."
+      }
     },
     "videoComingSoon": "Video próximamente"
   },
@@ -107,12 +119,36 @@
     "createNewTitle": "Crea algo nuevo",
     "createNewSubtitle": "Empieza con un lienzo en blanco optimizado para tu disciplina",
     "templates": {
-      "structuralModel": { "title": "Modelo estructural", "description": "Pórticos, columnas y muros", "tag": "Modelo" },
-      "architectural": { "title": "Proyecto arquitectónico", "description": "Distribución y espacios", "tag": "Proyecto" },
-      "cadPlan": { "title": "Plano CAD 2D", "description": "Dibujo técnico de precisión", "tag": "Plano" },
-      "parametricBim": { "title": "BIM paramétrico", "description": "Familias inteligentes", "tag": "BIM" },
-      "femAnalysis": { "title": "Análisis FEM", "description": "Malla y envolventes", "tag": "Próximamente" },
-      "mepNetworks": { "title": "Redes MEP", "description": "Instalaciones del edificio", "tag": "Próximamente" }
+      "structuralModel": {
+        "title": "Modelo estructural",
+        "description": "Pórticos, columnas y muros",
+        "tag": "Modelo"
+      },
+      "architectural": {
+        "title": "Proyecto arquitectónico",
+        "description": "Distribución y espacios",
+        "tag": "Proyecto"
+      },
+      "cadPlan": {
+        "title": "Plano CAD 2D",
+        "description": "Dibujo técnico de precisión",
+        "tag": "Plano"
+      },
+      "parametricBim": {
+        "title": "BIM paramétrico",
+        "description": "Familias inteligentes",
+        "tag": "BIM"
+      },
+      "femAnalysis": {
+        "title": "Análisis FEM",
+        "description": "Malla y envolventes",
+        "tag": "Próximamente"
+      },
+      "mepNetworks": {
+        "title": "Redes MEP",
+        "description": "Instalaciones del edificio",
+        "tag": "Próximamente"
+      }
     },
     "startHere": "Empezar aquí",
     "recentProjectsTitle": "Proyectos recientes",
@@ -184,7 +220,10 @@
       "cleanMode": "Modo limpio",
       "delete": "Eliminar",
       "save": "Guardar",
-      "saving": "Guardando…"
+      "saving": "Guardando…",
+      "readOnlyBadge": "Solo lectura",
+      "readOnlyHint": "Este proyecto está compartido contigo en modo solo lectura — pide a un propietario o editor que haga cambios.",
+      "polar": "Rastreo polar"
     },
     "views": {
       "2d": "2D",
@@ -443,6 +482,50 @@
       "label": "Idioma",
       "english": "Inglés",
       "spanish": "Español"
+    },
+    "palette": {
+      "placeholder": "Escribe un comando o describe un elemento…",
+      "noResults": "Sin comandos coincidentes",
+      "hint": "↑↓ para navegar · Enter para ejecutar · Esc para cerrar · ⌘K para abrir"
+    },
+    "commands": {
+      "tool": {
+        "select": "Seleccionar",
+        "wall": "Dibujar muro",
+        "door": "Insertar puerta",
+        "window": "Insertar ventana",
+        "column": "Insertar columna",
+        "beam": "Dibujar eje de viga"
+      },
+      "action": {
+        "undo": "Deshacer",
+        "redo": "Rehacer",
+        "save": "Guardar ahora",
+        "delete": "Eliminar selección"
+      },
+      "view": {
+        "fit": "Encajar en pantalla",
+        "zoomIn": "Acercar",
+        "zoomOut": "Alejar",
+        "grid": "Alternar rejilla",
+        "snap": "Alternar ajuste",
+        "polar": "Alternar rastreo polar",
+        "clean": "Alternar modo limpio",
+        "2d": "Ir al editor 2D",
+        "3d": "Ir a vista 3D",
+        "loads": "Ir a cargas",
+        "fem": "Ir a análisis FEM"
+      },
+      "section": {
+        "layers": "Abrir capas",
+        "history": "Abrir historial",
+        "settings": "Abrir configuración",
+        "calculations": "Abrir cálculos"
+      },
+      "doc": {
+        "export": "Exportar como PNG",
+        "print": "Imprimir"
+      }
     }
   },
   "layers": {
@@ -518,5 +601,30 @@
       "development": "Desarrollo",
       "notes": "Observaciones"
     }
+  },
+  "invite": {
+    "badge": "Invitación a equipo",
+    "title": "Te invitaron a {team}",
+    "subtitle": "{name} te invitó a colaborar.",
+    "roleLabel": "Tu rol",
+    "expiresLabel": "Vence",
+    "roleHint": {
+      "owner": "Los propietarios pueden gestionar miembros, invitaciones y proyectos compartidos.",
+      "editor": "Los editores pueden ver y editar los proyectos compartidos con este equipo.",
+      "viewer": "Los lectores pueden abrir y revisar los proyectos compartidos con este equipo."
+    },
+    "forEmail": "Esta invitación fue emitida para {email}.",
+    "emailMismatch": "Iniciaste sesión como {current}. Esta invitación fue emitida para {expected} — cierra sesión y usa esa cuenta para aceptar.",
+    "accept": "Aceptar invitación",
+    "accepting": "Aceptando…",
+    "signInToAccept": "Inicia sesión para aceptar",
+    "createToAccept": "Crear una cuenta",
+    "invalidTitle": "Invitación no disponible",
+    "invalidBody": "Este enlace de invitación es inválido o ya fue utilizado.",
+    "expiredTitle": "Invitación vencida",
+    "expiredBody": "Este enlace de invitación ya no es válido. Pide a un propietario del equipo que envíe una nueva.",
+    "errorTitle": "Algo salió mal",
+    "errorBody": "No pudimos cargar esta invitación. Revisa tu conexión e inténtalo de nuevo.",
+    "backHome": "Volver al inicio"
   }
 }

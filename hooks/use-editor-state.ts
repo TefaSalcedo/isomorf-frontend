@@ -18,6 +18,7 @@ import {
   cmToMeters,
   distance,
   pointsEqual,
+  polarSnapPoint,
   resolveTJoin,
 } from '@/lib/editor/geometry';
 import { calculateSelectionSummary } from '@/lib/editor/calculations';
@@ -52,6 +53,7 @@ export type DraftState = {
   snap: SnapResult | null;
   host: ProjectElement | null;
   joinAt: 'start' | 'end' | null;
+  polar: boolean;
 };
 
 export type EditorState = {
@@ -62,6 +64,7 @@ export type EditorState = {
   viewport: { zoom: number; pan: Point };
   showGrid: boolean;
   snapEnabled: boolean;
+  polarEnabled: boolean;
   cleanMode: boolean;
   activeSection: ActiveSection;
   layers: PlanLayer[];
@@ -70,6 +73,7 @@ export type EditorState = {
   headRevision: number;
   historyBusy: boolean;
   dirty: boolean;
+  readOnly: boolean;
   error: string;
 };
 
@@ -83,6 +87,7 @@ export type EditorAction =
   | { type: 'clearSelection' }
   | { type: 'toggleGrid' }
   | { type: 'toggleSnap' }
+  | { type: 'togglePolar' }
   | { type: 'toggleCleanMode' }
   | { type: 'setZoom'; zoom: number }
   | { type: 'zoomIn' }
@@ -248,7 +253,21 @@ function makeElementFromDraft(draft: DraftState, projectId: string): ProjectElem
   }
 }
 
+const MUTATING_ACTIONS: ReadonlySet<EditorAction['type']> = new Set([
+  'beginDraft',
+  'updateDraft',
+  'commitDraft',
+  'cancelDraft',
+  'updateElement',
+  'deleteSelection',
+  'addLayer',
+  'updateLayer',
+  'removeLayer',
+  'assignSelectionToLayer',
+]);
+
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
+  if (state.readOnly && MUTATING_ACTIONS.has(action.type)) return state;
   switch (action.type) {
     case 'load': {
       const elements = (action.project.elements ?? []).map(normalizeElement);
@@ -261,12 +280,14 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         selectedIds: [],
         draft: null,
         dirty: false,
+        readOnly: action.project.access_role === 'viewer',
         revision: action.project.current_revision ?? 0,
         headRevision: action.project.head_revision ?? 0,
         historyBusy: false,
       };
     }
     case 'setTool':
+      if (state.readOnly && action.tool !== 'select') return state;
       return { ...state, tool: action.tool, draft: null };
     case 'setSection':
       return { ...state, activeSection: action.section };
@@ -327,6 +348,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       return { ...state, showGrid: !state.showGrid };
     case 'toggleSnap':
       return { ...state, snapEnabled: !state.snapEnabled };
+    case 'togglePolar':
+      return { ...state, polarEnabled: !state.polarEnabled };
     case 'toggleCleanMode':
       return { ...state, cleanMode: !state.cleanMode };
     case 'setZoom':
@@ -367,6 +390,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
           snap,
           host: isStartT && snap ? state.elements.find((el) => 'elementId' in snap.target && el.id === snap.target.elementId) ?? null : null,
           joinAt: isStartT ? 'start' : null,
+          polar: false,
         },
       };
     }
@@ -416,7 +440,13 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       } else if (endSnap) {
         end = endSnap.point;
       }
-      return { ...state, draft: { ...draft, start, end, snap: anchoredStart ?? endSnap, host, joinAt } };
+      let polar = false;
+      if (!endSnap && !host && state.polarEnabled) {
+        const polarResult = polarSnapPoint(start, end);
+        end = polarResult.point;
+        polar = polarResult.locked;
+      }
+      return { ...state, draft: { ...draft, start, end, snap: anchoredStart ?? endSnap, host, joinAt, polar } };
     }
     case 'commitDraft': {
       if (!state.draft) return state;
@@ -529,6 +559,7 @@ const initialState: EditorState = {
   viewport: { zoom: 1, pan: { x: 0, y: 0 } },
   showGrid: false,
   snapEnabled: true,
+  polarEnabled: true,
   cleanMode: false,
   activeSection: 'draw',
   layers: ensureLayers(undefined),
@@ -537,6 +568,7 @@ const initialState: EditorState = {
   headRevision: 0,
   historyBusy: false,
   dirty: false,
+  readOnly: false,
   error: '',
 };
 
@@ -563,6 +595,7 @@ export function useEditorState(project: Project) {
       clearSelection: () => dispatch({ type: 'clearSelection' }),
       toggleGrid: () => dispatch({ type: 'toggleGrid' }),
       toggleSnap: () => dispatch({ type: 'toggleSnap' }),
+      togglePolar: () => dispatch({ type: 'togglePolar' }),
       toggleCleanMode: () => dispatch({ type: 'toggleCleanMode' }),
       setZoom: (zoom: number) => dispatch({ type: 'setZoom', zoom }),
       zoomIn: () => dispatch({ type: 'zoomIn' }),

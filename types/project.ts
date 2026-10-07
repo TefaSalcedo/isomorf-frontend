@@ -163,6 +163,7 @@ export type Project = {
   name: string;
   description: string;
   design_settings: DesignSettings;
+  access_role?: 'owner' | 'editor' | 'viewer';
   created_at: string;
   updated_at: string;
   elements?: ProjectElement[];
