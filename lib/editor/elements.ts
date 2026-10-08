@@ -1,11 +1,22 @@
 import type {
   Project,
   ProjectElement,
+  ElementType,
+  DrawMode,
   WallElement,
   ColumnElement,
   BeamElement,
   DoorElement,
   WindowElement,
+  JoistElement,
+  GradeBeamElement,
+  BraceElement,
+  PileElement,
+  SlabElement,
+  FootingElement,
+  StairElement,
+  RampElement,
+  OpeningElement,
 } from '@/types/project';
 import { cmToMeters, distance, metersToCm, resolveTJoin } from '@/lib/editor/geometry';
 
@@ -19,6 +30,49 @@ export const COLUMN_DEFAULT_HEIGHT = 2.5;
 
 export const BEAM_DEFAULT_WIDTH = 0.2;
 export const BEAM_DEFAULT_HEIGHT = 0.3;
+export const BEAM_DEFAULT_ELEVATION = 2.5;
+
+export const SLAB_DEFAULT_THICKNESS = 0.15;
+export const FOOTING_DEFAULT_DEPTH = 0.4;
+export const STAIR_DEFAULT_TREAD = 0.28;
+export const STAIR_DEFAULT_RISER = 0.175;
+export const RAMP_DEFAULT_SLOPE = 12.5;
+export const PILE_DEFAULT_DIAMETER = 0.4;
+export const PILE_DEFAULT_LENGTH = 12;
+export const JOIST_DEFAULT_SPACING = 0.45;
+export const GRADE_BEAM_DEFAULT_ELEVATION = 0;
+export const BRACE_DEFAULT_WIDTH = 0.2;
+
+export const DRAW_MODE: Record<ElementType, DrawMode> = {
+  wall: 'line',
+  door: 'line',
+  window: 'line',
+  beam: 'line',
+  joist: 'line',
+  grade_beam: 'line',
+  brace: 'line',
+  column: 'point',
+  pile: 'point',
+  slab: 'rect',
+  footing: 'rect',
+  stair: 'rect',
+  ramp: 'rect',
+  opening: 'rect',
+};
+
+export const LINE_TYPES: ReadonlySet<ElementType> = new Set(
+  (Object.keys(DRAW_MODE) as ElementType[]).filter((t) => DRAW_MODE[t] === 'line'),
+);
+export const POINT_TYPES: ReadonlySet<ElementType> = new Set(
+  (Object.keys(DRAW_MODE) as ElementType[]).filter((t) => DRAW_MODE[t] === 'point'),
+);
+export const RECT_TYPES: ReadonlySet<ElementType> = new Set(
+  (Object.keys(DRAW_MODE) as ElementType[]).filter((t) => DRAW_MODE[t] === 'rect'),
+);
+
+export function drawModeOf(type: ElementType): DrawMode {
+  return DRAW_MODE[type];
+}
 
 export function wallLengthInMeters(element: WallElement): number {
   return cmToMeters(element.length);
@@ -35,46 +89,102 @@ export function wallDefaultProperties() {
   };
 }
 
-export function normalizeElement(element: ProjectElement): ProjectElement {
-  switch (element.element_type) {
-    case 'wall': {
-      const props = {
-        ...wallDefaultProperties(),
-        ...element.properties,
-      };
-      return { ...element, properties: props };
-    }
-    case 'door': {
-      const doorDefaults = { width: 0.9, swing: 'left' as const };
-      return { ...element, properties: { ...doorDefaults, ...element.properties } };
-    }
-    case 'window': {
-      const windowDefaults = { width: 1.0, sill_height: 0.9 };
-      return { ...element, properties: { ...windowDefaults, ...element.properties } };
-    }
-    case 'column': {
-      const columnDefaults = {
-        width: COLUMN_DEFAULT_WIDTH,
-        depth: COLUMN_DEFAULT_DEPTH,
-        height: COLUMN_DEFAULT_HEIGHT,
-        material: 'concrete',
-      };
-      const props = { ...columnDefaults, ...element.properties };
-      return { ...element, properties: props } as ColumnElement;
-    }
-    case 'beam': {
-      const beamDefaults = {
-        width: BEAM_DEFAULT_WIDTH,
-        height: BEAM_DEFAULT_HEIGHT,
-        length: cmToMeters(element.length),
-        material: 'concrete',
-      };
-      const props = { ...beamDefaults, ...element.properties };
-      return { ...element, properties: props } as BeamElement;
-    }
+/** Default ``properties`` per element type, merged when creating or
+ *  normalizing elements coming from older documents. */
+export function defaultPropertiesFor(type: ElementType): Record<string, unknown> {
+  switch (type) {
+    case 'wall':
+      return wallDefaultProperties();
+    case 'door':
+      return { width: 0.9, height: 2.1, swing: 'left' };
+    case 'window':
+      return { width: 1.0, height: 1.2, sill_height: 0.9 };
+    case 'column':
+      return { shape: 'rectangular', width: COLUMN_DEFAULT_WIDTH, depth: COLUMN_DEFAULT_DEPTH, height: COLUMN_DEFAULT_HEIGHT, base_elevation: 0, material: 'concrete' };
+    case 'beam':
+      return { width: BEAM_DEFAULT_WIDTH, height: BEAM_DEFAULT_HEIGHT, top_elevation: BEAM_DEFAULT_ELEVATION, material: 'concrete' };
+    case 'joist':
+      return { width: 0.15, height: 0.3, spacing: JOIST_DEFAULT_SPACING, top_elevation: BEAM_DEFAULT_ELEVATION };
+    case 'grade_beam':
+      return { width: 0.3, height: 0.4, top_elevation: GRADE_BEAM_DEFAULT_ELEVATION };
+    case 'brace':
+      return { width: BRACE_DEFAULT_WIDTH, depth: BRACE_DEFAULT_WIDTH, bottom_z: 0, top_z: COLUMN_DEFAULT_HEIGHT };
+    case 'pile':
+      return { diameter: PILE_DEFAULT_DIAMETER, pile_length: PILE_DEFAULT_LENGTH, top_elevation: 0 };
+    case 'slab':
+      return { thickness: SLAB_DEFAULT_THICKNESS, slab_type: 'solid', top_elevation: BEAM_DEFAULT_ELEVATION, diaphragm: 'none' };
+    case 'footing':
+      return { depth: FOOTING_DEFAULT_DEPTH, top_elevation: 0 };
+    case 'stair':
+      return { step_count: 14, tread: STAIR_DEFAULT_TREAD, riser: STAIR_DEFAULT_RISER, base_elevation: 0, run_axis: 'x' };
+    case 'ramp':
+      return { slope_percent: RAMP_DEFAULT_SLOPE, thickness: 0.15, base_elevation: 0 };
+    case 'opening':
+      return {};
     default:
-      return element;
+      return {};
   }
+}
+
+export function normalizeElement(element: ProjectElement): ProjectElement {
+  const withRefs = {
+    ...element,
+    material_id: element.material_id ?? null,
+    section_id: element.section_id ?? null,
+  };
+  if (withRefs.element_type === 'beam' && withRefs.properties.length === undefined) {
+    withRefs.properties = { ...withRefs.properties, length: cmToMeters(withRefs.length) } as typeof withRefs.properties;
+  }
+  return { ...withRefs, properties: { ...defaultPropertiesFor(withRefs.element_type), ...withRefs.properties } } as ProjectElement;
+}
+
+/** Footprint size of a rect element in centimeters. */
+export function rectSize(element: ProjectElement): { width: number; depth: number } {
+  return { width: Math.abs(element.x2 - element.x1), depth: Math.abs(element.y2 - element.y1) };
+}
+
+/** Returns a copy of ``element`` with the rect footprint resized around its
+ *  minimum corner (x1,y1 stays put). */
+export function updateRectSize(element: ProjectElement, widthCm: number, depthCm: number): ProjectElement {
+  const minX = Math.min(element.x1, element.x2);
+  const minY = Math.min(element.y1, element.y2);
+  return {
+    ...element,
+    x1: minX,
+    y1: minY,
+    x2: minX + Math.max(1, widthCm),
+    y2: minY + Math.max(1, depthCm),
+    length: Math.max(1, widthCm),
+    rotation: 0,
+  };
+}
+
+function baseFields(id: string, projectId: string) {
+  const now = new Date().toISOString();
+  return { id, project_id: projectId, material_id: null, section_id: null, created_at: now, updated_at: now };
+}
+
+function lineGeometry(start: { x: number; y: number }, end: { x: number; y: number }) {
+  return {
+    x1: start.x,
+    y1: start.y,
+    x2: end.x,
+    y2: end.y,
+    length: distance(start, end),
+    rotation: Math.atan2(end.y - start.y, end.x - start.x),
+  };
+}
+
+function rectGeometry(start: { x: number; y: number }, end: { x: number; y: number }) {
+  const minX = Math.min(start.x, end.x);
+  const minY = Math.min(start.y, end.y);
+  const maxX = Math.max(start.x, end.x);
+  const maxY = Math.max(start.y, end.y);
+  return { x1: minX, y1: minY, x2: maxX, y2: maxY, length: Math.max(1, maxX - minX), rotation: 0 };
+}
+
+function pointGeometry(center: { x: number; y: number }) {
+  return { x1: center.x, y1: center.y, x2: center.x + 1, y2: center.y, length: 1, rotation: 0 };
 }
 
 export function createWall(
@@ -84,21 +194,11 @@ export function createWall(
   end: { x: number; y: number },
   overrides: Partial<WallElement['properties']> = {},
 ): WallElement {
-  const now = new Date().toISOString();
-  const length = distance(start, end);
   return {
-    id,
-    project_id: projectId,
+    ...baseFields(id, projectId),
     element_type: 'wall',
-    x1: start.x,
-    y1: start.y,
-    x2: end.x,
-    y2: end.y,
-    length,
-    rotation: Math.atan2(end.y - start.y, end.x - start.x),
+    ...lineGeometry(start, end),
     properties: { ...wallDefaultProperties(), ...overrides },
-    created_at: now,
-    updated_at: now,
   };
 }
 
@@ -168,26 +268,11 @@ export function createColumn(
   center: { x: number; y: number },
   overrides: Partial<ColumnElement['properties']> = {},
 ): ColumnElement {
-  const now = new Date().toISOString();
   return {
-    id,
-    project_id: projectId,
+    ...baseFields(id, projectId),
     element_type: 'column',
-    x1: center.x,
-    y1: center.y,
-    x2: center.x + 1,
-    y2: center.y,
-    length: 1,
-    rotation: 0,
-    properties: {
-      width: COLUMN_DEFAULT_WIDTH,
-      depth: COLUMN_DEFAULT_DEPTH,
-      height: COLUMN_DEFAULT_HEIGHT,
-      material: 'concrete',
-      ...overrides,
-    },
-    created_at: now,
-    updated_at: now,
+    ...pointGeometry(center),
+    properties: { ...defaultPropertiesFor('column'), ...overrides } as ColumnElement['properties'],
   };
 }
 
@@ -198,27 +283,15 @@ export function createBeam(
   end: { x: number; y: number },
   overrides: Partial<BeamElement['properties']> = {},
 ): BeamElement {
-  const now = new Date().toISOString();
-  const length = distance(start, end);
   return {
-    id,
-    project_id: projectId,
+    ...baseFields(id, projectId),
     element_type: 'beam',
-    x1: start.x,
-    y1: start.y,
-    x2: end.x,
-    y2: end.y,
-    length,
-    rotation: Math.atan2(end.y - start.y, end.x - start.x),
+    ...lineGeometry(start, end),
     properties: {
-      width: BEAM_DEFAULT_WIDTH,
-      height: BEAM_DEFAULT_HEIGHT,
-      length: cmToMeters(length),
-      material: 'concrete',
+      ...defaultPropertiesFor('beam'),
+      length: cmToMeters(distance(start, end)),
       ...overrides,
-    },
-    created_at: now,
-    updated_at: now,
+    } as BeamElement['properties'],
   };
 }
 
@@ -228,21 +301,11 @@ export function createDoor(
   start: { x: number; y: number },
   end: { x: number; y: number },
 ): DoorElement {
-  const now = new Date().toISOString();
-  const length = distance(start, end);
   return {
-    id,
-    project_id: projectId,
+    ...baseFields(id, projectId),
     element_type: 'door',
-    x1: start.x,
-    y1: start.y,
-    x2: end.x,
-    y2: end.y,
-    length,
-    rotation: Math.atan2(end.y - start.y, end.x - start.x),
-    properties: { width: cmToMeters(length), swing: 'left' },
-    created_at: now,
-    updated_at: now,
+    ...lineGeometry(start, end),
+    properties: { ...defaultPropertiesFor('door'), width: cmToMeters(distance(start, end)) } as DoorElement['properties'],
   };
 }
 
@@ -252,23 +315,89 @@ export function createWindow(
   start: { x: number; y: number },
   end: { x: number; y: number },
 ): WindowElement {
-  const now = new Date().toISOString();
-  const length = distance(start, end);
   return {
-    id,
-    project_id: projectId,
+    ...baseFields(id, projectId),
     element_type: 'window',
-    x1: start.x,
-    y1: start.y,
-    x2: end.x,
-    y2: end.y,
-    length,
-    rotation: Math.atan2(end.y - start.y, end.x - start.x),
-    properties: { width: cmToMeters(length), sill_height: 0.9 },
-    created_at: now,
-    updated_at: now,
+    ...lineGeometry(start, end),
+    properties: { ...defaultPropertiesFor('window'), width: cmToMeters(distance(start, end)) } as WindowElement['properties'],
   };
 }
+
+export function createJoist(
+  id: string,
+  projectId: string,
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+): JoistElement {
+  return {
+    ...baseFields(id, projectId),
+    element_type: 'joist',
+    ...lineGeometry(start, end),
+    properties: defaultPropertiesFor('joist') as JoistElement['properties'],
+  };
+}
+
+export function createGradeBeam(
+  id: string,
+  projectId: string,
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+): GradeBeamElement {
+  return {
+    ...baseFields(id, projectId),
+    element_type: 'grade_beam',
+    ...lineGeometry(start, end),
+    properties: defaultPropertiesFor('grade_beam') as GradeBeamElement['properties'],
+  };
+}
+
+export function createBrace(
+  id: string,
+  projectId: string,
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+): BraceElement {
+  return {
+    ...baseFields(id, projectId),
+    element_type: 'brace',
+    ...lineGeometry(start, end),
+    properties: defaultPropertiesFor('brace') as BraceElement['properties'],
+  };
+}
+
+export function createPile(
+  id: string,
+  projectId: string,
+  center: { x: number; y: number },
+): PileElement {
+  return {
+    ...baseFields(id, projectId),
+    element_type: 'pile',
+    ...pointGeometry(center),
+    properties: defaultPropertiesFor('pile') as PileElement['properties'],
+  };
+}
+
+function createRect<T extends SlabElement | FootingElement | StairElement | RampElement | OpeningElement>(
+  type: T['element_type'],
+  id: string,
+  projectId: string,
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+): T {
+  return {
+    ...baseFields(id, projectId),
+    element_type: type,
+    ...rectGeometry(start, end),
+    properties: defaultPropertiesFor(type),
+  } as T;
+}
+
+export const createSlab = (id: string, projectId: string, start: { x: number; y: number }, end: { x: number; y: number }): SlabElement => createRect<SlabElement>('slab', id, projectId, start, end);
+export const createFooting = (id: string, projectId: string, start: { x: number; y: number }, end: { x: number; y: number }): FootingElement => createRect<FootingElement>('footing', id, projectId, start, end);
+export const createStair = (id: string, projectId: string, start: { x: number; y: number }, end: { x: number; y: number }): StairElement => createRect<StairElement>('stair', id, projectId, start, end);
+export const createRamp = (id: string, projectId: string, start: { x: number; y: number }, end: { x: number; y: number }): RampElement => createRect<RampElement>('ramp', id, projectId, start, end);
+export const createOpening = (id: string, projectId: string, start: { x: number; y: number }, end: { x: number; y: number }): OpeningElement => createRect<OpeningElement>('opening', id, projectId, start, end);
 
 export function defaultDesignSettings(): Project['design_settings'] {
   return {

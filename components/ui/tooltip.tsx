@@ -28,7 +28,7 @@ export function Tooltip({
       <span
         role="tooltip"
         id={id}
-        className={`pointer-events-none absolute z-50 w-max max-w-48 whitespace-normal rounded-md bg-slate-900 px-2 py-1 text-center text-[11px] font-medium leading-4 text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover/tooltip:opacity-100 group-focus-within/tooltip:opacity-100 ${POSITION_CLASSES[position]}`}
+        className={`pointer-events-none absolute z-50 w-max max-w-48 whitespace-normal rounded-md bg-slate-900 px-2 py-1 text-center text-[11px] font-medium leading-4 text-white opacity-0 shadow-2xl transition-opacity duration-150 group-hover/tooltip:opacity-100 group-focus-within/tooltip:opacity-100 ${POSITION_CLASSES[position]}`}
       >
         {label}
       </span>

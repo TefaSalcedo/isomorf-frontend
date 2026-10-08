@@ -1,13 +1,24 @@
 import { useReducer, useCallback, useMemo } from 'react';
 import type { Point } from '@/lib/editor/geometry';
-import type { PlanLayer, Project, ProjectElement, WallElement } from '@/types/project';
+import type { ElementType, PlanLayer, Project, ProjectElement, WallElement } from '@/types/project';
 import {
-  createColumn,
-  createWall,
-  createDoor,
-  createWindow,
   createBeam,
+  createBrace,
+  createColumn,
+  createDoor,
+  createFooting,
+  createGradeBeam,
+  createJoist,
+  createOpening,
+  createPile,
+  createRamp,
+  createSlab,
+  createStair,
+  createWall,
+  createWindow,
+  drawModeOf,
   normalizeElement,
+  updateRectSize,
   updateWallLength,
   recomputeWallJoin,
   updateBeamLength,
@@ -17,6 +28,7 @@ import { findColumnContainingPoint, isPointInsideColumn, snapForColumn, snapForW
 import {
   cmToMeters,
   distance,
+  metersToCm,
   pointsEqual,
   polarSnapPoint,
   resolveTJoin,
@@ -26,13 +38,7 @@ import { createLayer, defaultLayerFor, ensureLayers, isElementLocked } from '@/l
 import { useLocale } from '@/lib/i18n/locale-context';
 import type { Locale } from '@/lib/i18n/messages';
 
-export type Tool =
-  | 'select'
-  | 'wall'
-  | 'door'
-  | 'window'
-  | 'column'
-  | 'beam';
+export type Tool = 'select' | ElementType;
 
 export type ActiveSection =
   | 'home'
@@ -40,6 +46,7 @@ export type ActiveSection =
   | 'draw'
   | 'structure'
   | 'layers'
+  | 'catalog'
   | 'calculations'
   | 'history'
   | 'settings';
@@ -99,6 +106,7 @@ export type EditorAction =
   | { type: 'commitDraft' }
   | { type: 'cancelDraft' }
   | { type: 'updateElement'; id: string; changes: Partial<ProjectElement> }
+  | { type: 'updateMany'; ids: string[]; changes: Partial<ProjectElement> }
   | { type: 'deleteSelection' }
   | { type: 'applyDocument'; elements: ProjectElement[]; designSettings: Project['design_settings']; revision: number; headRevision: number; locale?: Locale }
   | { type: 'markSaved'; revision: number; headRevision: number; keepDirty?: boolean }
@@ -167,6 +175,20 @@ function applySnap(point: Point, elements: ProjectElement[], zoom: number, tool?
   return snapToNearest(point, elements, zoom, WORLD_PER_PIXEL);
 }
 
+function isRectElement(el: ProjectElement): boolean {
+  return el.element_type !== 'wall' && el.element_type !== 'door' && el.element_type !== 'window'
+    && drawModeOf(el.element_type) === 'rect';
+}
+
+function normalizeRectCorners<T extends ProjectElement>(el: T): T {
+  const minX = Math.min(el.x1, el.x2);
+  const minY = Math.min(el.y1, el.y2);
+  const maxX = Math.max(el.x1, el.x2);
+  const maxY = Math.max(el.y1, el.y2);
+  if (el.x1 === minX && el.y1 === minY && el.x2 === maxX && el.y2 === maxY && el.rotation === 0) return el;
+  return { ...el, x1: minX, y1: minY, x2: maxX, y2: maxY, length: Math.max(1, maxX - minX), rotation: 0 };
+}
+
 function wallNeedsJoinRecompute(
   wall: WallElement,
   changes: Partial<ProjectElement>,
@@ -192,21 +214,53 @@ function applyElementChanges(
   if (changes.x2 !== undefined) next.x2 = changes.x2;
   if (changes.y2 !== undefined) next.y2 = changes.y2;
   if (changes.rotation !== undefined) next.rotation = changes.rotation;
+  if (changes.material_id !== undefined) next.material_id = changes.material_id;
+  if (changes.section_id !== undefined) next.section_id = changes.section_id;
+  const mode = drawModeOf(next.element_type);
   if (changes.length !== undefined) {
     if (next.element_type === 'wall') {
       next = updateWallLength(next as WallElement, cmToMeters(changes.length));
     } else if (next.element_type === 'beam') {
       next = updateBeamLength(next, cmToMeters(changes.length));
+    } else if (mode === 'rect') {
+      next = updateRectSize(next, changes.length, Math.abs(next.y2 - next.y1));
+    } else if (mode === 'line') {
+      const dir = { x: Math.cos(next.rotation), y: Math.sin(next.rotation) };
+      next = { ...next, length: changes.length, x2: next.x1 + dir.x * changes.length, y2: next.y1 + dir.y * changes.length };
     } else {
       next = { ...next, length: changes.length };
     }
-  } else if (changes.x1 !== undefined || changes.y1 !== undefined || changes.x2 !== undefined || changes.y2 !== undefined) {
-    const start = { x: next.x1, y: next.y1 };
-    const end = { x: next.x2, y: next.y2 };
-    next.length = distance(start, end);
-    next.rotation = Math.atan2(end.y - start.y, end.x - start.x);
+  } else if (mode === 'line' && changes.rotation !== undefined) {
+    const length = distance({ x: next.x1, y: next.y1 }, { x: next.x2, y: next.y2 });
+    next = {
+      ...next,
+      x2: next.x1 + Math.cos(changes.rotation) * length,
+      y2: next.y1 + Math.sin(changes.rotation) * length,
+      length,
+    };
     if (next.element_type === 'beam') {
       next.properties = { ...next.properties, length: cmToMeters(next.length) };
+    }
+  } else if (changes.x1 !== undefined || changes.y1 !== undefined || changes.x2 !== undefined || changes.y2 !== undefined) {
+    if (mode === 'rect') {
+      next = normalizeRectCorners(next);
+    } else {
+      const start = { x: next.x1, y: next.y1 };
+      const end = { x: next.x2, y: next.y2 };
+      next.length = distance(start, end);
+      next.rotation = Math.atan2(end.y - start.y, end.x - start.x);
+      if (next.element_type === 'beam') {
+        next.properties = { ...next.properties, length: cmToMeters(next.length) };
+      }
+    }
+  }
+  if (mode === 'rect' && changes.properties) {
+    const widthM = (changes.properties as Record<string, unknown>).width;
+    const depthM = (changes.properties as Record<string, unknown>).depth;
+    if (typeof widthM === 'number' || typeof depthM === 'number') {
+      const size = Math.abs(next.x2 - next.x1);
+      const depth = Math.abs(next.y2 - next.y1);
+      next = updateRectSize(next, typeof widthM === 'number' ? metersToCm(widthM) : size, typeof depthM === 'number' ? metersToCm(depthM) : depth);
     }
   }
   if (next.element_type === 'wall' && wallNeedsJoinRecompute(next as WallElement, changes)) {
@@ -223,6 +277,7 @@ function makeElementFromDraft(draft: DraftState, projectId: string): ProjectElem
   const id = crypto.randomUUID();
   let start = draft.start;
   let end = draft.end;
+  const mode = draft.tool === 'select' ? null : drawModeOf(draft.tool);
   if (draft.tool === 'wall' && draft.host && draft.joinAt) {
     const hostStart = { x: draft.host.x1, y: draft.host.y1 };
     const hostEnd = { x: draft.host.x2, y: draft.host.y2 };
@@ -232,7 +287,11 @@ function makeElementFromDraft(draft: DraftState, projectId: string): ProjectElem
       start = resolveTJoin(end, hostStart, hostEnd, start, 90);
     }
   }
-  if (draft.tool !== 'column' && distance(start, end) < 0.1) return null;
+  if (mode === 'rect') {
+    if (Math.abs(end.x - start.x) < 5 || Math.abs(end.y - start.y) < 5) return null;
+  } else if (mode === 'line' && distance(start, end) < 0.1) {
+    return null;
+  }
   switch (draft.tool) {
     case 'wall': {
       const props = draft.host
@@ -246,8 +305,26 @@ function makeElementFromDraft(draft: DraftState, projectId: string): ProjectElem
       return createWindow(id, projectId, start, end);
     case 'beam':
       return createBeam(id, projectId, start, end);
+    case 'joist':
+      return createJoist(id, projectId, start, end);
+    case 'grade_beam':
+      return createGradeBeam(id, projectId, start, end);
+    case 'brace':
+      return createBrace(id, projectId, start, end);
     case 'column':
       return createColumn(id, projectId, end);
+    case 'pile':
+      return createPile(id, projectId, end);
+    case 'slab':
+      return createSlab(id, projectId, start, end);
+    case 'footing':
+      return createFooting(id, projectId, start, end);
+    case 'stair':
+      return createStair(id, projectId, start, end);
+    case 'ramp':
+      return createRamp(id, projectId, start, end);
+    case 'opening':
+      return createOpening(id, projectId, start, end);
     default:
       return null;
   }
@@ -259,6 +336,7 @@ const MUTATING_ACTIONS: ReadonlySet<EditorAction['type']> = new Set([
   'commitDraft',
   'cancelDraft',
   'updateElement',
+  'updateMany',
   'deleteSelection',
   'addLayer',
   'updateLayer',
@@ -403,10 +481,20 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         : null;
       const start = anchoredStart?.point ?? draft.start;
 
-      if (draft.tool === 'column') {
+      const mode = draft.tool === 'select' ? 'line' : drawModeOf(draft.tool);
+      if (mode === 'point') {
         let endSnap = state.snapEnabled
-          ? snapForColumn(raw, state.elements, state.viewport.zoom, WORLD_PER_PIXEL)
+          ? (draft.tool === 'column'
+              ? snapForColumn(raw, state.elements, state.viewport.zoom, WORLD_PER_PIXEL)
+              : snapToNearest(raw, state.elements, state.viewport.zoom, WORLD_PER_PIXEL))
           : null;
+        if (endSnap && pointsEqual(endSnap.point, draft.start)) endSnap = null;
+        const end = endSnap ? endSnap.point : raw;
+        return { ...state, draft: { ...draft, end, snap: endSnap } };
+      }
+
+      if (mode === 'rect') {
+        let endSnap = state.snapEnabled ? snapToNearest(raw, state.elements, state.viewport.zoom, WORLD_PER_PIXEL) : null;
         if (endSnap && pointsEqual(endSnap.point, draft.start)) endSnap = null;
         const end = endSnap ? endSnap.point : raw;
         return { ...state, draft: { ...draft, end, snap: endSnap } };
@@ -499,6 +587,23 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         elements: nextElements,
         dirty: true,
       };
+    }
+    case 'updateMany': {
+      const ids = new Set(action.ids);
+      const geometryKeys = ['x1', 'y1', 'x2', 'y2', 'length', 'rotation'] as const;
+      const hasGeometryChange = geometryKeys.some((key) => action.changes[key] !== undefined);
+      let changed = false;
+      const elements = state.elements.map((el) => {
+        if (!ids.has(el.id) || isElementLocked(el, state.layers)) return el;
+        // Shared-endpoint propagation is ambiguous across a bulk edit, so it is
+        // skipped here; geometry edits through updateMany affect each element
+        // individually.
+        if (hasGeometryChange && drawModeOf(el.element_type) === 'point') return el;
+        changed = true;
+        return applyElementChanges(el, action.changes, state.elements);
+      });
+      if (!changed) return state;
+      return { ...state, elements, dirty: true };
     }
     case 'deleteSelection': {
       const removable = new Set(
@@ -607,6 +712,7 @@ export function useEditorState(project: Project) {
       commitDraft: () => dispatch({ type: 'commitDraft' }),
       cancelDraft: () => dispatch({ type: 'cancelDraft' }),
       updateElement: (id: string, changes: Partial<ProjectElement>) => dispatch({ type: 'updateElement', id, changes }),
+      updateMany: (ids: string[], changes: Partial<ProjectElement>) => dispatch({ type: 'updateMany', ids, changes }),
       deleteSelection: () => dispatch({ type: 'deleteSelection' }),
       applyDocument: (elements: ProjectElement[], designSettings: Project['design_settings'], revision: number, headRevision: number) =>
         dispatch({ type: 'applyDocument', elements, designSettings, revision, headRevision, locale }),

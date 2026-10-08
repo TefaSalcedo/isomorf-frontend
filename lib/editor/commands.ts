@@ -1,6 +1,6 @@
 import type { ActiveSection, Tool } from '@/hooks/use-editor-state';
 
-export type EditorView = '2d' | '3d' | 'loads' | 'fem';
+export type EditorView = '2d' | '3d' | 'table' | 'loads' | 'fem';
 
 export type EditorCommand = {
   id: string;
@@ -35,6 +35,15 @@ const TOOL_COMMANDS: { id: Tool; keywords: string[] }[] = [
   { id: 'window', keywords: ['window', 'ventana', 'win'] },
   { id: 'column', keywords: ['column', 'columna', 'col', 'c', 'pillar', 'pilar'] },
   { id: 'beam', keywords: ['beam', 'viga', 'b', 'beam axis', 'eje de viga'] },
+  { id: 'joist', keywords: ['joist', 'vigueta', 'j', 'vigueta bovedilla'] },
+  { id: 'grade_beam', keywords: ['grade beam', 'viga de riostra', 'riostra', 'gb', 'tie beam', 'viga de amarre'] },
+  { id: 'brace', keywords: ['brace', 'arriostre', 'bracing', 'diagonal', 'templador', 'cruceta'] },
+  { id: 'pile', keywords: ['pile', 'pilote', 'pi', 'piling'] },
+  { id: 'slab', keywords: ['slab', 'losa', 'loseta', 's', 'floor slab', 'placa'] },
+  { id: 'footing', keywords: ['footing', 'zapata', 'cimentacion', 'cimentación', 'foundation', 'z', 'spread footing'] },
+  { id: 'stair', keywords: ['stair', 'escalera', 'stairs', 'esc', 'escaleras'] },
+  { id: 'ramp', keywords: ['ramp', 'rampa', 'rm'] },
+  { id: 'opening', keywords: ['opening', 'hueco', 'abertura', 'o', 'shaft', 'ducto'] },
 ];
 
 export function buildEditorCommands(ctx: EditorCommandContext): EditorCommand[] {
@@ -58,9 +67,11 @@ export function buildEditorCommands(ctx: EditorCommandContext): EditorCommand[] 
     { id: 'view.clean', keywords: ['clean', 'clean mode', 'presentation', 'modo limpio'], run: ctx.toggleCleanMode },
     { id: 'view.2d', keywords: ['2d', 'plan', 'planta', 'plan view'], run: () => ctx.setView('2d') },
     { id: 'view.3d', keywords: ['3d', 'model', 'modelo', 'isometric'], run: () => ctx.setView('3d') },
+    { id: 'view.table', keywords: ['table', 'tabla', 'spreadsheet', 'hoja', 'database', 'tabular'], run: () => ctx.setView('table') },
     { id: 'view.loads', keywords: ['loads', 'cargas', 'load editor'], run: () => ctx.setView('loads') },
     { id: 'view.fem', keywords: ['fem', 'analysis', 'analisis', 'análisis', 'finite element'], run: () => ctx.setView('fem') },
     { id: 'section.layers', keywords: ['layers', 'capas', 'layer', 'la'], run: () => ctx.setSection('layers') },
+    { id: 'section.catalog', keywords: ['catalog', 'catalogo', 'catálogo', 'materials', 'materiales', 'sections', 'secciones'], run: () => ctx.setSection('catalog') },
     { id: 'section.history', keywords: ['history', 'historial', 'versions', 'versiones'], run: () => ctx.setSection('history') },
     { id: 'section.settings', keywords: ['settings', 'configuracion', 'configuración', 'options', 'opciones'], run: () => ctx.setSection('settings') },
     { id: 'section.calculations', keywords: ['calculations', 'calculos', 'cálculos', 'summary', 'resumen'], run: () => ctx.setSection('calculations') },

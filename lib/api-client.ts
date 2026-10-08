@@ -3,7 +3,7 @@ import type { DeviceSession, User } from '@/types/auth';
 import type { Folder } from '@/types/folder';
 import type { InvitePreview, ProjectShare, Team, TeamDetail, TeamInviteCreated, TeamMember, TeamRole } from '@/types/team';
 import type { ElementLoad, LoadCase } from '@/types/structural-load';
-import type { DesignSettings, DocumentState, ElementType, HistoryResponse, Project, ProjectElement } from '@/types/project';
+import type { CatalogPresets, DesignSettings, DocumentState, ElementType, HistoryResponse, Material, Project, ProjectElement, Section, SectionShape, MaterialCategory } from '@/types/project';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
@@ -98,8 +98,21 @@ export const api = {
   leaveTeam: (teamId: string) => request<void>(`/api/teams/${teamId}/leave`, { method: 'POST' }, true),
   shareProject: (teamId: string, projectId: string) => request<ProjectShare>(`/api/teams/${teamId}/projects`, { method: 'POST', body: JSON.stringify({ project_id: projectId }) }, true),
   unshareProject: (teamId: string, projectId: string) => request<void>(`/api/teams/${teamId}/projects/${projectId}`, { method: 'DELETE' }, true),
+  catalogPresets: () => request<CatalogPresets>('/api/catalog/presets'),
+  materials: (projectId: string) => request<Material[]>(`/api/projects/${projectId}/materials`),
+  createMaterial: (projectId: string, payload: { name: string; category?: MaterialCategory; properties?: Record<string, unknown> }) =>
+    request<Material>(`/api/projects/${projectId}/materials`, { method: 'POST', body: JSON.stringify(payload) }, true),
+  updateMaterial: (projectId: string, materialId: string, payload: { name?: string; category?: MaterialCategory; properties?: Record<string, unknown> }) =>
+    request<Material>(`/api/projects/${projectId}/materials/${materialId}`, { method: 'PUT', body: JSON.stringify(payload) }, true),
+  deleteMaterial: (projectId: string, materialId: string) => request<void>(`/api/projects/${projectId}/materials/${materialId}`, { method: 'DELETE' }, true),
+  sections: (projectId: string) => request<Section[]>(`/api/projects/${projectId}/sections`),
+  createSection: (projectId: string, payload: { name: string; shape?: SectionShape; material_id?: string | null; dimensions?: Record<string, unknown>; properties?: Record<string, unknown> }) =>
+    request<Section>(`/api/projects/${projectId}/sections`, { method: 'POST', body: JSON.stringify(payload) }, true),
+  updateSection: (projectId: string, sectionId: string, payload: { name?: string; shape?: SectionShape; material_id?: string | null; dimensions?: Record<string, unknown>; properties?: Record<string, unknown> }) =>
+    request<Section>(`/api/projects/${projectId}/sections/${sectionId}`, { method: 'PUT', body: JSON.stringify(payload) }, true),
+  deleteSection: (projectId: string, sectionId: string) => request<void>(`/api/projects/${projectId}/sections/${sectionId}`, { method: 'DELETE' }, true),
 };
 
 export type DocumentPayload = { name?: string; design_settings?: DesignSettings; elements: ElementPayload[] };
 
-export type ElementPayload = { id?: string; element_type: ElementType; x1: number; y1: number; x2: number; y2: number; length: number; rotation: number; properties: Record<string, unknown> };
+export type ElementPayload = { id?: string; element_type: ElementType; x1: number; y1: number; x2: number; y2: number; length: number; rotation: number; material_id?: string | null; section_id?: string | null; properties: Record<string, unknown> };

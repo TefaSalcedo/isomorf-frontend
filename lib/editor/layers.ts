@@ -25,9 +25,9 @@ export function ensureLayers(layers: PlanLayer[] | undefined, locale: Locale = '
 }
 
 export function defaultLayerFor(elementType: ProjectElement['element_type']): string {
-  if (elementType === 'column' || elementType === 'beam') return 'structure';
-  if (elementType === 'door' || elementType === 'window') return 'openings';
-  return 'architecture';
+  if (elementType === 'door' || elementType === 'window' || elementType === 'opening') return 'openings';
+  if (elementType === 'wall' || elementType === 'stair' || elementType === 'ramp') return 'architecture';
+  return 'structure';
 }
 
 export function createLayer(index: number, locale: Locale = 'en'): PlanLayer {

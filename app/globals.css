@@ -28,5 +28,5 @@ button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--primary-container); outline-offset: 2px; border-radius: 2px; }
 .grid-bg { background-image: linear-gradient(rgba(124, 58, 237, .08) 1px, transparent 1px), linear-gradient(90deg, rgba(124, 58, 237, .08) 1px, transparent 1px); background-size: 32px 32px; }
 .grid-bg-light { background-image: linear-gradient(rgba(148, 163, 184, .18) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, .18) 1px, transparent 1px); background-size: 32px 32px; }
-.dot-grid { background-color: #f1f4fa; background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 18px 18px; }
+.dot-grid { background-color: #0b1020; background-image: radial-gradient(#1e293b 1px, transparent 1px); background-size: 18px 18px; }
 

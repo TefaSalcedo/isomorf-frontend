@@ -9,7 +9,7 @@ export function SelectionSummary({ summary }: { summary: SelectionSummary | null
   if (!summary) {
     return (
       <div className="h-full overflow-y-auto p-5">
-        <p className="text-sm text-slate-500">{t('empty')}</p>
+        <p className="text-sm text-slate-400">{t('empty')}</p>
       </div>
     );
   }
@@ -28,12 +28,12 @@ export function SelectionSummary({ summary }: { summary: SelectionSummary | null
   ];
   return (
     <div className="h-full overflow-y-auto p-5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{t('title')}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{t('title')}</p>
       <div className="mt-4 space-y-3">
         {items.map((item) => (
-          <div key={item.label} className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <span className="text-sm text-slate-500">{item.label}</span>
-            <span className="text-sm font-medium text-slate-900">{item.value}</span>
+          <div key={item.label} className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span className="text-sm text-slate-400">{item.label}</span>
+            <span className="text-sm font-medium text-slate-100">{item.value}</span>
           </div>
         ))}
       </div>

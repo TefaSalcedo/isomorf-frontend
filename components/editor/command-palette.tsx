@@ -84,7 +84,7 @@ function PaletteDialog({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-center gap-2.5 border-b border-slate-800 px-4">
-          <Terminal className="h-4 w-4 shrink-0 text-slate-500" />
+          <Terminal className="h-4 w-4 shrink-0 text-slate-400" />
           <input
             autoFocus
             type="text"
@@ -95,9 +95,9 @@ function PaletteDialog({
             }}
             onKeyDown={onKeyDown}
             placeholder={tP('placeholder')}
-            className="w-full bg-transparent py-3 text-sm text-slate-200 outline-none placeholder:text-slate-600"
+            className="w-full bg-transparent py-3 text-sm text-slate-200 outline-none placeholder:text-slate-400"
           />
-          <kbd className="shrink-0 rounded border border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-500">esc</kbd>
+          <kbd className="shrink-0 rounded border border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-400">esc</kbd>
         </div>
         <div ref={listRef} className="max-h-72 overflow-y-auto p-1.5">
           {results.map((command, i) => (
@@ -108,22 +108,22 @@ function PaletteDialog({
               onMouseEnter={() => setIndex(i)}
               onClick={() => runCommand(command)}
               className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                i === activeIndex ? 'bg-blue-600/20 text-slate-100' : 'text-slate-400'
+                i === activeIndex ? 'bg-blue-600/20 text-slate-100' : 'text-slate-500'
               }`}
             >
               <span>{t(command.id)}</span>
               {command.keywords[0] && (
-                <kbd className="rounded border border-slate-700/80 px-1.5 py-0.5 text-[10px] text-slate-600">
+                <kbd className="rounded border border-slate-700/80 px-1.5 py-0.5 text-[10px] text-slate-400">
                   {command.keywords[0]}
                 </kbd>
               )}
             </button>
           ))}
           {results.length === 0 && (
-            <p className="px-3 py-6 text-center text-sm text-slate-600">{tP('noResults')}</p>
+            <p className="px-3 py-6 text-center text-sm text-slate-400">{tP('noResults')}</p>
           )}
         </div>
-        <p className="border-t border-slate-800 px-4 py-2 text-[10px] text-slate-600">{tP('hint')}</p>
+        <p className="border-t border-slate-800 px-4 py-2 text-[10px] text-slate-400">{tP('hint')}</p>
       </div>
     </div>
   );
