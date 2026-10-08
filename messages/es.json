@@ -14,7 +14,8 @@
     "viewAll": "Ver todo",
     "loading": "Cargando…",
     "create": "Crear",
-    "new": "Nuevo"
+    "new": "Nuevo",
+    "you": "tú"
   },
   "landing": {
     "eyebrow": "Espacio de integración estructural",
@@ -190,7 +191,12 @@
     "newProjectCreating": "Creando…",
     "closeDialog": "Cerrar diálogo",
     "loadProjectsError": "No se pudieron cargar los proyectos",
-    "createProjectError": "No se pudo crear el proyecto"
+    "createProjectError": "No se pudo crear el proyecto",
+    "teamsEmpty": "Aún no hay equipos",
+    "teamsEmptyDesc": "Crea un equipo para compartir proyectos con roles de propietario, editor y observador.",
+    "teamsManage": "Gestionar equipos",
+    "teamsCreate": "Crear equipo",
+    "sharedBadge": "Compartido · {role}"
   },
   "projectCard": {
     "project": "Proyecto",
@@ -677,7 +683,8 @@
         "export": "Exportar como PNG",
         "print": "Imprimir"
       }
-    }
+    },
+    "readOnly": "Solo lectura: tienes acceso de observador a este proyecto compartido. Los cambios no se guardan."
   },
   "layers": {
     "architecture": "Arquitectura",
@@ -777,5 +784,62 @@
     "errorTitle": "Algo salió mal",
     "errorBody": "No pudimos cargar esta invitación. Revisa tu conexión e inténtalo de nuevo.",
     "backHome": "Volver al inicio"
+  },
+  "teams": {
+    "title": "Equipos",
+    "subtitle": "Comparte proyectos con roles de propietario, editor y observador.",
+    "backToDashboard": "Volver al panel",
+    "newTeam": "Nuevo equipo",
+    "teamNamePlaceholder": "Nombre del equipo",
+    "createTeam": "Crear equipo",
+    "creating": "Creando...",
+    "noTeams": "Aún no perteneces a ningún equipo. Crea uno e invita a tus colegas.",
+    "membersCount": "{count} miembros",
+    "projectsCount": "{count} proyectos",
+    "yourRole": "Tu rol",
+    "open": "Abrir",
+    "roles": {
+      "owner": "Propietario",
+      "editor": "Editor",
+      "viewer": "Observador"
+    },
+    "membersTitle": "Miembros",
+    "invitesTitle": "Invitaciones pendientes",
+    "projectsTitle": "Proyectos compartidos",
+    "inviteTitle": "Invitar personas",
+    "inviteEmailPlaceholder": "Correo (opcional, solo enlace)",
+    "inviteRoleLabel": "Rol",
+    "generateLink": "Generar enlace de invitación",
+    "inviteLinkReady": "Comparte este enlace. Sirve una sola vez y vence en {days} días.",
+    "copyLink": "Copiar enlace",
+    "copied": "Copiado",
+    "revoke": "Revocar",
+    "inviteAnyone": "Cualquiera con el enlace",
+    "expires": "Vence {date}",
+    "changeRole": "Cambiar rol de {name}",
+    "remove": "Quitar",
+    "leave": "Salir del equipo",
+    "deleteTeam": "Eliminar equipo",
+    "confirmDelete": "¿Eliminar este equipo? Los miembros perderán acceso a los proyectos compartidos.",
+    "shareTitle": "Compartir un proyecto",
+    "sharePlaceholder": "Elige uno de tus proyectos",
+    "share": "Compartir",
+    "unshare": "Dejar de compartir",
+    "noProjects": "Aún no hay proyectos compartidos con este equipo.",
+    "noMembers": "Aún no hay miembros.",
+    "loadError": "No se pudo cargar el equipo.",
+    "notFound": "Equipo no encontrado.",
+    "invite": {
+      "title": "Invitación a un equipo",
+      "subtitle": "{inviter} te invitó a unirte a {team} como {role}.",
+      "forEmail": "Esta invitación es para {email}.",
+      "accept": "Aceptar invitación",
+      "accepting": "Uniéndote...",
+      "loginFirst": "Inicia sesión o crea una cuenta para aceptar.",
+      "signIn": "Iniciar sesión",
+      "register": "Crear cuenta",
+      "invalid": "Esta invitación no es válida, venció o ya fue usada.",
+      "accepted": "Te uniste a {team}. Redirigiendo..."
+    }
   }
 }

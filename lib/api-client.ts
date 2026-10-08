@@ -1,8 +1,8 @@
 import { getOrCreateDeviceIdentity, regenerateDeviceIdentity, signDeviceRequest } from '@/lib/device/identity';
 import type { DeviceSession, User } from '@/types/auth';
 import type { Folder } from '@/types/folder';
+import type { InvitePreview, ProjectShare, Team, TeamDetail, TeamInviteCreated, TeamMember, TeamRole } from '@/types/team';
 import type { ElementLoad, LoadCase } from '@/types/structural-load';
-import type { InvitePreview, TeamPublic } from '@/types/team';
 import type { CatalogPresets, DesignSettings, DocumentState, ElementType, HistoryResponse, Material, Project, ProjectElement, Section, SectionShape, MaterialCategory } from '@/types/project';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
@@ -84,8 +84,20 @@ export const api = {
   undoDocument: (projectId: string) => request<DocumentState>(`/api/projects/${projectId}/history/undo`, { method: 'POST' }, true),
   redoDocument: (projectId: string) => request<DocumentState>(`/api/projects/${projectId}/history/redo`, { method: 'POST' }, true),
   restoreRevision: (projectId: string, revision: number) => request<DocumentState>(`/api/projects/${projectId}/history/${revision}/restore`, { method: 'POST' }, true),
+  teams: () => request<Team[]>('/api/teams'),
+  team: (id: string) => request<TeamDetail>(`/api/teams/${id}`),
+  createTeam: (payload: { name: string }) => request<Team>('/api/teams', { method: 'POST', body: JSON.stringify(payload) }, true),
+  updateTeam: (id: string, payload: { name: string }) => request<Team>(`/api/teams/${id}`, { method: 'PUT', body: JSON.stringify(payload) }, true),
+  deleteTeam: (id: string) => request<void>(`/api/teams/${id}`, { method: 'DELETE' }, true),
+  createInvite: (teamId: string, payload: { email?: string; role: TeamRole; expires_in_days?: number }) => request<TeamInviteCreated>(`/api/teams/${teamId}/invites`, { method: 'POST', body: JSON.stringify(payload) }, true),
+  revokeInvite: (teamId: string, inviteId: string) => request<void>(`/api/teams/${teamId}/invites/${inviteId}`, { method: 'DELETE' }, true),
   invitePreview: (token: string) => request<InvitePreview>(`/api/teams/invites/${token}`),
-  acceptInvite: (token: string) => request<TeamPublic>('/api/teams/invites/accept', { method: 'POST', body: JSON.stringify({ token }) }, true),
+  acceptInvite: (token: string) => request<Team>('/api/teams/invites/accept', { method: 'POST', body: JSON.stringify({ token }) }, true),
+  updateMemberRole: (teamId: string, memberId: string, role: TeamRole) => request<TeamMember>(`/api/teams/${teamId}/members/${memberId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }, true),
+  removeMember: (teamId: string, memberId: string) => request<void>(`/api/teams/${teamId}/members/${memberId}`, { method: 'DELETE' }, true),
+  leaveTeam: (teamId: string) => request<void>(`/api/teams/${teamId}/leave`, { method: 'POST' }, true),
+  shareProject: (teamId: string, projectId: string) => request<ProjectShare>(`/api/teams/${teamId}/projects`, { method: 'POST', body: JSON.stringify({ project_id: projectId }) }, true),
+  unshareProject: (teamId: string, projectId: string) => request<void>(`/api/teams/${teamId}/projects/${projectId}`, { method: 'DELETE' }, true),
   catalogPresets: () => request<CatalogPresets>('/api/catalog/presets'),
   materials: (projectId: string) => request<Material[]>(`/api/projects/${projectId}/materials`),
   createMaterial: (projectId: string, payload: { name: string; category?: MaterialCategory; properties?: Record<string, unknown> }) =>

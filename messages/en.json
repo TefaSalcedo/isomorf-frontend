@@ -14,7 +14,8 @@
     "viewAll": "View all",
     "loading": "Loading…",
     "create": "Create",
-    "new": "New"
+    "new": "New",
+    "you": "you"
   },
   "landing": {
     "eyebrow": "Structural integration workspace",
@@ -190,7 +191,12 @@
     "newProjectCreating": "Creating…",
     "closeDialog": "Close dialog",
     "loadProjectsError": "Unable to load projects",
-    "createProjectError": "Unable to create project"
+    "createProjectError": "Unable to create project",
+    "teamsEmpty": "No teams yet",
+    "teamsEmptyDesc": "Create a team to share projects with owner, editor and viewer roles.",
+    "teamsManage": "Manage teams",
+    "teamsCreate": "Create team",
+    "sharedBadge": "Shared · {role}"
   },
   "projectCard": {
     "project": "Project",
@@ -677,7 +683,8 @@
         "export": "Export as PNG",
         "print": "Print"
       }
-    }
+    },
+    "readOnly": "View only — you have viewer access to this shared project. Changes are not saved."
   },
   "layers": {
     "architecture": "Architecture",
@@ -777,5 +784,62 @@
     "errorTitle": "Something went wrong",
     "errorBody": "We couldn't load this invitation. Check your connection and try again.",
     "backHome": "Back to home"
+  },
+  "teams": {
+    "title": "Teams",
+    "subtitle": "Share projects with owner, editor and viewer roles.",
+    "backToDashboard": "Back to dashboard",
+    "newTeam": "New team",
+    "teamNamePlaceholder": "Team name",
+    "createTeam": "Create team",
+    "creating": "Creating...",
+    "noTeams": "You are not part of any team yet. Create one and invite your colleagues.",
+    "membersCount": "{count} members",
+    "projectsCount": "{count} projects",
+    "yourRole": "Your role",
+    "open": "Open",
+    "roles": {
+      "owner": "Owner",
+      "editor": "Editor",
+      "viewer": "Viewer"
+    },
+    "membersTitle": "Members",
+    "invitesTitle": "Pending invites",
+    "projectsTitle": "Shared projects",
+    "inviteTitle": "Invite people",
+    "inviteEmailPlaceholder": "Email (optional, link only)",
+    "inviteRoleLabel": "Role",
+    "generateLink": "Generate invite link",
+    "inviteLinkReady": "Share this link. It works once and expires in {days} days.",
+    "copyLink": "Copy link",
+    "copied": "Copied",
+    "revoke": "Revoke",
+    "inviteAnyone": "Anyone with the link",
+    "expires": "Expires {date}",
+    "changeRole": "Change role of {name}",
+    "remove": "Remove",
+    "leave": "Leave team",
+    "deleteTeam": "Delete team",
+    "confirmDelete": "Delete this team? Members will lose access to shared projects.",
+    "shareTitle": "Share a project",
+    "sharePlaceholder": "Choose one of your projects",
+    "share": "Share",
+    "unshare": "Unshare",
+    "noProjects": "No projects shared with this team yet.",
+    "noMembers": "No members yet.",
+    "loadError": "Could not load the team.",
+    "notFound": "Team not found.",
+    "invite": {
+      "title": "Team invitation",
+      "subtitle": "{inviter} invited you to join {team} as {role}.",
+      "forEmail": "This invite is for {email}.",
+      "accept": "Accept invitation",
+      "accepting": "Joining...",
+      "loginFirst": "Sign in or create an account to accept.",
+      "signIn": "Sign in",
+      "register": "Create account",
+      "invalid": "This invitation is invalid, expired or already used.",
+      "accepted": "You joined {team}. Redirecting..."
+    }
   }
 }

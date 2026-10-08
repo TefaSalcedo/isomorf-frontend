@@ -39,8 +39,8 @@ export default function InvitePage() {
     setState('accepting');
     setError('');
     try {
-      await api.acceptInvite(token);
-      router.replace('/dashboard');
+      const team = await api.acceptInvite(token);
+      router.replace(`/teams/${team.id}`);
     } catch (requestError) {
       if (requestError instanceof ApiError && requestError.status === 410) setState('expired');
       else if (requestError instanceof ApiError && requestError.status === 404) setState('invalid');
