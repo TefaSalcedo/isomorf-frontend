@@ -22,6 +22,8 @@ import {
   Check,
   X,
   ChevronLeft,
+  LockKeyhole,
+  Compass,
 } from 'lucide-react';
 import { SaveStatus } from '@/components/editor/save-status';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -46,12 +48,14 @@ export function EditorToolbar({
   onExport,
   onPrint,
   saving,
+  readOnly,
 }: {
   projectName: string;
   state: EditorState;
   actions: {
     toggleGrid: () => void;
     toggleSnap: () => void;
+    togglePolar: () => void;
     zoomIn: () => void;
     zoomOut: () => void;
     fit: () => void;
@@ -71,6 +75,7 @@ export function EditorToolbar({
   onExport: () => void;
   onPrint: () => void;
   saving: boolean;
+  readOnly?: boolean;
 }) {
   const t = useTranslations('editor.toolbar');
   const tv = useTranslations('editor.views');
@@ -111,11 +116,20 @@ export function EditorToolbar({
           <button type="button" onClick={commitName} title={t('saveProjectName')} aria-label={t('saveProjectName')} className="rounded p-1 text-emerald-600 hover:bg-emerald-50"><Check className="h-4 w-4" /></button>
           <button type="button" onClick={cancelName} title={t('cancelProjectName')} aria-label={t('cancelProjectName')} className="rounded p-1 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>
         </div>
+      ) : readOnly ? (
+        <span className="flex min-w-0 max-w-[40vw] items-center gap-1.5 truncate text-sm font-semibold text-slate-900 sm:max-w-xs">
+          <span className="truncate">{projectName || tc('untitled')}</span>
+        </span>
       ) : (
         <button type="button" onClick={() => { setDraftName(projectName); setEditingName(true); }} className="group flex min-w-0 max-w-[40vw] items-center gap-1.5 truncate text-left text-sm font-semibold text-slate-900 sm:max-w-xs" title={t('editProjectName')}>
           <span className="truncate">{projectName || tc('untitled')}</span>
           <Pencil className="h-3 w-3 shrink-0 text-slate-300 transition group-hover:text-violet-600" />
         </button>
+      )}
+      {readOnly && (
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-700 ring-1 ring-amber-200" title={t('readOnlyHint')}>
+          <LockKeyhole className="h-3 w-3" />{t('readOnlyBadge')}
+        </span>
       )}
       <span className="ml-1 hidden text-xs text-slate-400 lg:inline">{t('elementCount', { count: state.elements.length })}</span>
       <div className="ml-4 hidden items-center gap-1 rounded-xl bg-slate-100 p-1 lg:flex" role="group" aria-label={tv('2d') + ' / ' + tv('3d')}>
@@ -128,8 +142,8 @@ export function EditorToolbar({
       <div className="ml-auto flex items-center gap-1.5">
         <LanguageSwitcher className="hidden sm:inline-flex" />
         <div className="hidden items-center gap-1.5 lg:flex">
-          <ToolbarButton onClick={onUndo} disabled={state.revision <= 1 || state.historyBusy} icon={Undo} label={t('undo')} />
-          <ToolbarButton onClick={onRedo} disabled={state.revision >= state.headRevision || state.historyBusy} icon={Redo} label={t('redo')} />
+          <ToolbarButton onClick={onUndo} disabled={readOnly || state.revision <= 1 || state.historyBusy} icon={Undo} label={t('undo')} />
+          <ToolbarButton onClick={onRedo} disabled={readOnly || state.revision >= state.headRevision || state.historyBusy} icon={Redo} label={t('redo')} />
           <ToolbarButton onClick={onOpenHistory} icon={History} label={t('history')} active={state.activeSection === 'history'} />
           <Divider />
           <ToolbarButton onClick={actions.zoomOut} icon={ZoomOut} label={t('zoomOut')} />
@@ -139,6 +153,7 @@ export function EditorToolbar({
         <ToolbarButton onClick={actions.fit} icon={Maximize} label={t('fit')} />
         <ToolbarButton onClick={actions.toggleGrid} icon={Grid3x3} label={t('grid')} active={state.showGrid} />
         <ToolbarButton onClick={actions.toggleSnap} icon={Magnet} label={t('snap')} active={state.snapEnabled} />
+        <ToolbarButton onClick={actions.togglePolar} icon={Compass} label={t('polar')} active={state.polarEnabled} />
         <div className="hidden items-center gap-1.5 lg:flex">
           <Divider />
           <ToolbarButton onClick={onExport} icon={Download} label={t('exportPng')} />
@@ -148,12 +163,14 @@ export function EditorToolbar({
         <ToolbarButton onClick={actions.toggleCleanMode} icon={state.cleanMode ? Eye : EyeOff} label={t('cleanMode')} />
         <div className="hidden items-center gap-1.5 lg:flex">
           <Divider />
-          <ToolbarButton onClick={actions.deleteSelection} icon={Trash2} label={t('delete')} disabled={!canDelete} danger />
+          <ToolbarButton onClick={actions.deleteSelection} icon={Trash2} label={t('delete')} disabled={!canDelete || readOnly} danger />
         </div>
-        <button onClick={onSave} disabled={saving} aria-label={t('save')} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-2 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50 sm:px-3">
-          <Save className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">{saving ? t('saving') : t('save')}</span>
-        </button>
+        {!readOnly && (
+          <button onClick={onSave} disabled={saving} aria-label={t('save')} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-2 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50 sm:px-3">
+            <Save className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{saving ? t('saving') : t('save')}</span>
+          </button>
+        )}
         <div className="ml-2 hidden sm:block"><SaveStatus dirty={state.dirty} saving={saving} error={state.error} revision={state.revision} /></div>
       </div>
     </header>

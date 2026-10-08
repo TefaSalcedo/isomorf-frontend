@@ -2,11 +2,11 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { useTranslations } from 'next-intl';
-import { Stage, Layer, Line, Circle, Rect, Text } from 'react-konva';
+import { Stage, Layer, Line, Circle, Rect, Text, Label, Tag } from 'react-konva';
 import type Konva from 'konva';
 import type { EditorState } from '@/hooks/use-editor-state';
 import type { Point } from '@/lib/editor/geometry';
-import { distance, lineIntersection } from '@/lib/editor/geometry';
+import { distance, lineIntersection, toRadians } from '@/lib/editor/geometry';
 import { cmToDisplay, displayToCm, formatAngle, formatDisplayValue } from '@/lib/editor/units';
 import type { ProjectElement } from '@/types/project';
 import type { DisplayUnit } from '@/lib/editor/units';
@@ -139,7 +139,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
         return;
       }
       if (!activeDraft) return;
-      if (/^[0-9.]$/.test(event.key) || event.key === ',') {
+      if (/^[0-9.<>-]$/.test(event.key) || event.key === ',') {
         event.preventDefault();
         setLengthInput((value) => `${value}${event.key === ',' ? '.' : event.key}`);
         return;
@@ -150,14 +150,20 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
         return;
       }
       if (event.key === 'Enter' && lengthInput) {
-        const displayLength = Number(lengthInput);
-        if (!Number.isFinite(displayLength) || displayLength <= 0) return;
-        event.preventDefault();
+        const [lenPart, anglePart] = lengthInput.split('<');
+        const displayLength = lenPart === '' ? NaN : Number(lenPart);
         const currentLength = distance(activeDraft.start, activeDraft.end);
-        const angle = currentLength > 0.001
-          ? Math.atan2(activeDraft.end.y - activeDraft.start.y, activeDraft.end.x - activeDraft.start.x)
-          : 0;
-        const length = displayToCm(displayLength, displayUnit);
+        const length = Number.isFinite(displayLength) && displayLength > 0
+          ? displayToCm(displayLength, displayUnit)
+          : currentLength;
+        if (length <= 0) return;
+        const parsedAngle = anglePart !== undefined && anglePart !== '' ? Number(anglePart) : NaN;
+        const angle = Number.isFinite(parsedAngle)
+          ? toRadians(parsedAngle)
+          : currentLength > 0.001
+            ? Math.atan2(activeDraft.end.y - activeDraft.start.y, activeDraft.end.x - activeDraft.start.x)
+            : 0;
+        event.preventDefault();
         actions.updateDraft({
           x: activeDraft.start.x + Math.cos(angle) * length,
           y: activeDraft.start.y + Math.sin(angle) * length,
@@ -374,9 +380,25 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     const length = distance(draft.start, draft.end);
     const angle = Math.atan2(draft.end.y - draft.start.y, draft.end.x - draft.start.x);
     const displayValue = lengthInput || formatDisplayValue(cmToDisplay(length, displayUnit), displayUnit);
-    const suffix = lengthInput ? ` ${displayUnit}` : '';
+    const suffix = lengthInput && !lengthInput.includes('<') ? ` ${displayUnit}` : '';
     return { text: `${displayValue}${suffix}\n${formatAngle(angle)}`, end: draft.end };
   }, [state.draft, displayUnit, lengthInput]);
+
+  const polarGuide = useMemo(() => {
+    const draft = state.draft;
+    if (!draft?.polar || draft.tool === 'column') return null;
+    const dx = draft.end.x - draft.start.x;
+    const dy = draft.end.y - draft.start.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) return null;
+    const ext = Math.max(len * 3, 600);
+    return {
+      x1: draft.start.x - (dx / len) * ext * 0.25,
+      y1: draft.start.y - (dy / len) * ext * 0.25,
+      x2: draft.start.x + (dx / len) * ext,
+      y2: draft.start.y + (dy / len) * ext,
+    };
+  }, [state.draft]);
 
   const columnPreview = useMemo(() => {
     const draft = state.draft;
@@ -471,7 +493,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                   lineCap="butt"
                   lineJoin="miter"
                   opacity={locked ? 0.45 : 1}
-                  draggable={state.tool === 'select' && selected && !locked}
+                  draggable={state.tool === 'select' && selected && !locked && !state.readOnly}
                   onDragEnd={(e) => handleElementDragEnd(e, el)}
                   onMouseDown={(e) => handleShapeClick(e, el)}
                   onTouchStart={(e) => handleShapeClick(e, el)}
@@ -520,7 +542,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                   fill="#ffffff"
                   stroke="#1e40af"
                   strokeWidth={2 / zoom}
-                  draggable={state.tool === 'select'}
+                  draggable={state.tool === 'select' && !state.readOnly}
                   onMouseDown={(e) => { e.cancelBubble = true; }}
                   onDragEnd={(e) => handleEndpointDragEnd(e, el, 'start')}
                 />
@@ -532,7 +554,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                   fill="#ffffff"
                   stroke="#1e40af"
                   strokeWidth={2 / zoom}
-                  draggable={state.tool === 'select'}
+                  draggable={state.tool === 'select' && !state.readOnly}
                   onMouseDown={(e) => { e.cancelBubble = true; }}
                   onDragEnd={(e) => handleEndpointDragEnd(e, el, 'end')}
                 />
@@ -597,17 +619,27 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 listening={false}
               />
             )}
+            {polarGuide && (
+              <Line
+                points={[polarGuide.x1, polarGuide.y1, polarGuide.x2, polarGuide.y2]}
+                stroke="#06b6d4"
+                strokeWidth={1 / zoom}
+                dash={[4 / zoom, 6 / zoom]}
+                opacity={0.5}
+                listening={false}
+              />
+            )}
             {draftMeasurement && (
-              <Text
-                x={draftMeasurement.end.x + 12 / zoom}
-                y={draftMeasurement.end.y - 28 / zoom}
-                text={draftMeasurement.text}
-                fontSize={12}
-                fill="#1e40af"
+              <Label
+                x={draftMeasurement.end.x + 14 / zoom}
+                y={draftMeasurement.end.y - 18 / zoom}
                 scaleX={1 / zoom}
                 scaleY={1 / zoom}
                 listening={false}
-              />
+              >
+                <Tag fill="#0f172a" cornerRadius={4} opacity={0.9} />
+                <Text text={draftMeasurement.text} fontSize={12} fill="#f8fafc" padding={6} />
+              </Label>
             )}
             {dragging && dragStart && dragEnd && (
               <Rect

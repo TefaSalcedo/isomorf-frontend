@@ -7,16 +7,18 @@ export function ProjectSettingsPanel({
   settings,
   onChange,
   onSave,
+  readOnly,
 }: {
   settings: DesignSettings;
   onChange: (settings: DesignSettings) => void;
   onSave: () => void;
+  readOnly?: boolean;
 }) {
   const t = useTranslations('editor.panels.settings');
   return (
     <div className="h-full overflow-y-auto p-5">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{t('title')}</p>
-      <div className="mt-5 space-y-4">
+      <fieldset disabled={readOnly} className="mt-5 min-w-0 space-y-4 border-0 p-0 disabled:opacity-60">
         <SelectField
           label={t('displayUnit')}
           value={settings.unit ?? 'm'}
@@ -77,13 +79,15 @@ export function ProjectSettingsPanel({
             })
           }
         />
-        <button
-          onClick={onSave}
-          className="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
-        >
-          {t('save')}
-        </button>
-      </div>
+        {!readOnly && (
+          <button
+            onClick={onSave}
+            className="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            {t('save')}
+          </button>
+        )}
+      </fieldset>
     </div>
   );
 }

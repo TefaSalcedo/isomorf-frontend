@@ -8,6 +8,7 @@ import {
   isClose,
   lineIntersection,
   midpoint,
+  polarSnapPoint,
   projectPointOnSegment,
   rectangleFromCenter,
   rotate,
@@ -93,5 +94,41 @@ describe('clamp', () => {
     expect(clamp(5, 0, 10)).toBe(5);
     expect(clamp(-5, 0, 10)).toBe(0);
     expect(clamp(15, 0, 10)).toBe(10);
+  });
+});
+
+describe('polarSnapPoint', () => {
+  const start = { x: 0, y: 0 };
+
+  it('locks a near-45-degree direction preserving the distance', () => {
+    const point = { x: 10, y: 9.4 };
+    const result = polarSnapPoint(start, point);
+    expect(result.locked).toBe(true);
+    expect(toDegrees(Math.atan2(result.point.y, result.point.x))).toBeCloseTo(45);
+    expect(distance(start, result.point)).toBeCloseTo(distance(start, point));
+  });
+
+  it('locks horizontal and vertical directions', () => {
+    expect(polarSnapPoint(start, { x: 10, y: 0.02 }).locked).toBe(true);
+    const vertical = polarSnapPoint(start, { x: 0.02, y: 10 });
+    expect(vertical.locked).toBe(true);
+    expect(vertical.point.x).toBeCloseTo(0);
+  });
+
+  it('does not lock directions far from the increment', () => {
+    const point = { x: 10, y: 3.6 };
+    const result = polarSnapPoint(start, point);
+    expect(result.locked).toBe(false);
+    expect(result.point).toEqual(point);
+  });
+
+  it('does not lock a zero-length draft', () => {
+    expect(polarSnapPoint(start, start).locked).toBe(false);
+  });
+
+  it('respects a custom increment', () => {
+    const nearVertical = polarSnapPoint(start, { x: 0.05, y: 10 }, Math.PI / 2);
+    expect(nearVertical.locked).toBe(true);
+    expect(nearVertical.point.x).toBeCloseTo(0);
   });
 });

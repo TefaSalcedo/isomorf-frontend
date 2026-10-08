@@ -79,6 +79,8 @@ export function EditorSidebar({
   onOpenLoads,
   compact = false,
   onClose,
+  readOnly,
+  onOpenPalette,
 }: {
   state: EditorState;
   actions: { setSection: (section: ActiveSection) => void; setTool: (tool: Tool) => void };
@@ -86,6 +88,8 @@ export function EditorSidebar({
   onOpenLoads: () => void;
   compact?: boolean;
   onClose?: () => void;
+  readOnly?: boolean;
+  onOpenPalette?: () => void;
 }) {
   const t = useTranslations('editor.sidebar');
   const [collapsed, setCollapsed] = useState(false);
@@ -118,7 +122,7 @@ export function EditorSidebar({
       {expanded && (
         <div className="flex h-full min-w-0 flex-1 flex-col overflow-y-auto p-4">
           {view === '2d' ? (
-            <TwoDSidebar state={state} tool={tool} actions={{ ...actions, onClose }} activeSection={activeSection} />
+            <TwoDSidebar state={state} tool={tool} actions={{ ...actions, onClose }} activeSection={activeSection} readOnly={readOnly} onOpenPalette={onOpenPalette} />
           ) : view === '3d' ? (
             <ThreeDSidebar onOpenLoads={onOpenLoads} />
           ) : (
@@ -130,7 +134,7 @@ export function EditorSidebar({
   );
 }
 
-function TwoDSidebar({ state, tool, actions: rawActions, activeSection }: { state: EditorState; tool: Tool; actions: { setTool: (tool: Tool) => void; onClose?: () => void }; activeSection: ActiveSection }) {
+function TwoDSidebar({ state, tool, actions: rawActions, activeSection, readOnly, onOpenPalette }: { state: EditorState; tool: Tool; actions: { setTool: (tool: Tool) => void; onClose?: () => void }; activeSection: ActiveSection; readOnly?: boolean; onOpenPalette?: () => void }) {
   const t = useTranslations('editor.sidebar');
   const tt = useTranslations('editor.tools');
   const tc = useTranslations('common');
@@ -143,14 +147,26 @@ function TwoDSidebar({ state, tool, actions: rawActions, activeSection }: { stat
   return (
     <>
       <SidebarHeading title={t('planTitle')} subtitle={t('planSubtitle')} />
-      <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+      <div className="relative mt-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 transition-colors hover:border-violet-300">
         <span className="text-slate-400">+</span>
-        <input placeholder={t('commandPlaceholder')} aria-label={t('commandPlaceholder')} className="min-w-0 flex-1 bg-transparent text-xs outline-none" />
+        <input
+          type="text"
+          readOnly
+          value=""
+          onFocus={onOpenPalette}
+          onClick={onOpenPalette}
+          placeholder={t('commandPlaceholder')}
+          aria-label={t('commandPlaceholder')}
+          className="min-w-0 flex-1 cursor-pointer bg-transparent text-xs outline-none"
+        />
+        <kbd className="shrink-0 rounded border border-slate-300 bg-white px-1 py-0.5 text-[9px] font-medium text-slate-400">⌘K</kbd>
       </div>
-      <button type="button" className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 py-2 text-xs font-semibold text-white"><Pencil className="h-3.5 w-3.5" />{t('generate')}</button>
-      <SidebarSection title={t('recentlyUsed')}><div className="grid grid-cols-3 gap-2"><RecentTool icon={Square} label={tt('column')} onClick={() => actions.setTool('column')} /><RecentTool icon={Minus} label={tt('beam')} onClick={() => actions.setTool('beam')} /><RecentTool icon={PanelTop} label={tt('slab')} onClick={() => actions.setTool('select')} /></div></SidebarSection>
-      <SidebarSection title={t('annotation')}><div className="grid grid-cols-2 gap-2"><ToolCard icon={Type} label={tt('linearDimension')} active={tool === 'select'} onClick={() => actions.setTool('select')} /><ToolCard icon={MoveDiagonal} label={tt('continuous')} onClick={() => actions.setTool('select')} /><ToolCard icon={Grid3X3} label={tt('gridAxis')} onClick={() => actions.setTool('select')} /><ToolCard icon={Tag} label={tt('tagMark')} onClick={() => actions.setTool('select')} /><ToolCard icon={Ruler} label={tt('level')} onClick={() => actions.setTool('select')} /><ToolCard icon={Type} label={tt('text')} onClick={() => actions.setTool('select')} /></div></SidebarSection>
-      <SidebarSection title={t('structural2d')}><div className="grid grid-cols-2 gap-2"><ToolCard icon={Square} label={tt('column')} active={tool === 'column'} onClick={() => actions.setTool('column')} /><ToolCard icon={Minus} label={tt('beamAxis')} active={tool === 'beam'} onClick={() => actions.setTool('beam')} /><ToolCard icon={PanelTop} label={tt('wallSlab')} active={tool === 'wall'} onClick={() => actions.setTool('wall')} /><ToolCard icon={LayoutTemplate} label={tt('floorSlab')} onClick={() => actions.setTool('select')} /><ToolCard icon={Circle} label={tt('opening')} onClick={() => actions.setTool('select')} /><ToolCard icon={DoorOpen} label={tt('section')} onClick={() => actions.setTool('select')} /></div></SidebarSection>
+      {!readOnly && (
+        <button type="button" className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 py-2 text-xs font-semibold text-white"><Pencil className="h-3.5 w-3.5" />{t('generate')}</button>
+      )}
+      <SidebarSection title={t('recentlyUsed')}><div className="grid grid-cols-3 gap-2"><RecentTool icon={Square} label={tt('column')} disabled={readOnly} onClick={() => actions.setTool('column')} /><RecentTool icon={Minus} label={tt('beam')} disabled={readOnly} onClick={() => actions.setTool('beam')} /><RecentTool icon={PanelTop} label={tt('slab')} disabled={readOnly} onClick={() => actions.setTool('select')} /></div></SidebarSection>
+      <SidebarSection title={t('annotation')}><div className="grid grid-cols-2 gap-2"><ToolCard icon={Type} label={tt('linearDimension')} active={tool === 'select'} disabled={readOnly} onClick={() => actions.setTool('select')} /><ToolCard icon={MoveDiagonal} label={tt('continuous')} disabled={readOnly} onClick={() => actions.setTool('select')} /><ToolCard icon={Grid3X3} label={tt('gridAxis')} disabled={readOnly} onClick={() => actions.setTool('select')} /><ToolCard icon={Tag} label={tt('tagMark')} disabled={readOnly} onClick={() => actions.setTool('select')} /><ToolCard icon={Ruler} label={tt('level')} disabled={readOnly} onClick={() => actions.setTool('select')} /><ToolCard icon={Type} label={tt('text')} disabled={readOnly} onClick={() => actions.setTool('select')} /></div></SidebarSection>
+      <SidebarSection title={t('structural2d')}><div className="grid grid-cols-2 gap-2"><ToolCard icon={Square} label={tt('column')} active={tool === 'column'} disabled={readOnly} onClick={() => actions.setTool('column')} /><ToolCard icon={Minus} label={tt('beamAxis')} active={tool === 'beam'} disabled={readOnly} onClick={() => actions.setTool('beam')} /><ToolCard icon={PanelTop} label={tt('wallSlab')} active={tool === 'wall'} disabled={readOnly} onClick={() => actions.setTool('wall')} /><ToolCard icon={LayoutTemplate} label={tt('floorSlab')} disabled={readOnly} onClick={() => actions.setTool('select')} /><ToolCard icon={Circle} label={tt('opening')} disabled={readOnly} onClick={() => actions.setTool('select')} /><ToolCard icon={DoorOpen} label={tt('section')} disabled={readOnly} onClick={() => actions.setTool('select')} /></div></SidebarSection>
       {activeSection === 'calculations' && <p className="mt-4 text-xs text-slate-500">{t('calculationsHint')}</p>}
       {state.error && <p className="mt-4 rounded-lg bg-red-50 p-2 text-xs text-red-600" role="alert">{state.error}</p>}
     </>
@@ -180,12 +196,12 @@ function SidebarSection({ title, children }: { title: string; children: React.Re
   return <section className="mt-5"><div className="mb-2 flex items-center justify-between"><h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{title}</h3><span className="text-[10px] text-violet-600">{tc('viewAll')}</span></div>{children}</section>;
 }
 
-function RecentTool({ icon: Icon, label, onClick }: { icon: typeof Square; label: string; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className="flex h-16 flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white text-[10px] text-slate-600 hover:border-violet-300"><Icon className="h-5 w-5 text-violet-600" />{label}</button>;
+function RecentTool({ icon: Icon, label, onClick, disabled }: { icon: typeof Square; label: string; onClick: () => void; disabled?: boolean }) {
+  return <button type="button" onClick={onClick} disabled={disabled} className="flex h-16 flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white text-[10px] text-slate-600 hover:border-violet-300 disabled:cursor-not-allowed disabled:opacity-40"><Icon className="h-5 w-5 text-violet-600" />{label}</button>;
 }
 
-function ToolCard({ icon: Icon, label, active, onClick }: { icon: typeof Square; label: string; active?: boolean; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border p-2 text-center text-[10px] transition ${active ? 'border-violet-500 bg-violet-50 text-violet-700' : 'border-slate-200 text-slate-600 hover:border-violet-300'}`}><Icon className="h-4 w-4" />{label}</button>;
+function ToolCard({ icon: Icon, label, active, onClick, disabled }: { icon: typeof Square; label: string; active?: boolean; onClick: () => void; disabled?: boolean }) {
+  return <button type="button" onClick={onClick} disabled={disabled} className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border p-2 text-center text-[10px] transition disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'border-violet-500 bg-violet-50 text-violet-700' : 'border-slate-200 text-slate-600 hover:border-violet-300'}`}><Icon className="h-4 w-4" />{label}</button>;
 }
 
 function FallbackSidebar({ activeSection }: { activeSection: ActiveSection }) {

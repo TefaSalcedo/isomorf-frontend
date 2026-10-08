@@ -2,6 +2,7 @@ import { getOrCreateDeviceIdentity, regenerateDeviceIdentity, signDeviceRequest 
 import type { DeviceSession, User } from '@/types/auth';
 import type { Folder } from '@/types/folder';
 import type { ElementLoad, LoadCase } from '@/types/structural-load';
+import type { InvitePreview, TeamPublic } from '@/types/team';
 import type { DesignSettings, DocumentState, ElementType, HistoryResponse, Project, ProjectElement } from '@/types/project';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
@@ -83,6 +84,8 @@ export const api = {
   undoDocument: (projectId: string) => request<DocumentState>(`/api/projects/${projectId}/history/undo`, { method: 'POST' }, true),
   redoDocument: (projectId: string) => request<DocumentState>(`/api/projects/${projectId}/history/redo`, { method: 'POST' }, true),
   restoreRevision: (projectId: string, revision: number) => request<DocumentState>(`/api/projects/${projectId}/history/${revision}/restore`, { method: 'POST' }, true),
+  invitePreview: (token: string) => request<InvitePreview>(`/api/teams/invites/${token}`),
+  acceptInvite: (token: string) => request<TeamPublic>('/api/teams/invites/accept', { method: 'POST', body: JSON.stringify({ token }) }, true),
 };
 
 export type DocumentPayload = { name?: string; design_settings?: DesignSettings; elements: ElementPayload[] };
