@@ -262,7 +262,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     if (!state.dirty && !projectChanged) return undefined;
     const timeout = window.setTimeout(() => void saveRef.current(), 700);
     return () => window.clearTimeout(timeout);
-  }, [state.dirty, state.readOnly, state.layers, projectName, designSettings, initialProject.name]);
+  }, [state.dirty, state.elements, state.readOnly, state.layers, projectName, designSettings, initialProject.name]);
 
   function commitProjectName(value: string) {
     if (state.readOnly) return;

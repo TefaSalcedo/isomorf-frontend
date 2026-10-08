@@ -44,6 +44,13 @@ const TOOL_COMMANDS: { id: Tool; keywords: string[] }[] = [
   { id: 'stair', keywords: ['stair', 'escalera', 'stairs', 'esc', 'escaleras'] },
   { id: 'ramp', keywords: ['ramp', 'rampa', 'rm'] },
   { id: 'opening', keywords: ['opening', 'hueco', 'abertura', 'o', 'shaft', 'ducto'] },
+  { id: 'line', keywords: ['line', 'l', 'linea', 'línea', 'segment', 'segmento'] },
+  { id: 'polyline', keywords: ['polyline', 'pline', 'pl', 'polilinea', 'polilínea'] },
+  { id: 'arc', keywords: ['arc', 'arco', 'a', 'curve', 'curva'] },
+  { id: 'circle', keywords: ['circle', 'circulo', 'círculo', 'ci'] },
+  { id: 'ellipse', keywords: ['ellipse', 'elipse', 'el'] },
+  { id: 'rectangle', keywords: ['rectangle', 'rectangulo', 'rectángulo', 'rec', 'rect'] },
+  { id: 'hatch', keywords: ['hatch', 'hachura', 'sombreado', 'h', 'fill pattern'] },
 ];
 
 export function buildEditorCommands(ctx: EditorCommandContext): EditorCommand[] {

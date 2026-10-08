@@ -281,7 +281,8 @@
         "structure": "Estructura",
         "foundation": "Cimentación",
         "floors": "Losas y circulación",
-        "envelope": "Cerramiento"
+        "envelope": "Cerramiento",
+        "draw": "Dibujo"
       }
     },
     "tools": {
@@ -311,7 +312,14 @@
       "pile": "Pilote",
       "footing": "Zapata",
       "stair": "Escalera",
-      "ramp": "Rampa"
+      "ramp": "Rampa",
+      "line": "Línea",
+      "polyline": "Polilínea",
+      "arc": "Arco",
+      "circle": "Círculo",
+      "ellipse": "Elipse",
+      "rectangle": "Rectángulo",
+      "hatch": "Hachurado"
     },
     "loadTypes": {
       "dead": "Muerta",
@@ -401,6 +409,18 @@
         "slope": "Pendiente (%)",
         "openingHint": "Un hueco es un vacío en el área de la losa. Cambia su tamaño arrastrando las esquinas.",
         "bulkTypeHint": "Selecciona elementos del mismo tipo para editar dimensiones compartidas.",
+        "radius": "Radio (m)",
+        "hatchPattern": "Patrón de hachurado",
+        "hatchAngle": "Ángulo del hachurado (°)",
+        "hatchPatterns": {
+          "ansi31": "ANSI31 (líneas a 45°)",
+          "cross": "Cruzado",
+          "grid": "Cuadrícula"
+        },
+        "vertexCount": "{count} vértices",
+        "closed": "Cerrada",
+        "yes": "Sí",
+        "no": "No",
         "sections": {
           "identity": "Identidad",
           "position": "Posición",
@@ -650,7 +670,14 @@
         "footing": "Dibujar zapata",
         "stair": "Dibujar escalera",
         "ramp": "Dibujar rampa",
-        "opening": "Dibujar hueco"
+        "opening": "Dibujar hueco",
+        "line": "Dibujar línea",
+        "polyline": "Dibujar polilínea",
+        "arc": "Dibujar arco (3 puntos)",
+        "circle": "Dibujar círculo",
+        "ellipse": "Dibujar elipse",
+        "rectangle": "Dibujar rectángulo",
+        "hatch": "Dibujar hachurado"
       },
       "action": {
         "undo": "Deshacer",

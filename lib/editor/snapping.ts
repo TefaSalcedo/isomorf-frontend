@@ -1,4 +1,4 @@
-import type { ElementType, ProjectElement } from '@/types/project';
+import type { ElementType, PlanPoint, ProjectElement } from '@/types/project';
 import {
   distance,
   midpoint,
@@ -9,6 +9,8 @@ import {
   magnitude,
   sub,
   dot,
+  ccwSweep,
+  normalizeAngle,
   DEFAULT_SNAP_PIXELS,
 } from '@/lib/editor/geometry';
 
@@ -22,7 +24,11 @@ export type SnapTarget =
   | { type: 'wall'; elementId: string }
   | { type: 'center'; elementId: string }
   | { type: 'corner'; elementId: string; index: number }
-  | { type: 'column-edge'; elementId: string; index: number };
+  | { type: 'column-edge'; elementId: string; index: number }
+  | { type: 'vertex'; elementId: string; index: number }
+  | { type: 'quadrant'; elementId: string; index: number }
+  | { type: 'nearest'; elementId: string }
+  | { type: 'perpendicular'; elementId: string };
 
 export type SnapCandidate = {
   point: { x: number; y: number };
@@ -33,18 +39,25 @@ export type SnapResult = SnapCandidate & { distance: number };
 
 function isLineType(type: ElementType): boolean {
   return type === 'wall' || type === 'door' || type === 'window' || type === 'beam'
-    || type === 'joist' || type === 'grade_beam' || type === 'brace';
+    || type === 'joist' || type === 'grade_beam' || type === 'brace' || type === 'line';
 }
 
 function isRectType(type: ElementType): boolean {
-  return type === 'slab' || type === 'footing' || type === 'stair' || type === 'ramp' || type === 'opening';
+  return type === 'slab' || type === 'footing' || type === 'stair' || type === 'ramp' || type === 'opening'
+    || type === 'ellipse' || type === 'rectangle' || type === 'hatch';
 }
 
 function anchorPointsFor(element: ProjectElement): SnapCandidate[] {
-  const candidates: SnapCandidate[] = [
-    { point: { x: element.x1, y: element.y1 }, target: { type: 'start', elementId: element.id } },
-    { point: { x: element.x2, y: element.y2 }, target: { type: 'end', elementId: element.id } },
-  ];
+  // For circles ``x1,y1`` is the center and ``x2,y2`` a point on the rim —
+  // reporting them as start/end would shadow the richer center/quadrant
+  // anchors below. Polylines list every vertex instead of two endpoints.
+  const skipEndpoints = element.element_type === 'circle' || element.element_type === 'polyline';
+  const candidates: SnapCandidate[] = skipEndpoints
+    ? []
+    : [
+        { point: { x: element.x1, y: element.y1 }, target: { type: 'start', elementId: element.id } },
+        { point: { x: element.x2, y: element.y2 }, target: { type: 'end', elementId: element.id } },
+      ];
   if (isLineType(element.element_type) && !pointsEqual({ x: element.x1, y: element.y1 }, { x: element.x2, y: element.y2 })) {
     candidates.push({
       point: midpoint({ x: element.x1, y: element.y1 }, { x: element.x2, y: element.y2 }),
@@ -69,6 +82,25 @@ function anchorPointsFor(element: ProjectElement): SnapCandidate[] {
   if (element.element_type === 'pile') {
     candidates.push({ point: { x: element.x1, y: element.y1 }, target: { type: 'center', elementId: element.id } });
   }
+  if (element.element_type === 'polyline') {
+    const points = element.properties.points ?? [];
+    points.forEach((point, index) => candidates.push({ point, target: { type: 'vertex', elementId: element.id, index } }));
+  }
+  if (element.element_type === 'circle') {
+    const radius = element.properties.radius ?? Math.abs(element.x2 - element.x1);
+    const center = { x: element.x1, y: element.y1 };
+    candidates.push({ point: center, target: { type: 'center', elementId: element.id } });
+    [
+      { x: center.x + radius, y: center.y },
+      { x: center.x, y: center.y + radius },
+      { x: center.x - radius, y: center.y },
+      { x: center.x, y: center.y - radius },
+    ].forEach((point, index) => candidates.push({ point, target: { type: 'quadrant', elementId: element.id, index } }));
+  }
+  if (element.element_type === 'arc') {
+    candidates.push({ point: { x: element.properties.cx, y: element.properties.cy }, target: { type: 'center', elementId: element.id } });
+    candidates.push({ point: element.properties.mid, target: { type: 'vertex', elementId: element.id, index: -1 } });
+  }
   if (isRectType(element.element_type)) {
     const corners = [
       { x: element.x1, y: element.y1 },
@@ -88,25 +120,101 @@ function allAnchorPoints(elements: ProjectElement[], excludeId?: string): SnapCa
     .flatMap((el) => anchorPointsFor(el));
 }
 
+/** Straight segments owned by an element, used for intersections, nearest
+ *  and perpendicular snaps. Curves (arc/circle) are handled point-wise. */
+function linearSegments(element: ProjectElement): { a: PlanPoint; b: PlanPoint; elementId: string }[] {
+  if (isLineType(element.element_type)) {
+    return [{ a: { x: element.x1, y: element.y1 }, b: { x: element.x2, y: element.y2 }, elementId: element.id }];
+  }
+  if (element.element_type === 'polyline') {
+    const points = element.properties.points ?? [];
+    const segments: { a: PlanPoint; b: PlanPoint; elementId: string }[] = [];
+    for (let i = 1; i < points.length; i += 1) {
+      segments.push({ a: points[i - 1], b: points[i], elementId: element.id });
+    }
+    return segments;
+  }
+  return [];
+}
+
 function findIntersections(elements: ProjectElement[]): SnapCandidate[] {
   const result: SnapCandidate[] = [];
-  for (let i = 0; i < elements.length; i += 1) {
-    const a = elements[i];
-    if (!isLineType(a.element_type)) continue;
-    for (let j = i + 1; j < elements.length; j += 1) {
-      const b = elements[j];
-      if (!isLineType(b.element_type)) continue;
-      const p = lineIntersection(
-        { x: a.x1, y: a.y1 },
-        { x: a.x2, y: a.y2 },
-        { x: b.x1, y: b.y1 },
-        { x: b.x2, y: b.y2 },
-      );
+  const segments = elements.flatMap((el) => linearSegments(el));
+  for (let i = 0; i < segments.length; i += 1) {
+    for (let j = i + 1; j < segments.length; j += 1) {
+      const a = segments[i];
+      const b = segments[j];
+      if (a.elementId === b.elementId) continue;
+      const p = lineIntersection(a.a, a.b, b.a, b.b);
       if (p) {
         result.push({
           point: p,
-          target: { type: 'intersection', elementIdA: a.id, elementIdB: b.id },
+          target: { type: 'intersection', elementIdA: a.elementId, elementIdB: b.elementId },
         });
+      }
+    }
+  }
+  return result;
+}
+
+/** Closest point on each entity to the cursor: segment projections for linear
+ *  geometry, radial projection for circles, and sweep-clamped projection for
+ *  arcs. This is the AutoCAD "nearest" object snap. */
+function nearestCandidates(cursor: PlanPoint, elements: ProjectElement[]): SnapCandidate[] {
+  const result: SnapCandidate[] = [];
+  for (const el of elements) {
+    for (const { a, b } of linearSegments(el)) {
+      const projected = projectPointOnSegment(cursor, a, b);
+      result.push({ point: projected.point, target: { type: 'nearest', elementId: el.id } });
+    }
+    if (el.element_type === 'circle') {
+      const radius = el.properties.radius ?? Math.abs(el.x2 - el.x1);
+      const center = { x: el.x1, y: el.y1 };
+      const angle = Math.atan2(cursor.y - center.y, cursor.x - center.x);
+      result.push({
+        point: { x: center.x + Math.cos(angle) * radius, y: center.y + Math.sin(angle) * radius },
+        target: { type: 'nearest', elementId: el.id },
+      });
+    }
+    if (el.element_type === 'arc') {
+      const { cx, cy, radius, start_angle, end_angle, clockwise } = el.properties;
+      const center = { x: cx, y: cy };
+      const angle = Math.atan2(cursor.y - cy, cursor.x - cx);
+      const onArc = clockwise
+        ? ccwSweep(angle, start_angle) <= ccwSweep(end_angle, start_angle)
+        : ccwSweep(start_angle, angle) <= ccwSweep(start_angle, end_angle);
+      if (onArc) {
+        result.push({
+          point: { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius },
+          target: { type: 'nearest', elementId: el.id },
+        });
+      }
+    }
+    if (isRectType(el.element_type)) {
+      const corners = [
+        { x: el.x1, y: el.y1 },
+        { x: el.x2, y: el.y1 },
+        { x: el.x2, y: el.y2 },
+        { x: el.x1, y: el.y2 },
+      ];
+      for (let i = 0; i < 4; i += 1) {
+        const projected = projectPointOnSegment(cursor, corners[i], corners[(i + 1) % 4]);
+        result.push({ point: projected.point, target: { type: 'nearest', elementId: el.id } });
+      }
+    }
+  }
+  return result;
+}
+
+/** Foot of the perpendicular from ``origin`` onto each linear segment — the
+ *  AutoCAD perpendicular snap, only meaningful while a draft has an anchor. */
+function perpendicularCandidates(origin: PlanPoint, elements: ProjectElement[]): SnapCandidate[] {
+  const result: SnapCandidate[] = [];
+  for (const el of elements) {
+    for (const { a, b } of linearSegments(el)) {
+      const projected = projectPointOnSegment(origin, a, b);
+      if (projected.t > 1e-9 && projected.t < 1 - 1e-9 && projected.distance > 1e-6) {
+        result.push({ point: projected.point, target: { type: 'perpendicular', elementId: el.id } });
       }
     }
   }
@@ -117,11 +225,40 @@ export function snapPixelsForZoom(zoom: number): number {
   return DEFAULT_SNAP_PIXELS + Math.min(2, Math.max(0, zoom - 1)) * 6;
 }
 
+/** AutoCAD-style snap priority: explicit object snaps (endpoints, centers,
+ *  quadrants, vertices, intersections) always beat projected snaps
+ *  (perpendicular, nearest) when both sit inside the aperture. */
+export function snapPriority(target: SnapTarget): number {
+  if (target.type === 'nearest') return 2;
+  if (target.type === 'perpendicular') return 1;
+  return 0;
+}
+
 export function snapCandidates(
   elements: ProjectElement[],
   excludeId?: string,
+  cursor?: PlanPoint,
+  fromPoint?: PlanPoint,
 ): SnapCandidate[] {
-  return [...allAnchorPoints(elements, excludeId), ...findIntersections(elements)];
+  const available = excludeId ? elements.filter((el) => el.id !== excludeId) : elements;
+  const anchors = [...allAnchorPoints(available), ...findIntersections(available)];
+  const perpendicular = fromPoint ? perpendicularCandidates(fromPoint, available) : [];
+  const nearest = cursor ? nearestCandidates(cursor, available) : [];
+  return [...anchors, ...perpendicular, ...nearest];
+}
+
+/** Lowest ``(priority, distance)`` pair wins, limited by the aperture. */
+function pickSnap(candidates: SnapCandidate[], cursor: PlanPoint, worldTolerance: number): SnapResult | null {
+  let best: SnapResult | null = null;
+  for (const candidate of candidates) {
+    const d = distance(cursor, candidate.point);
+    if (d > worldTolerance) continue;
+    const better = !best
+      || snapPriority(candidate.target) < snapPriority(best.target)
+      || (snapPriority(candidate.target) === snapPriority(best.target) && d < best.distance);
+    if (better) best = { ...candidate, distance: d };
+  }
+  return best;
 }
 
 export function snapToNearest(
@@ -130,18 +267,11 @@ export function snapToNearest(
   zoom: number,
   worldPerPixel: number,
   excludeId?: string,
+  fromPoint?: PlanPoint,
 ): SnapResult | null {
   const pixelTolerance = snapPixelsForZoom(zoom);
   const worldTolerance = (pixelTolerance * worldPerPixel) / Math.max(0.1, zoom);
-  const candidates = snapCandidates(elements, excludeId);
-  let best: SnapResult | null = null;
-  for (const candidate of candidates) {
-    const d = distance(cursor, candidate.point);
-    if (d <= worldTolerance && (!best || d < best.distance)) {
-      best = { ...candidate, distance: d };
-    }
-  }
-  return best;
+  return pickSnap(snapCandidates(elements, excludeId, cursor, fromPoint), cursor, worldTolerance);
 }
 
 export function snapToSegmentMidpoint(
@@ -320,19 +450,24 @@ export function snapForWall(
   zoom: number,
   worldPerPixel: number,
   excludeId?: string,
+  fromPoint?: PlanPoint,
 ): SnapResult | null {
   const available = elements.filter((element) => element.id !== excludeId);
   const candidates = [
-    ...snapCandidates(available).filter((candidate) => candidate.target.type !== 'center').map((candidate) => ({ ...candidate, distance: distance(cursor, candidate.point) })),
+    ...snapCandidates(available, undefined, cursor, fromPoint).filter((candidate) => candidate.target.type !== 'center').map((candidate) => ({ ...candidate, distance: distance(cursor, candidate.point) })),
     ...available.flatMap((element) => columnEdges(element, cursor).map((candidate) => ({ ...candidate, distance: distance(cursor, candidate.point) }))),
   ];
   const pixelTolerance = snapPixelsForZoom(zoom);
   const worldTolerance = (pixelTolerance * worldPerPixel) / Math.max(0.1, zoom);
   let best: SnapResult | null = null;
+  let bestTier = Infinity;
   for (const candidate of candidates) {
     const inside = available.some((element) => pointInsideColumn(cursor, element) && (candidate.target.type === 'column-edge' || candidate.target.type === 'corner') && candidate.target.elementId === element.id);
-    if (candidate.distance <= worldTolerance || inside) {
-      if (!best || candidate.distance < best.distance) best = candidate;
+    if (candidate.distance > worldTolerance && !inside) continue;
+    const tier = inside ? 0 : snapPriority(candidate.target);
+    if (tier < bestTier || (tier === bestTier && candidate.distance < (best?.distance ?? Infinity))) {
+      best = candidate;
+      bestTier = tier;
     }
   }
   return best;

@@ -2,21 +2,24 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { useTranslations } from 'next-intl';
-import { Stage, Layer, Line, Circle, Rect, Text, Label, Tag } from 'react-konva';
+import { Stage, Layer, Line, Circle, Rect, Ellipse, Text, Label, Tag } from 'react-konva';
 import type Konva from 'konva';
 import type { EditorState } from '@/hooks/use-editor-state';
 import type { Point } from '@/lib/editor/geometry';
-import { distance, lineIntersection, toRadians } from '@/lib/editor/geometry';
+import { ccwSweep, distance, lineIntersection, sampleArcPoints, toRadians } from '@/lib/editor/geometry';
 import { cmToDisplay, displayToCm, formatAngle, formatDisplayValue } from '@/lib/editor/units';
-import type { ProjectElement } from '@/types/project';
+import type { ArcElement, CircleElement, DrawMode, PolylineElement, ProjectElement } from '@/types/project';
 import type { DisplayUnit } from '@/lib/editor/units';
+import { parsePointInput, resolvePoint } from '@/lib/editor/coords';
+import { hatchSegments } from '@/lib/editor/hatch';
 import {
   COLUMN_DEFAULT_DEPTH,
   COLUMN_DEFAULT_WIDTH,
   PILE_DEFAULT_DIAMETER,
+  arcSpecFromPoints,
   drawModeOf,
 } from '@/lib/editor/elements';
-import { snapForWall, snapToNearest } from '@/lib/editor/snapping';
+import { snapForWall, snapPixelsForZoom, snapToNearest } from '@/lib/editor/snapping';
 import { isElementLocked, isElementVisible, layerOf } from '@/lib/editor/layers';
 import type { PlanLayer } from '@/types/project';
 
@@ -38,7 +41,7 @@ function boundZoom(zoom: number): number {
   return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
 }
 
-function drawMode(element: ProjectElement): 'line' | 'point' | 'rect' {
+function drawMode(element: ProjectElement): DrawMode {
   return drawModeOf(element.element_type);
 }
 
@@ -62,6 +65,13 @@ function typeColor(element: ProjectElement): string {
     case 'stair': return '#34d399';
     case 'ramp': return '#f472b6';
     case 'opening': return '#94a3b8';
+    case 'line': return '#cbd5e1';
+    case 'polyline': return '#4ade80';
+    case 'arc': return '#fb923c';
+    case 'circle': return '#38bdf8';
+    case 'ellipse': return '#a78bfa';
+    case 'rectangle': return '#94a3b8';
+    case 'hatch': return '#64748b';
     default: return '#cbd5e1';
   }
 }
@@ -94,6 +104,7 @@ function lineStyle(element: ProjectElement): { width: number; dash?: number[] } 
     case 'brace': return { width: 4, dash: [12, 4, 3, 4] };
     case 'door': return { width: 4, dash: [10, 4] };
     case 'window': return { width: 4, dash: [6, 4] };
+    case 'line': return { width: 2 };
     default: return { width: 4 };
   }
 }
@@ -157,8 +168,9 @@ type CanvasStageProps = {
   displayUnit: DisplayUnit;
   actions: {
     beginDraft: (point: Point) => void;
-    updateDraft: (point: Point) => void;
-    commitDraft: () => void;
+    updateDraft: (point: Point, exact?: boolean) => void;
+    extendDraft: () => void;
+    commitDraft: (close?: boolean) => void;
     cancelDraft: () => void;
     select: (id: string, add: boolean) => void;
     selectMany: (ids: string[]) => void;
@@ -179,6 +191,9 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
   const [dragEnd, setDragEnd] = useState<Point | null>(null);
   const [dragging, setDragging] = useState(false);
   const [lengthInput, setLengthInput] = useState('');
+  // Mirror of lengthInput for the keydown handler: React state updates are
+  // async, so a fast Enter could otherwise parse a stale buffer.
+  const lengthInputRef = useRef('');
   const pinchRef = useRef<{ distance: number; center: Point } | null>(null);
   const { zoom, pan } = state.viewport;
 
@@ -186,72 +201,143 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
 
   useEffect(() => {
     const draft = state.draft;
-    const mode = draft && draft.tool !== 'select' ? drawModeOf(draft.tool) : null;
-    const activeDraft = draft && mode !== 'point' ? draft : null;
+    const draftMode = draft && draft.tool !== 'select' ? drawModeOf(draft.tool) : null;
+    const activeDraft = draft && draftMode && draftMode !== 'point' ? draft : null;
+    const toolArmed = state.tool !== 'select';
 
     function handleLengthKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+      const buffer = lengthInputRef.current;
+      const setBuffer = (value: string) => {
+        lengthInputRef.current = value;
+        setLengthInput(value);
+      };
       if (event.key === 'Escape') {
         event.preventDefault();
-        setLengthInput('');
+        setBuffer('');
         if (draft) actions.cancelDraft();
         actions.clearSelection();
         actions.setTool('select');
         return;
       }
-      if (!activeDraft) return;
-      if (/^[0-9.<>x-]$/.test(event.key) || event.key === ',') {
+      // While a draft is running every coordinate key is captured; with a tool
+      // merely armed (no draft yet) only number-ish characters are captured so
+      // an absolute/relative first point can be typed. Letters stay free for
+      // the command palette.
+      const capture = activeDraft
+        ? /^[0-9.<>x@-]$/.test(event.key) || event.key === ','
+        : toolArmed && !draft && /^[0-9@.,-]$/.test(event.key);
+      if (capture) {
         event.preventDefault();
-        setLengthInput((value) => `${value}${event.key === ',' ? '.' : event.key}`);
+        setBuffer(`${buffer}${event.key}`);
         return;
       }
       if (event.key === 'Backspace') {
+        if (!buffer) return;
         event.preventDefault();
-        setLengthInput((value) => value.slice(0, -1));
+        setBuffer(buffer.slice(0, -1));
         return;
       }
-      if (event.key === 'Enter' && lengthInput && activeDraft) {
+      // "c" closes a polyline draft (only when no numeric text is pending).
+      if ((event.key === 'c' || event.key === 'C') && activeDraft && draftMode === 'poly' && !buffer) {
         event.preventDefault();
-        if (mode === 'rect') {
-          // Rect drafts accept "WxH" (e.g. "4x3" for a 4 m x 3 m area).
-          const [wPart, hPart] = lengthInput.split(/[x<]/i);
-          const width = Number(wPart);
-          const depth = Number(hPart);
-          if (!(width > 0) || !(depth > 0)) return;
-          actions.updateDraft({
-            x: activeDraft.start.x + displayToCm(width, displayUnit),
-            y: activeDraft.start.y + displayToCm(depth, displayUnit),
-          });
+        actions.commitDraft(true);
+        return;
+      }
+      if (event.key !== 'Enter') return;
+      if (!buffer) {
+        // Bare Enter finishes an open polyline draft.
+        if (activeDraft && draftMode === 'poly') {
+          event.preventDefault();
           actions.commitDraft();
-          setLengthInput('');
+        }
+        return;
+      }
+      event.preventDefault();
+      const command = parsePointInput(buffer);
+      setBuffer('');
+      if (!command) return;
+
+      // Advance the draft to an exact (typed, unsnapped) point: extends a
+      // polyline, records the arc through-point, or commits the element.
+      const advance = (point: Point) => {
+        if (!activeDraft) {
+          if (!toolArmed || state.tool === 'select') return;
+          actions.beginDraft(point);
+          if (drawModeOf(state.tool) === 'point') actions.commitDraft();
           return;
         }
-        const [lenPart, anglePart] = lengthInput.split('<');
-        const displayLength = lenPart === '' ? NaN : Number(lenPart);
-        const currentLength = distance(activeDraft.start, activeDraft.end);
-        const length = Number.isFinite(displayLength) && displayLength > 0
-          ? displayToCm(displayLength, displayUnit)
-          : currentLength;
-        if (length <= 0) return;
-        const parsedAngle = anglePart !== undefined && anglePart !== '' ? Number(anglePart) : NaN;
-        const angle = Number.isFinite(parsedAngle)
-          ? toRadians(parsedAngle)
-          : currentLength > 0.001
+        actions.updateDraft(point, true);
+        if (draftMode === 'poly') actions.extendDraft();
+        else if (draftMode === 'arc' && activeDraft.vertices.length < 2) actions.extendDraft();
+        else actions.commitDraft();
+      };
+
+      switch (command.kind) {
+        case 'absolute':
+          advance(resolvePoint(command, { x: 0, y: 0 }, displayUnit));
+          return;
+        case 'relative': {
+          if (!activeDraft) return;
+          advance(resolvePoint(command, activeDraft.start, displayUnit));
+          return;
+        }
+        case 'polar': {
+          if (!activeDraft || draftMode === 'rect') return;
+          const currentLength = distance(activeDraft.start, activeDraft.end);
+          const length = command.length !== undefined && command.length > 0
+            ? displayToCm(command.length, displayUnit)
+            : currentLength;
+          if (length <= 0) return;
+          const angle = command.angle !== undefined
+            ? toRadians(command.angle)
+            : currentLength > 0.001
+              ? Math.atan2(activeDraft.end.y - activeDraft.start.y, activeDraft.end.x - activeDraft.start.x)
+              : 0;
+          advance({
+            x: activeDraft.start.x + Math.cos(angle) * length,
+            y: activeDraft.start.y + Math.sin(angle) * length,
+          });
+          return;
+        }
+        case 'radius': {
+          if (!activeDraft || draftMode === 'rect') return;
+          const radius = displayToCm(command.radius, displayUnit);
+          if (radius <= 0) return;
+          if (draftMode === 'center') {
+            advance({ x: activeDraft.start.x + radius, y: activeDraft.start.y });
+            return;
+          }
+          // Bare number on a line/poly/arc draft: length along the current
+          // direction, like AutoCAD's dynamic distance input.
+          const currentLength = distance(activeDraft.start, activeDraft.end);
+          const angle = currentLength > 0.001
             ? Math.atan2(activeDraft.end.y - activeDraft.start.y, activeDraft.end.x - activeDraft.start.x)
             : 0;
-        actions.updateDraft({
-          x: activeDraft.start.x + Math.cos(angle) * length,
-          y: activeDraft.start.y + Math.sin(angle) * length,
-        });
-        actions.commitDraft();
-        setLengthInput('');
+          advance({
+            x: activeDraft.start.x + Math.cos(angle) * radius,
+            y: activeDraft.start.y + Math.sin(angle) * radius,
+          });
+          return;
+        }
+        case 'size': {
+          if (!activeDraft || draftMode !== 'rect') return;
+          advance({
+            x: activeDraft.start.x + displayToCm(command.width, displayUnit),
+            y: activeDraft.start.y + displayToCm(command.height, displayUnit),
+          });
+          return;
+        }
+        case 'close':
+          if (activeDraft && draftMode === 'poly') actions.commitDraft(true);
+          return;
       }
     }
 
     window.addEventListener('keydown', handleLengthKeyDown);
     return () => window.removeEventListener('keydown', handleLengthKeyDown);
-  }, [actions, displayUnit, lengthInput, state.draft]);
+  }, [actions, displayUnit, state.draft, state.tool]);
 
   const visibleElements = useMemo(
     () => state.elements.filter((el) => isElementVisible(el, state.layers)),
@@ -282,6 +368,33 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     [state.showGrid, size.width, size.height, pan, zoom],
   );
 
+  /** Click while a draw tool is armed: starts the draft, extends a polyline /
+ *  arc chain, or commits the element depending on the draw mode. */
+  function advanceDraftClick(world: Point) {
+    const draft = state.draft;
+    if (!draft) {
+      actions.beginDraft(world);
+      return;
+    }
+    const mode = draft.tool === 'select' ? null : drawModeOf(draft.tool);
+    if (mode === 'poly') {
+      actions.updateDraft(world);
+      const first = draft.vertices[0];
+      const closing = first !== undefined
+        && draft.vertices.length >= 3
+        && distance(world, first) <= snapPixelsForZoom(zoom) / Math.max(0.1, zoom);
+      if (closing) actions.commitDraft(true);
+      else actions.extendDraft();
+      return;
+    }
+    actions.updateDraft(world);
+    if (mode === 'arc' && draft.vertices.length < 2) {
+      actions.extendDraft();
+      return;
+    }
+    actions.commitDraft();
+  }
+
   function handleStageMouseDown(e: any) {
     if (e.target !== e.currentTarget) return;
     const stage = e.target.getStage();
@@ -294,14 +407,17 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
       setDragging(true);
       return;
     }
-    if (!state.draft) {
-      if (activeToolMode === 'point') {
-        actions.beginDraft(world);
-        actions.commitDraft();
-      } else {
-        actions.beginDraft(world);
-      }
-    } else {
+    if (!state.draft && activeToolMode === 'point') {
+      actions.beginDraft(world);
+      actions.commitDraft();
+      return;
+    }
+    advanceDraftClick(world);
+  }
+
+  function handleStageDoubleClick() {
+    const draft = state.draft;
+    if (draft && draft.tool !== 'select' && drawModeOf(draft.tool) === 'poly') {
       actions.commitDraft();
     }
   }
@@ -343,16 +459,28 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
   }
 
   function isInsideBox(el: ProjectElement, minX: number, minY: number, maxX: number, maxY: number): boolean {
-    if (drawMode(el) === 'point') {
-      return el.x1 >= minX && el.x1 <= maxX && el.y1 >= minY && el.y1 <= maxY;
+    const mode = drawMode(el);
+    const inside = (p: Point) => p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY;
+    if (mode === 'point') {
+      return inside({ x: el.x1, y: el.y1 });
     }
-    if (drawMode(el) === 'rect') {
+    if (mode === 'rect') {
       const r = rectOf(el);
       return r.x < maxX && r.x + r.w > minX && r.y < maxY && r.y + r.h > minY;
     }
-    const p1Inside = el.x1 >= minX && el.x1 <= maxX && el.y1 >= minY && el.y1 <= maxY;
-    const p2Inside = el.x2 >= minX && el.x2 <= maxX && el.y2 >= minY && el.y2 <= maxY;
-    return p1Inside || p2Inside;
+    if (mode === 'center') {
+      const radius = (el.properties as { radius?: number }).radius ?? Math.abs(el.x2 - el.x1);
+      return el.x1 - radius < maxX && el.x1 + radius > minX && el.y1 - radius < maxY && el.y1 + radius > minY;
+    }
+    if (mode === 'poly') {
+      const points = (el.properties as { points?: Point[] }).points ?? [];
+      return points.some(inside) || inside({ x: el.x1, y: el.y1 }) || inside({ x: el.x2, y: el.y2 });
+    }
+    if (mode === 'arc') {
+      const props = (el as ArcElement).properties;
+      return inside({ x: el.x1, y: el.y1 }) || inside({ x: el.x2, y: el.y2 }) || inside(props.mid);
+    }
+    return inside({ x: el.x1, y: el.y1 }) || inside({ x: el.x2, y: el.y2 });
   }
 
   function touchPoints(event: TouchEvent): Point[] {
@@ -422,10 +550,12 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     if (isElementLocked(element, state.layers)) return;
     const id = element.id;
     e.cancelBubble = true;
-    if (activeToolMode === 'line') {
+    // With a multi-point tool armed, clicking on an existing element feeds its
+    // snap targets into the draft (e.g. end a wall on another wall's face).
+    if (activeToolMode && activeToolMode !== 'point' && activeToolMode !== 'rect') {
       const stage = e.target.getStage();
       const pos = stage.getPointerPosition() as Point;
-      actions.beginDraft(worldFromScreen(pos, pan, zoom));
+      advanceDraftClick(worldFromScreen(pos, pan, zoom));
       return;
     }
     actions.select(id, Boolean(e.evt.ctrlKey || e.evt.metaKey));
@@ -459,17 +589,29 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
 
   const draftMeasurement = useMemo(() => {
     const draft = state.draft;
-    if (!draft || draft.tool === 'select' || drawModeOf(draft.tool) === 'point') return null;
-    if (drawModeOf(draft.tool) === 'rect') {
+    if (!draft || draft.tool === 'select') return null;
+    const draftMode = drawModeOf(draft.tool);
+    if (draftMode === 'point') return null;
+    if (draftMode === 'rect') {
       const w = Math.abs(draft.end.x - draft.start.x);
       const h = Math.abs(draft.end.y - draft.start.y);
       const displayValue = lengthInput || `${formatDisplayValue(cmToDisplay(w, displayUnit), displayUnit)} × ${formatDisplayValue(cmToDisplay(h, displayUnit), displayUnit)}`;
       return { text: displayValue, end: draft.end };
     }
+    if (draftMode === 'center') {
+      const radius = distance(draft.start, draft.end);
+      const displayValue = lengthInput || `R ${formatDisplayValue(cmToDisplay(radius, displayUnit), displayUnit)}`;
+      return { text: displayValue, end: draft.end };
+    }
+    if (draftMode === 'arc' && draft.vertices.length >= 2) {
+      const spec = arcSpecFromPoints(draft.vertices[0], draft.vertices[1], draft.end);
+      const displayValue = lengthInput || (spec ? `R ${formatDisplayValue(cmToDisplay(spec.radius, displayUnit), displayUnit)}` : '');
+      return { text: displayValue, end: draft.end };
+    }
     const length = distance(draft.start, draft.end);
     const angle = Math.atan2(draft.end.y - draft.start.y, draft.end.x - draft.start.x);
     const displayValue = lengthInput || formatDisplayValue(cmToDisplay(length, displayUnit), displayUnit);
-    const suffix = lengthInput && !lengthInput.includes('<') ? ` ${displayUnit}` : '';
+    const suffix = lengthInput && !lengthInput.includes('<') && !lengthInput.includes(',') ? ` ${displayUnit}` : '';
     return { text: `${displayValue}${suffix}\n${formatAngle(angle)}`, end: draft.end };
   }, [state.draft, displayUnit, lengthInput]);
 
@@ -518,6 +660,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
           scaleX={zoom}
           scaleY={zoom}
           onMouseDown={handleStageMouseDown}
+          onDblClick={handleStageDoubleClick}
           onMouseMove={handleStageMouseMove}
           onMouseUp={handleStageMouseUp}
           onTouchStart={handleStageTouchStart}
@@ -615,6 +758,119 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 );
               }
 
+              if (el.element_type === 'circle') {
+                const radius = (el.properties as { radius?: number }).radius ?? Math.abs(el.x2 - el.x1);
+                return (
+                  <Circle
+                    key={el.id}
+                    x={el.x1}
+                    y={el.y1}
+                    radius={radius}
+                    stroke={stroke}
+                    strokeWidth={2}
+                    fill={selected ? 'rgba(34, 211, 238, 0.10)' : undefined}
+                    opacity={locked ? 0.45 : 1}
+                    draggable={draggable}
+                    onDragEnd={(e) => handleElementDragEnd(e, el)}
+                    hitStrokeWidth={12}
+                    {...interactive}
+                  />
+                );
+              }
+
+              if (el.element_type === 'polyline') {
+                const points = (el.properties as { points?: Point[] }).points ?? [];
+                const flat = points.length >= 2
+                  ? points.flatMap((p) => [p.x, p.y])
+                  : [el.x1, el.y1, el.x2, el.y2];
+                return (
+                  <Line
+                    key={el.id}
+                    points={flat}
+                    stroke={stroke}
+                    strokeWidth={2}
+                    lineCap="round"
+                    lineJoin="round"
+                    opacity={locked ? 0.45 : 1}
+                    draggable={draggable}
+                    onDragEnd={(e) => handleElementDragEnd(e, el)}
+                    hitStrokeWidth={12}
+                    {...interactive}
+                  />
+                );
+              }
+
+              if (el.element_type === 'arc') {
+                const props = (el as ArcElement).properties;
+                const flat = sampleArcPoints(props.cx, props.cy, props.radius, props.start_angle, props.end_angle, props.clockwise)
+                  .flatMap((p) => [p.x, p.y]);
+                return (
+                  <Line
+                    key={el.id}
+                    points={flat}
+                    stroke={stroke}
+                    strokeWidth={2}
+                    lineCap="round"
+                    lineJoin="round"
+                    opacity={locked ? 0.45 : 1}
+                    draggable={draggable}
+                    onDragEnd={(e) => handleElementDragEnd(e, el)}
+                    hitStrokeWidth={12}
+                    {...interactive}
+                  />
+                );
+              }
+
+              if (el.element_type === 'ellipse') {
+                const r = rectOf(el);
+                return (
+                  <Ellipse
+                    key={el.id}
+                    x={r.x + r.w / 2}
+                    y={r.y + r.h / 2}
+                    radiusX={r.w / 2}
+                    radiusY={r.h / 2}
+                    stroke={stroke}
+                    strokeWidth={2}
+                    fill={selected ? 'rgba(34, 211, 238, 0.10)' : undefined}
+                    opacity={locked ? 0.45 : 1}
+                    draggable={draggable}
+                    onDragEnd={(e) => handleElementDragEnd(e, el)}
+                    {...interactive}
+                  />
+                );
+              }
+
+              if (el.element_type === 'hatch') {
+                const r = rectOf(el);
+                const hatch = el.properties as { pattern?: 'ansi31' | 'cross' | 'grid'; spacing?: number; angle?: number };
+                const segments = hatchSegments({ x: r.x, y: r.y, width: r.w, height: r.h }, hatch.pattern ?? 'ansi31', hatch.spacing ?? 35, hatch.angle ?? 45);
+                return (
+                  <Fragment key={el.id}>
+                    <Rect
+                      x={r.x}
+                      y={r.y}
+                      width={r.w}
+                      height={r.h}
+                      stroke={stroke}
+                      strokeWidth={1.5}
+                      fill={selected ? 'rgba(34, 211, 238, 0.08)' : 'rgba(100, 116, 139, 0.08)'}
+                      opacity={locked ? 0.45 : 1}
+                      draggable={draggable}
+                      onDragEnd={(e) => handleElementDragEnd(e, el)}
+                      {...interactive}
+                    />
+                    <Line
+                      points={segments}
+                      stroke={stroke}
+                      strokeWidth={0.8}
+                      opacity={locked ? 0.3 : 0.85}
+                      listening={false}
+                    />
+                  </Fragment>
+                );
+              }
+
               if (mode === 'rect') {
                 const r = rectOf(el);
                 const fill = fillFor(el);
@@ -681,7 +937,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 listening={false}
               />
             ))}
-            {visibleElements.filter((el) => drawMode(el) !== 'point').map((el) => (
+            {visibleElements.filter((el) => drawMode(el) !== 'point' && drawMode(el) !== 'center').map((el) => (
               <Circle
                 key={`start-${el.id}`}
                 x={el.x1}
@@ -691,7 +947,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 listening={false}
               />
             ))}
-            {visibleElements.filter((el) => drawMode(el) !== 'point').map((el) => (
+            {visibleElements.filter((el) => drawMode(el) !== 'point' && drawMode(el) !== 'center').map((el) => (
               <Circle
                 key={`end-${el.id}`}
                 x={el.x2}
@@ -701,7 +957,44 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 listening={false}
               />
             ))}
-            {visibleElements.filter((el) => state.selectedIds.includes(el.id) && drawMode(el) !== 'point' && !isElementLocked(el, state.layers)).map((el) => (
+            {visibleElements.filter((el) => el.element_type === 'polyline').flatMap((el) => {
+              const points = (el.properties as { points?: Point[] }).points ?? [];
+              const selected = state.selectedIds.includes(el.id);
+              return points.slice(1, -1).map((p, index) => (
+                <Circle
+                  key={`vertex-${el.id}-${index}`}
+                  x={p.x}
+                  y={p.y}
+                  radius={4 / zoom}
+                  fill={selected ? COLORS.select : COLORS.vertex}
+                  listening={false}
+                />
+              ));
+            })}
+            {visibleElements.filter((el) => el.element_type === 'arc').map((el) => {
+              const mid = (el as ArcElement).properties.mid;
+              return (
+                <Circle
+                  key={`mid-${el.id}`}
+                  x={mid.x}
+                  y={mid.y}
+                  radius={4 / zoom}
+                  fill={state.selectedIds.includes(el.id) ? COLORS.select : COLORS.vertex}
+                  listening={false}
+                />
+              );
+            })}
+            {visibleElements.filter((el) => el.element_type === 'circle').map((el) => (
+              <Circle
+                key={`center-${el.id}`}
+                x={el.x1}
+                y={el.y1}
+                radius={4 / zoom}
+                fill={state.selectedIds.includes(el.id) ? COLORS.select : COLORS.vertex}
+                listening={false}
+              />
+            ))}
+            {visibleElements.filter((el) => state.selectedIds.includes(el.id) && !isElementLocked(el, state.layers) && ['line', 'rect', 'arc'].includes(drawMode(el))).map((el) => (
               <Fragment key={`handles-${el.id}`}>
                 <Circle
                   key={`handle-start-${el.id}`}
@@ -756,6 +1049,80 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                   listening={false}
                 />
                 <Circle x={state.draft.start.x} y={state.draft.start.y} radius={5 / zoom} fill={COLORS.select} listening={false} />
+              </>
+            )}
+            {state.draft && state.draft.tool !== 'select' && drawModeOf(state.draft.tool) === 'poly' && (
+              <>
+                {state.draft.vertices.length > 1 && (
+                  <Line
+                    points={state.draft.vertices.flatMap((p) => [p.x, p.y])}
+                    stroke={COLORS.select}
+                    strokeWidth={2 / zoom}
+                    lineJoin="round"
+                    listening={false}
+                  />
+                )}
+                <Line
+                  points={[state.draft.start.x, state.draft.start.y, state.draft.end.x, state.draft.end.y]}
+                  stroke={COLORS.select}
+                  strokeWidth={2 / zoom}
+                  dash={[8 / zoom, 4 / zoom]}
+                  listening={false}
+                />
+                {state.draft.vertices.map((p, index) => (
+                  <Circle key={`draft-v-${index}`} x={p.x} y={p.y} radius={5 / zoom} fill={COLORS.select} listening={false} />
+                ))}
+                <Circle x={state.draft.end.x} y={state.draft.end.y} radius={5 / zoom} fill={COLORS.select} listening={false} />
+              </>
+            )}
+            {state.draft && state.draft.tool !== 'select' && drawModeOf(state.draft.tool) === 'arc' && (() => {
+              const vertices = state.draft.vertices;
+              const spec = vertices.length >= 2
+                ? arcSpecFromPoints(vertices[0], vertices[1], state.draft.end)
+                : null;
+              const preview = spec
+                ? sampleArcPoints(spec.cx, spec.cy, spec.radius, spec.start_angle, spec.end_angle, spec.clockwise).flatMap((p) => [p.x, p.y])
+                : null;
+              return (
+                <>
+                  {preview ? (
+                    <Line
+                      points={preview}
+                      stroke={COLORS.select}
+                      strokeWidth={2 / zoom}
+                      dash={[8 / zoom, 4 / zoom]}
+                      lineCap="round"
+                      listening={false}
+                    />
+                  ) : (
+                    <Line
+                      points={[state.draft.start.x, state.draft.start.y, state.draft.end.x, state.draft.end.y]}
+                      stroke={COLORS.select}
+                      strokeWidth={2 / zoom}
+                      dash={[8 / zoom, 4 / zoom]}
+                      listening={false}
+                    />
+                  )}
+                  {vertices.map((p, index) => (
+                    <Circle key={`draft-arc-v-${index}`} x={p.x} y={p.y} radius={5 / zoom} fill={COLORS.select} listening={false} />
+                  ))}
+                  <Circle x={state.draft.end.x} y={state.draft.end.y} radius={5 / zoom} fill={COLORS.select} listening={false} />
+                </>
+              );
+            })()}
+            {state.draft && state.draft.tool !== 'select' && drawModeOf(state.draft.tool) === 'center' && (
+              <>
+                <Circle
+                  x={state.draft.start.x}
+                  y={state.draft.start.y}
+                  radius={distance(state.draft.start, state.draft.end)}
+                  stroke={COLORS.select}
+                  strokeWidth={2 / zoom}
+                  dash={[8 / zoom, 4 / zoom]}
+                  listening={false}
+                />
+                <Circle x={state.draft.start.x} y={state.draft.start.y} radius={5 / zoom} fill={COLORS.select} listening={false} />
+                <Circle x={state.draft.end.x} y={state.draft.end.y} radius={5 / zoom} fill={COLORS.select} listening={false} />
               </>
             )}
             {pointPreview && pointPreview.tool === 'column' && (

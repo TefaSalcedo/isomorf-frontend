@@ -96,6 +96,11 @@ function SingleInspector({
               <NumberInput label="X (m)" value={cmToMeters(el.x1)} onChange={(v) => onUpdate(el.id, { x1: metersToCm(v), x2: metersToCm(v) + 1 })} step={0.1} />
               <NumberInput label="Y (m)" value={cmToMeters(el.y1)} onChange={(v) => onUpdate(el.id, { y1: metersToCm(v) })} step={0.1} />
             </>
+          ) : mode === 'center' ? (
+            <>
+              <NumberInput label="X (m)" value={cmToMeters(el.x1)} onChange={(v) => onUpdate(el.id, { x1: metersToCm(v) })} step={0.1} />
+              <NumberInput label="Y (m)" value={cmToMeters(el.y1)} onChange={(v) => onUpdate(el.id, { y1: metersToCm(v) })} step={0.1} />
+            </>
           ) : mode === 'rect' ? (
             <>
               <NumberInput label="X1 (m)" value={cmToMeters(Math.min(el.x1, el.x2))} onChange={(v) => onUpdate(el.id, { x1: metersToCm(v) })} step={0.1} />
@@ -358,6 +363,43 @@ function GeometryFields({
       );
     case 'opening':
       return <p className="text-xs text-slate-500">{t('openingHint')}</p>;
+    case 'circle':
+      return (
+        <NumberInput
+          label={t('radius')}
+          value={cmToMeters(num('radius', 50))}
+          onChange={(v) => onUpdate(el.id, { properties: { radius: metersToCm(v) } } as Partial<ProjectElement>)}
+          step={0.05}
+        />
+      );
+    case 'hatch':
+      return (
+        <>
+          <SelectInput
+            label={t('hatchPattern')}
+            value={(p.pattern as string) ?? 'ansi31'}
+            options={['ansi31', 'cross', 'grid'].map((v) => ({ value: v, label: t(`hatchPatterns.${v}`) }))}
+            onChange={(v) => setProp({ pattern: v })}
+          />
+          <NumberInput label={t('spacing')} value={cmToMeters(num('spacing', 35))} onChange={(v) => setProp({ spacing: metersToCm(v) })} step={0.05} />
+          <NumberInput label={t('hatchAngle')} value={num('angle', 45)} onChange={(v) => setProp({ angle: v })} step={5} />
+        </>
+      );
+    case 'polyline':
+      return (
+        <>
+          <p className="text-xs text-slate-500">{t('vertexCount', { count: ((p.points as unknown[] | undefined) ?? []).length })}</p>
+          <SelectInput
+            label={t('closed')}
+            value={p.closed ? 'yes' : 'no'}
+            options={[
+              { value: 'yes', label: t('yes') },
+              { value: 'no', label: t('no') },
+            ]}
+            onChange={(v) => setProp({ closed: v === 'yes' })}
+          />
+        </>
+      );
     default:
       return null;
   }

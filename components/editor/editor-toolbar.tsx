@@ -126,7 +126,7 @@ export function EditorToolbar({
         </button>
       )}
       {readOnly && (
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-950/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-400 ring-1 ring-amber-800" title={t('readOnlyHint')}>
+        <span data-testid="read-only-banner" className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-950/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-400 ring-1 ring-amber-800" title={t('readOnlyHint')}>
           <LockKeyhole className="h-3 w-3" />{t('readOnlyBadge')}
         </span>
       )}
