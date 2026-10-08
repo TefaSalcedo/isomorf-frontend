@@ -39,10 +39,12 @@ export function MemberDesignPanel({
   element,
   projectName,
   onUpdate,
+  readOnly,
 }: {
   element: DesignableElement;
   projectName: string;
   onUpdate: (id: string, properties: DesignPatch) => void;
+  readOnly?: boolean;
 }) {
   const t = useTranslations('editor.panels.design');
   const { locale } = useLocale();
@@ -128,6 +130,7 @@ export function MemberDesignPanel({
         </div>
       )}
 
+      <fieldset disabled={readOnly} className="min-w-0 border-0 p-0 disabled:opacity-60">
       <Section title={t('geometry')}>
         {element.element_type === 'column' ? (
           <>
@@ -195,6 +198,7 @@ export function MemberDesignPanel({
         <Calculator className="h-3.5 w-3.5" />
         {memory ? t('recalculate') : t('calculate')}
       </button>
+      </fieldset>
 
       {memory && (
         <>

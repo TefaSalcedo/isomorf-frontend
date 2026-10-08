@@ -128,6 +128,20 @@ export function pointOnSegment(p: Point, a: Point, b: Point, epsilon = 1e-4): bo
   return isClose(ap + pb, ab, epsilon);
 }
 
+export const POLAR_INCREMENT = Math.PI / 4;
+export const POLAR_TOLERANCE = Math.PI / 45;
+
+export function polarSnapPoint(start: Point, point: Point, increment = POLAR_INCREMENT, tolerance = POLAR_TOLERANCE): { point: Point; locked: boolean } {
+  const dx = point.x - start.x;
+  const dy = point.y - start.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return { point, locked: false };
+  const angle = Math.atan2(dy, dx);
+  const snapped = Math.round(angle / increment) * increment;
+  if (Math.abs(angle - snapped) > tolerance) return { point, locked: false };
+  return { point: { x: start.x + Math.cos(snapped) * len, y: start.y + Math.sin(snapped) * len }, locked: true };
+}
+
 export function resolveTJoin(
   anchor: Point,
   hostStart: Point,

@@ -169,6 +169,8 @@
     "teamsTitle": "Equipos",
     "teamsSubtitle": "Colabora con ingenieros y arquitectos",
     "teamsInvite": "Invitar",
+    "teamsComingSoon": "La colaboración en equipo llega pronto",
+    "teamsComingSoonDesc": "Proyectos compartidos con roles de propietario, editor y observador.",
     "learnTitle": "Aprende Isomorf en 2 minutos",
     "learnSubtitle": "Tutoriales interactivos para poner tu modelo en marcha",
     "nav": {
@@ -224,7 +226,10 @@
       "cleanMode": "Modo limpio",
       "delete": "Eliminar",
       "save": "Guardar",
-      "saving": "Guardando…"
+      "saving": "Guardando…",
+      "readOnlyBadge": "Solo lectura",
+      "readOnlyHint": "Este proyecto está compartido contigo en modo solo lectura — pide a un propietario o editor que haga cambios.",
+      "polar": "Rastreo polar"
     },
     "views": {
       "2d": "2D",
@@ -484,6 +489,50 @@
       "english": "Inglés",
       "spanish": "Español"
     },
+    "palette": {
+      "placeholder": "Escribe un comando o describe un elemento…",
+      "noResults": "Sin comandos coincidentes",
+      "hint": "↑↓ para navegar · Enter para ejecutar · Esc para cerrar · ⌘K para abrir"
+    },
+    "commands": {
+      "tool": {
+        "select": "Seleccionar",
+        "wall": "Dibujar muro",
+        "door": "Insertar puerta",
+        "window": "Insertar ventana",
+        "column": "Insertar columna",
+        "beam": "Dibujar eje de viga"
+      },
+      "action": {
+        "undo": "Deshacer",
+        "redo": "Rehacer",
+        "save": "Guardar ahora",
+        "delete": "Eliminar selección"
+      },
+      "view": {
+        "fit": "Encajar en pantalla",
+        "zoomIn": "Acercar",
+        "zoomOut": "Alejar",
+        "grid": "Alternar rejilla",
+        "snap": "Alternar ajuste",
+        "polar": "Alternar rastreo polar",
+        "clean": "Alternar modo limpio",
+        "2d": "Ir al editor 2D",
+        "3d": "Ir a vista 3D",
+        "loads": "Ir a cargas",
+        "fem": "Ir a análisis FEM"
+      },
+      "section": {
+        "layers": "Abrir capas",
+        "history": "Abrir historial",
+        "settings": "Abrir configuración",
+        "calculations": "Abrir cálculos"
+      },
+      "doc": {
+        "export": "Exportar como PNG",
+        "print": "Imprimir"
+      }
+    },
     "readOnly": "Solo lectura: tienes acceso de observador a este proyecto compartido. Los cambios no se guardan."
   },
   "layers": {
@@ -559,6 +608,31 @@
       "development": "Desarrollo",
       "notes": "Observaciones"
     }
+  },
+  "invite": {
+    "badge": "Invitación a equipo",
+    "title": "Te invitaron a {team}",
+    "subtitle": "{name} te invitó a colaborar.",
+    "roleLabel": "Tu rol",
+    "expiresLabel": "Vence",
+    "roleHint": {
+      "owner": "Los propietarios pueden gestionar miembros, invitaciones y proyectos compartidos.",
+      "editor": "Los editores pueden ver y editar los proyectos compartidos con este equipo.",
+      "viewer": "Los lectores pueden abrir y revisar los proyectos compartidos con este equipo."
+    },
+    "forEmail": "Esta invitación fue emitida para {email}.",
+    "emailMismatch": "Iniciaste sesión como {current}. Esta invitación fue emitida para {expected} — cierra sesión y usa esa cuenta para aceptar.",
+    "accept": "Aceptar invitación",
+    "accepting": "Aceptando…",
+    "signInToAccept": "Inicia sesión para aceptar",
+    "createToAccept": "Crear una cuenta",
+    "invalidTitle": "Invitación no disponible",
+    "invalidBody": "Este enlace de invitación es inválido o ya fue utilizado.",
+    "expiredTitle": "Invitación vencida",
+    "expiredBody": "Este enlace de invitación ya no es válido. Pide a un propietario del equipo que envíe una nueva.",
+    "errorTitle": "Algo salió mal",
+    "errorBody": "No pudimos cargar esta invitación. Revisa tu conexión e inténtalo de nuevo.",
+    "backHome": "Volver al inicio"
   },
   "teams": {
     "title": "Equipos",

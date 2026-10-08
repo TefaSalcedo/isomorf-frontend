@@ -2,7 +2,16 @@ import type { Project } from '@/types/project';
 
 export type TeamRole = 'owner' | 'editor' | 'viewer';
 
-export type Team = {
+export type InvitePreview = {
+  team_id: string;
+  team_name: string;
+  role: TeamRole;
+  email: string | null;
+  expires_at: string;
+  invited_by: string;
+};
+
+export type TeamPublic = {
   id: string;
   name: string;
   owner_id: string;
@@ -12,6 +21,8 @@ export type Team = {
   created_at: string;
   updated_at: string;
 };
+
+export type Team = TeamPublic;
 
 export type TeamMember = {
   id: string;
@@ -34,15 +45,6 @@ export type TeamInvite = {
 };
 
 export type TeamInviteCreated = TeamInvite & { token: string; accept_url: string };
-
-export type InvitePreview = {
-  team_id: string;
-  team_name: string;
-  role: TeamRole;
-  email: string | null;
-  expires_at: string;
-  invited_by: string;
-};
 
 export type TeamDetail = Team & {
   members: TeamMember[];

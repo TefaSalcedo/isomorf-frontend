@@ -169,6 +169,8 @@
     "teamsTitle": "Teams",
     "teamsSubtitle": "Collaborate with engineers and architects",
     "teamsInvite": "Invite",
+    "teamsComingSoon": "Team collaboration coming soon",
+    "teamsComingSoonDesc": "Shared projects with owner, editor and viewer roles.",
     "learnTitle": "Learn Isomorf in 2 minutes",
     "learnSubtitle": "Interactive tutorials to get your model moving",
     "nav": {
@@ -224,7 +226,10 @@
       "cleanMode": "Clean mode",
       "delete": "Delete",
       "save": "Save",
-      "saving": "Saving…"
+      "saving": "Saving…",
+      "readOnlyBadge": "View only",
+      "readOnlyHint": "This project is shared with you as read-only — ask an owner or editor for changes.",
+      "polar": "Polar tracking"
     },
     "views": {
       "2d": "2D",
@@ -484,6 +489,50 @@
       "english": "English",
       "spanish": "Spanish"
     },
+    "palette": {
+      "placeholder": "Type a command or describe an element…",
+      "noResults": "No matching commands",
+      "hint": "↑↓ to navigate · Enter to run · Esc to close · ⌘K to open"
+    },
+    "commands": {
+      "tool": {
+        "select": "Select",
+        "wall": "Draw wall",
+        "door": "Insert door",
+        "window": "Insert window",
+        "column": "Insert column",
+        "beam": "Draw beam axis"
+      },
+      "action": {
+        "undo": "Undo",
+        "redo": "Redo",
+        "save": "Save now",
+        "delete": "Delete selection"
+      },
+      "view": {
+        "fit": "Zoom to fit",
+        "zoomIn": "Zoom in",
+        "zoomOut": "Zoom out",
+        "grid": "Toggle grid",
+        "snap": "Toggle snapping",
+        "polar": "Toggle polar tracking",
+        "clean": "Toggle clean mode",
+        "2d": "Go to 2D editor",
+        "3d": "Go to 3D view",
+        "loads": "Go to loads",
+        "fem": "Go to FEM analysis"
+      },
+      "section": {
+        "layers": "Open layers",
+        "history": "Open history",
+        "settings": "Open settings",
+        "calculations": "Open calculations"
+      },
+      "doc": {
+        "export": "Export as PNG",
+        "print": "Print"
+      }
+    },
     "readOnly": "View only — you have viewer access to this shared project. Changes are not saved."
   },
   "layers": {
@@ -559,6 +608,31 @@
       "development": "Development",
       "notes": "Notes"
     }
+  },
+  "invite": {
+    "badge": "Team invitation",
+    "title": "You've been invited to {team}",
+    "subtitle": "{name} invited you to collaborate.",
+    "roleLabel": "Your role",
+    "expiresLabel": "Expires",
+    "roleHint": {
+      "owner": "Owners can manage members, invitations and shared projects.",
+      "editor": "Editors can view and edit the projects shared with this team.",
+      "viewer": "Viewers can open and review the projects shared with this team."
+    },
+    "forEmail": "This invitation was issued to {email}.",
+    "emailMismatch": "You're signed in as {current}. This invite was issued to {expected} — sign out and use that account to accept.",
+    "accept": "Accept invitation",
+    "accepting": "Accepting…",
+    "signInToAccept": "Sign in to accept",
+    "createToAccept": "Create an account",
+    "invalidTitle": "Invitation unavailable",
+    "invalidBody": "This invitation link is invalid or has already been used.",
+    "expiredTitle": "Invitation expired",
+    "expiredBody": "This invitation link is no longer valid. Ask a team owner to send a new one.",
+    "errorTitle": "Something went wrong",
+    "errorBody": "We couldn't load this invitation. Check your connection and try again.",
+    "backHome": "Back to home"
   },
   "teams": {
     "title": "Teams",

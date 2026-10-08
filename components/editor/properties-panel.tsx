@@ -7,9 +7,11 @@ import { cmToMeters, metersToCm } from '@/lib/editor/geometry';
 export function PropertiesPanel({
   elements,
   onUpdate,
+  readOnly,
 }: {
   elements: ProjectElement[];
   onUpdate: (id: string, changes: Partial<ProjectElement>) => void;
+  readOnly?: boolean;
 }) {
   const t = useTranslations('editor.panels.properties');
   const tt = useTranslations('editor.tools');
@@ -34,7 +36,7 @@ export function PropertiesPanel({
     <div className="h-full overflow-y-auto p-5">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{t('title')}</p>
       <p className="mt-1 text-sm font-medium capitalize text-slate-900">{tt(el.element_type)}</p>
-      <div className="mt-5 space-y-4">
+      <fieldset disabled={readOnly} className="mt-5 min-w-0 space-y-4 border-0 p-0 disabled:opacity-60">
         {el.element_type === 'wall' && (
           <WallFields wall={el} onUpdate={onUpdate} />
         )}
@@ -50,7 +52,7 @@ export function PropertiesPanel({
         {el.element_type === 'window' && (
           <WindowFields window={el} onUpdate={onUpdate} />
         )}
-      </div>
+      </fieldset>
     </div>
   );
 }

@@ -18,7 +18,7 @@ const loadTypes: { id: LoadType; icon: typeof MoveDown; className: string }[] = 
   { id: 'self_weight', icon: CloudRain, className: 'bg-emerald-50 text-emerald-600' },
 ];
 
-export function LoadEditor({ projectId, state }: { projectId: string; state: EditorState }) {
+export function LoadEditor({ projectId, state, readOnly }: { projectId: string; state: EditorState; readOnly?: boolean }) {
   const t = useTranslations('editor.panels.loads');
   const tl = useTranslations('editor.loadTypes');
   const tp = useTranslations('editor.panels.properties');
@@ -45,7 +45,7 @@ export function LoadEditor({ projectId, state }: { projectId: string; state: Edi
         <h2 className="mt-6 text-xs font-bold uppercase tracking-wider text-slate-500">{t('explore')}</h2>
         <div className="mt-3 grid grid-cols-2 gap-2">
           {loadTypes.map(({ id, icon: Icon, className }) => (
-            <button key={id} type="button" onClick={() => chooseLoad(id)} disabled={pending} className={`flex h-20 flex-col items-center justify-center gap-2 rounded-2xl text-[11px] font-semibold transition hover:scale-[1.02] disabled:opacity-60 ${className}`}>
+            <button key={id} type="button" onClick={() => chooseLoad(id)} disabled={pending || readOnly} className={`flex h-20 flex-col items-center justify-center gap-2 rounded-2xl text-[11px] font-semibold transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}>
               <Icon className="h-5 w-5" />{tl(id)}
             </button>
           ))}
