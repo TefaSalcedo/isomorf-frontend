@@ -8,7 +8,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](https://nextjs.org)
 [![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-All%20rights%20reserved-red.svg)](https://choosealicense.com/no-permission/)
 
 ![ISOMORF landing page](docs/screenshots/landing.png)
 
@@ -98,4 +98,4 @@ The product plan — 24 weeks across CAD tooling, collaboration, parametric elem
 
 ## License
 
-[Apache 2.0](LICENSE)
+All rights reserved. This repository is public for portfolio and review purposes — reuse, redistribution or commercial use of the code requires written permission from the author.
