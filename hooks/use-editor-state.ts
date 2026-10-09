@@ -1,17 +1,24 @@
 import { useReducer, useCallback, useMemo } from 'react';
 import type { Point } from '@/lib/editor/geometry';
-import type { ElementType, PlanLayer, Project, ProjectElement, WallElement } from '@/types/project';
+import type { ArcElement, ElementType, PlanLayer, Project, ProjectElement, WallElement } from '@/types/project';
 import {
+  createArc,
   createBeam,
   createBrace,
+  createCircle,
   createColumn,
   createDoor,
+  createEllipse,
   createFooting,
   createGradeBeam,
+  createHatch,
   createJoist,
+  createLine,
   createOpening,
   createPile,
+  createPolyline,
   createRamp,
+  createRectangle,
   createSlab,
   createStair,
   createWall,
@@ -23,11 +30,14 @@ import {
   recomputeWallJoin,
   updateBeamLength,
   defaultDesignSettings,
+  arcSpecFromPoints,
 } from '@/lib/editor/elements';
 import { findColumnContainingPoint, isPointInsideColumn, snapForColumn, snapForWall, snapToNearest, snapWallStart, wallCrossesColumnInterior, type SnapResult } from '@/lib/editor/snapping';
 import {
+  ccwSweep,
   cmToMeters,
   distance,
+  isClose,
   metersToCm,
   pointsEqual,
   polarSnapPoint,
@@ -57,6 +67,10 @@ export type DraftState = {
   startInput: Point;
   columnAnchorId: string | null;
   end: Point;
+  /** Confirmed vertices for multi-click tools: ``polyline`` holds every
+   *  clicked point (the first one included); ``arc`` holds the start point
+   *  and the through-point once the second click lands. */
+  vertices: Point[];
   snap: SnapResult | null;
   host: ProjectElement | null;
   joinAt: 'start' | 'end' | null;
@@ -102,8 +116,9 @@ export type EditorAction =
   | { type: 'pan'; delta: Point }
   | { type: 'fit' }
   | { type: 'beginDraft'; point: Point }
-  | { type: 'updateDraft'; point: Point }
-  | { type: 'commitDraft' }
+  | { type: 'updateDraft'; point: Point; exact?: boolean }
+  | { type: 'extendDraft' }
+  | { type: 'commitDraft'; close?: boolean }
   | { type: 'cancelDraft' }
   | { type: 'updateElement'; id: string; changes: Partial<ProjectElement> }
   | { type: 'updateMany'; ids: string[]; changes: Partial<ProjectElement> }
@@ -146,6 +161,10 @@ function propagateEndpointChange(
 ): ProjectElement[] {
   return elements.map((el) => {
     if (el.id === changedId) return el;
+    // Elements whose x1..x2 are derived geometry (polyline bbox, arc chord,
+    // circle radius point) must not participate in shared-endpoint propagation.
+    const mode = drawModeOf(el.element_type);
+    if (mode === 'poly' || mode === 'arc' || mode === 'center') return el;
     let next = { ...el };
     if (pointsEqual({ x: el.x1, y: el.y1 }, oldStart)) {
       next.x1 = newStart.x;
@@ -169,15 +188,10 @@ function propagateEndpointChange(
   });
 }
 
-function applySnap(point: Point, elements: ProjectElement[], zoom: number, tool?: Tool): SnapResult | null {
+function applySnap(point: Point, elements: ProjectElement[], zoom: number, tool?: Tool, fromPoint?: Point): SnapResult | null {
   if (elements.length === 0) return null;
-  if (tool === 'wall') return snapForWall(point, elements, zoom, WORLD_PER_PIXEL);
-  return snapToNearest(point, elements, zoom, WORLD_PER_PIXEL);
-}
-
-function isRectElement(el: ProjectElement): boolean {
-  return el.element_type !== 'wall' && el.element_type !== 'door' && el.element_type !== 'window'
-    && drawModeOf(el.element_type) === 'rect';
+  if (tool === 'wall') return snapForWall(point, elements, zoom, WORLD_PER_PIXEL, undefined, fromPoint);
+  return snapToNearest(point, elements, zoom, WORLD_PER_PIXEL, undefined, fromPoint);
 }
 
 function normalizeRectCorners<T extends ProjectElement>(el: T): T {
@@ -217,6 +231,64 @@ function applyElementChanges(
   if (changes.material_id !== undefined) next.material_id = changes.material_id;
   if (changes.section_id !== undefined) next.section_id = changes.section_id;
   const mode = drawModeOf(next.element_type);
+  if (mode === 'center') {
+    // Circle: ``x1,y1`` is the center and ``properties.radius`` is
+    // authoritative; ``x2`` always mirrors the point at (cx + r, cy).
+    let radius = (next.properties as { radius?: number }).radius ?? Math.abs(next.x2 - next.x1);
+    if (changes.length !== undefined) radius = Math.max(1, changes.length / (2 * Math.PI));
+    const propRadius = (changes.properties as { radius?: number } | undefined)?.radius;
+    if (typeof propRadius === 'number') radius = Math.max(1, propRadius);
+    const centerMoved = changes.x1 !== undefined || changes.y1 !== undefined;
+    if (!centerMoved && (changes.x2 !== undefined || changes.y2 !== undefined)) {
+      radius = Math.max(1, distance({ x: next.x1, y: next.y1 }, { x: next.x2, y: next.y2 }));
+    }
+    next.x2 = next.x1 + radius;
+    next.y2 = next.y1;
+    next.length = 2 * Math.PI * radius;
+    next.rotation = 0;
+    next.properties = { ...next.properties, radius } as typeof next.properties;
+    return next;
+  }
+  if (mode === 'poly') {
+    // Translate the whole vertex chain when the stored bbox corners move.
+    const dx = (changes.x1 ?? el.x1) - el.x1 || (changes.x2 ?? el.x2) - el.x2;
+    const dy = (changes.y1 ?? el.y1) - el.y1 || (changes.y2 ?? el.y2) - el.y2;
+    if (!dx && !dy) {
+      if (changes.properties) next.properties = { ...next.properties } as typeof next.properties;
+      return next;
+    }
+    const points = ((next.properties as { points?: Point[] }).points ?? []).map((p) => ({ x: p.x + dx, y: p.y + dy }));
+    return {
+      ...next,
+      x1: el.x1 + dx,
+      y1: el.y1 + dy,
+      x2: el.x2 + dx,
+      y2: el.y2 + dy,
+      properties: { ...next.properties, points },
+    } as ProjectElement;
+  }
+  if (mode === 'arc' && (changes.x1 !== undefined || changes.y1 !== undefined || changes.x2 !== undefined || changes.y2 !== undefined)) {
+    const arc = next as ArcElement;
+    const start = { x: next.x1, y: next.y1 };
+    const end = { x: next.x2, y: next.y2 };
+    const isTranslate =
+      changes.x1 !== undefined && changes.x2 !== undefined &&
+      isClose(changes.x1 - el.x1, changes.x2 - el.x2) && isClose((changes.y1 ?? el.y1) - el.y1, (changes.y2 ?? el.y2) - el.y2);
+    if (isTranslate) {
+      const dx = changes.x1! - el.x1;
+      const dy = (changes.y1 ?? el.y1) - el.y1;
+      const props = arc.properties;
+      next.properties = { ...props, cx: props.cx + dx, cy: props.cy + dy, mid: { x: props.mid.x + dx, y: props.mid.y + dy } } as typeof next.properties;
+      return next;
+    }
+    const spec = arcSpecFromPoints(start, arc.properties.mid, end);
+    if (!spec) return el;
+    const sweep = spec.clockwise ? ccwSweep(spec.end_angle, spec.start_angle) : ccwSweep(spec.start_angle, spec.end_angle);
+    next.length = Math.max(1, spec.radius * sweep);
+    next.rotation = 0;
+    next.properties = { ...next.properties, ...spec } as typeof next.properties;
+    return next;
+  }
   if (changes.length !== undefined) {
     if (next.element_type === 'wall') {
       next = updateWallLength(next as WallElement, cmToMeters(changes.length));
@@ -273,7 +345,11 @@ function withLayer(element: ProjectElement, layerId: string): ProjectElement {
   return { ...element, properties: { ...element.properties, layer_id: layerId } } as ProjectElement;
 }
 
-function makeElementFromDraft(draft: DraftState, projectId: string): ProjectElement | null {
+function dedupePoints(points: Point[]): Point[] {
+  return points.filter((p, i) => i === 0 || !pointsEqual(p, points[i - 1]));
+}
+
+function makeElementFromDraft(draft: DraftState, projectId: string, close = false): ProjectElement | null {
   const id = crypto.randomUUID();
   let start = draft.start;
   let end = draft.end;
@@ -290,6 +366,8 @@ function makeElementFromDraft(draft: DraftState, projectId: string): ProjectElem
   if (mode === 'rect') {
     if (Math.abs(end.x - start.x) < 5 || Math.abs(end.y - start.y) < 5) return null;
   } else if (mode === 'line' && distance(start, end) < 0.1) {
+    return null;
+  } else if (mode === 'center' && distance(start, end) < 0.1) {
     return null;
   }
   switch (draft.tool) {
@@ -325,6 +403,25 @@ function makeElementFromDraft(draft: DraftState, projectId: string): ProjectElem
       return createRamp(id, projectId, start, end);
     case 'opening':
       return createOpening(id, projectId, start, end);
+    case 'line':
+      return createLine(id, projectId, start, end);
+    case 'polyline': {
+      const points = dedupePoints(draft.vertices);
+      if (points.length < 2) return null;
+      return createPolyline(id, projectId, points, close);
+    }
+    case 'arc': {
+      if (draft.vertices.length < 2 || distance(draft.vertices[0], end) < 0.1) return null;
+      return createArc(id, projectId, draft.vertices[0], draft.vertices[1], end);
+    }
+    case 'circle':
+      return createCircle(id, projectId, start, distance(start, end));
+    case 'ellipse':
+      return createEllipse(id, projectId, start, end);
+    case 'rectangle':
+      return createRectangle(id, projectId, start, end);
+    case 'hatch':
+      return createHatch(id, projectId, start, end);
     default:
       return null;
   }
@@ -333,6 +430,7 @@ function makeElementFromDraft(draft: DraftState, projectId: string): ProjectElem
 const MUTATING_ACTIONS: ReadonlySet<EditorAction['type']> = new Set([
   'beginDraft',
   'updateDraft',
+  'extendDraft',
   'commitDraft',
   'cancelDraft',
   'updateElement',
@@ -465,6 +563,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
           startInput: action.point,
           columnAnchorId: columnAnchor?.id ?? null,
           end: start,
+          vertices: [start],
           snap,
           host: isStartT && snap ? state.elements.find((el) => 'elementId' in snap.target && el.id === snap.target.elementId) ?? null : null,
           joinAt: isStartT ? 'start' : null,
@@ -476,6 +575,10 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       if (!state.draft) return state;
       const { draft } = state;
       const raw = action.point;
+      // Typed coordinates are exact: bypass snapping, joins and polar tracking.
+      if (action.exact) {
+        return { ...state, draft: { ...draft, end: raw, snap: null, polar: false } };
+      }
       const anchoredStart = draft.tool === 'wall' && draft.columnAnchorId
         ? snapWallStart(draft.startInput, raw, state.elements)
         : null;
@@ -500,7 +603,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         return { ...state, draft: { ...draft, end, snap: endSnap } };
       }
 
-      let endSnap = state.snapEnabled ? applySnap(raw, state.elements, state.viewport.zoom, draft.tool) : null;
+      let endSnap = state.snapEnabled ? applySnap(raw, state.elements, state.viewport.zoom, draft.tool, draft.start) : null;
       if (endSnap && pointsEqual(endSnap.point, draft.start)) endSnap = null;
       let end = raw;
       let host = draft.host;
@@ -536,10 +639,28 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       }
       return { ...state, draft: { ...draft, start, end, snap: anchoredStart ?? endSnap, host, joinAt, polar } };
     }
+    case 'extendDraft': {
+      if (!state.draft) return state;
+      const { draft } = state;
+      const mode = draft.tool === 'select' ? null : drawModeOf(draft.tool);
+      if (mode !== 'poly' && mode !== 'arc') return state;
+      const point = draft.end;
+      if (pointsEqual(point, draft.vertices[draft.vertices.length - 1])) return state;
+      return {
+        ...state,
+        draft: {
+          ...draft,
+          vertices: [...draft.vertices, point],
+          // Polylines chain segments: the last vertex anchors the next one.
+          start: mode === 'poly' ? point : draft.start,
+          polar: false,
+        },
+      };
+    }
     case 'commitDraft': {
       if (!state.draft) return state;
       const projectId = state.elements[0]?.project_id ?? '';
-      const created = makeElementFromDraft(state.draft, projectId);
+      const created = makeElementFromDraft(state.draft, projectId, action.close);
       if (!created) return { ...state, draft: null };
       if (created.element_type === 'wall') {
         const elementsWithCreated = state.elements.concat(created);
@@ -708,8 +829,9 @@ export function useEditorState(project: Project) {
       pan: (delta: Point) => dispatch({ type: 'pan', delta }),
       fit: () => dispatch({ type: 'fit' }),
       beginDraft: (point: Point) => dispatch({ type: 'beginDraft', point }),
-      updateDraft: (point: Point) => dispatch({ type: 'updateDraft', point }),
-      commitDraft: () => dispatch({ type: 'commitDraft' }),
+      updateDraft: (point: Point, exact?: boolean) => dispatch({ type: 'updateDraft', point, exact }),
+      extendDraft: () => dispatch({ type: 'extendDraft' }),
+      commitDraft: (close?: boolean) => dispatch({ type: 'commitDraft', close }),
       cancelDraft: () => dispatch({ type: 'cancelDraft' }),
       updateElement: (id: string, changes: Partial<ProjectElement>) => dispatch({ type: 'updateElement', id, changes }),
       updateMany: (ids: string[], changes: Partial<ProjectElement>) => dispatch({ type: 'updateMany', ids, changes }),

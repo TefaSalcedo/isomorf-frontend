@@ -281,7 +281,8 @@
         "structure": "Structure",
         "foundation": "Foundation",
         "floors": "Slabs & circulation",
-        "envelope": "Envelope"
+        "envelope": "Envelope",
+        "draw": "Draw"
       }
     },
     "tools": {
@@ -311,7 +312,14 @@
       "pile": "Pile",
       "footing": "Footing",
       "stair": "Stair",
-      "ramp": "Ramp"
+      "ramp": "Ramp",
+      "line": "Line",
+      "polyline": "Polyline",
+      "arc": "Arc",
+      "circle": "Circle",
+      "ellipse": "Ellipse",
+      "rectangle": "Rectangle",
+      "hatch": "Hatch"
     },
     "loadTypes": {
       "dead": "Dead",
@@ -401,6 +409,18 @@
         "slope": "Slope (%)",
         "openingHint": "An opening is a void in the slab area. Resize it by dragging its corners.",
         "bulkTypeHint": "Select elements of the same type to edit shared dimensions.",
+        "radius": "Radius (m)",
+        "hatchPattern": "Hatch pattern",
+        "hatchAngle": "Hatch angle (°)",
+        "hatchPatterns": {
+          "ansi31": "ANSI31 (45° lines)",
+          "cross": "Crosshatch",
+          "grid": "Grid"
+        },
+        "vertexCount": "{count} vertices",
+        "closed": "Closed",
+        "yes": "Yes",
+        "no": "No",
         "sections": {
           "identity": "Identity",
           "position": "Position",
@@ -650,7 +670,14 @@
         "footing": "Draw footing",
         "stair": "Draw stair",
         "ramp": "Draw ramp",
-        "opening": "Draw opening"
+        "opening": "Draw opening",
+        "line": "Draw line",
+        "polyline": "Draw polyline",
+        "arc": "Draw arc (3 points)",
+        "circle": "Draw circle",
+        "ellipse": "Draw ellipse",
+        "rectangle": "Draw rectangle",
+        "hatch": "Draw hatch"
       },
       "action": {
         "undo": "Undo",

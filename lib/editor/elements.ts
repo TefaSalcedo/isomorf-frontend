@@ -3,6 +3,7 @@ import type {
   ProjectElement,
   ElementType,
   DrawMode,
+  PlanPoint,
   WallElement,
   ColumnElement,
   BeamElement,
@@ -17,8 +18,15 @@ import type {
   StairElement,
   RampElement,
   OpeningElement,
+  LineElement,
+  PolylineElement,
+  ArcElement,
+  CircleElement,
+  EllipseElement,
+  RectangleElement,
+  HatchElement,
 } from '@/types/project';
-import { cmToMeters, distance, metersToCm, resolveTJoin } from '@/lib/editor/geometry';
+import { ccwSweep, circleThroughPoints, cmToMeters, distance, metersToCm, normalizeAngle, pointsEqual, resolveTJoin } from '@/lib/editor/geometry';
 
 export const WALL_DEFAULT_HEIGHT = 2.5;
 export const WALL_DEFAULT_THICKNESS = 0.15;
@@ -42,6 +50,8 @@ export const PILE_DEFAULT_LENGTH = 12;
 export const JOIST_DEFAULT_SPACING = 0.45;
 export const GRADE_BEAM_DEFAULT_ELEVATION = 0;
 export const BRACE_DEFAULT_WIDTH = 0.2;
+export const HATCH_DEFAULT_SPACING_CM = 35;
+export const HATCH_DEFAULT_ANGLE = 45;
 
 export const DRAW_MODE: Record<ElementType, DrawMode> = {
   wall: 'line',
@@ -58,7 +68,26 @@ export const DRAW_MODE: Record<ElementType, DrawMode> = {
   stair: 'rect',
   ramp: 'rect',
   opening: 'rect',
+  line: 'line',
+  polyline: 'poly',
+  arc: 'arc',
+  circle: 'center',
+  ellipse: 'rect',
+  rectangle: 'rect',
+  hatch: 'rect',
 };
+
+/** CAD drawing/annotation primitives (week 8): they carry no structural role,
+ *  so the 3D view and the structural selection summary skip them. */
+export const ANNOTATION_TYPES: ReadonlySet<ElementType> = new Set([
+  'line',
+  'polyline',
+  'arc',
+  'circle',
+  'ellipse',
+  'rectangle',
+  'hatch',
+]);
 
 export const LINE_TYPES: ReadonlySet<ElementType> = new Set(
   (Object.keys(DRAW_MODE) as ElementType[]).filter((t) => DRAW_MODE[t] === 'line'),
@@ -121,6 +150,14 @@ export function defaultPropertiesFor(type: ElementType): Record<string, unknown>
       return { slope_percent: RAMP_DEFAULT_SLOPE, thickness: 0.15, base_elevation: 0 };
     case 'opening':
       return {};
+    case 'polyline':
+      return { points: [], closed: false };
+    case 'circle':
+      return { radius: 50 };
+    case 'arc':
+      return { cx: 0, cy: 0, radius: 50, start_angle: 0, end_angle: Math.PI / 2, clockwise: false, mid: { x: 0, y: 0 } };
+    case 'hatch':
+      return { pattern: 'ansi31', spacing: HATCH_DEFAULT_SPACING_CM, angle: HATCH_DEFAULT_ANGLE };
     default:
       return {};
   }
@@ -398,6 +435,143 @@ export const createFooting = (id: string, projectId: string, start: { x: number;
 export const createStair = (id: string, projectId: string, start: { x: number; y: number }, end: { x: number; y: number }): StairElement => createRect<StairElement>('stair', id, projectId, start, end);
 export const createRamp = (id: string, projectId: string, start: { x: number; y: number }, end: { x: number; y: number }): RampElement => createRect<RampElement>('ramp', id, projectId, start, end);
 export const createOpening = (id: string, projectId: string, start: { x: number; y: number }, end: { x: number; y: number }): OpeningElement => createRect<OpeningElement>('opening', id, projectId, start, end);
+
+/* ------------------------------------------------------------------ */
+/* CAD annotation primitives                                            */
+/* ------------------------------------------------------------------ */
+
+export function createLine(id: string, projectId: string, start: PlanPoint, end: PlanPoint): LineElement {
+  return {
+    ...baseFields(id, projectId),
+    element_type: 'line',
+    ...lineGeometry(start, end),
+    properties: defaultPropertiesFor('line') as LineElement['properties'],
+  };
+}
+
+export function createPolyline(
+  id: string,
+  projectId: string,
+  points: PlanPoint[],
+  closed = false,
+): PolylineElement {
+  const repeatsFirst = points.length > 1 && pointsEqual(points[0], points[points.length - 1]);
+  const isClosed = closed || repeatsFirst;
+  const vertices = isClosed && !repeatsFirst ? [...points, points[0]] : points;
+  const first = vertices[0];
+  const last = vertices[vertices.length - 1];
+  const length = vertices.reduce((sum, p, i) => (i === 0 ? 0 : sum + distance(vertices[i - 1], p)), 0);
+  return {
+    ...baseFields(id, projectId),
+    element_type: 'polyline',
+    x1: first.x,
+    y1: first.y,
+    x2: last.x,
+    y2: last.y,
+    length: Math.max(1, length),
+    rotation: 0,
+    properties: { points: vertices, closed: isClosed } as PolylineElement['properties'],
+  };
+}
+
+/** Arc parameters derived from three points on the curve (start, a point on
+ *  the arc, end). Returns null when the points are collinear. */
+export function arcSpecFromPoints(
+  p1: PlanPoint,
+  mid: PlanPoint,
+  p3: PlanPoint,
+): { cx: number; cy: number; radius: number; start_angle: number; end_angle: number; clockwise: boolean } | null {
+  const circle = circleThroughPoints(p1, mid, p3);
+  if (!circle || circle.radius < 1e-6) return null;
+  const { center, radius } = circle;
+  const startAngle = Math.atan2(p1.y - center.y, p1.x - center.x);
+  const midAngle = Math.atan2(mid.y - center.y, mid.x - center.x);
+  const endAngle = Math.atan2(p3.y - center.y, p3.x - center.x);
+  // The mid point sits on the travelled path: if it is reached while sweeping
+  // counterclockwise (increasing angle) from start to end, the arc goes ccw.
+  const onCcwPath = ccwSweep(startAngle, midAngle) <= ccwSweep(startAngle, endAngle);
+  return {
+    cx: center.x,
+    cy: center.y,
+    radius,
+    start_angle: normalizeAngle(startAngle),
+    end_angle: normalizeAngle(endAngle),
+    clockwise: !onCcwPath,
+  };
+}
+
+export function createArc(
+  id: string,
+  projectId: string,
+  start: PlanPoint,
+  mid: PlanPoint,
+  end: PlanPoint,
+): ArcElement | null {
+  const spec = arcSpecFromPoints(start, mid, end);
+  if (!spec) return null;
+  const sweep = spec.clockwise
+    ? ccwSweep(spec.end_angle, spec.start_angle)
+    : ccwSweep(spec.start_angle, spec.end_angle);
+  return {
+    ...baseFields(id, projectId),
+    element_type: 'arc',
+    x1: start.x,
+    y1: start.y,
+    x2: end.x,
+    y2: end.y,
+    length: Math.max(1, spec.radius * sweep),
+    rotation: 0,
+    properties: { ...spec, mid } as ArcElement['properties'],
+  };
+}
+
+/** Recompute an arc after one of its chord endpoints moved, keeping the
+ *  stored through-point. Returns null when the geometry degenerates. */
+export function recomputeArc(element: ArcElement, start: PlanPoint, end: PlanPoint): ArcElement | null {
+  return createArc(element.id, element.project_id, start, element.properties.mid, end);
+}
+
+export function createCircle(id: string, projectId: string, center: PlanPoint, radiusCm: number): CircleElement {
+  const radius = Math.max(1, radiusCm);
+  return {
+    ...baseFields(id, projectId),
+    element_type: 'circle',
+    x1: center.x,
+    y1: center.y,
+    x2: center.x + radius,
+    y2: center.y,
+    length: 2 * Math.PI * radius,
+    rotation: 0,
+    properties: { radius } as CircleElement['properties'],
+  };
+}
+
+export function createEllipse(id: string, projectId: string, start: PlanPoint, end: PlanPoint): EllipseElement {
+  return {
+    ...baseFields(id, projectId),
+    element_type: 'ellipse',
+    ...rectGeometry(start, end),
+    properties: defaultPropertiesFor('ellipse') as EllipseElement['properties'],
+  };
+}
+
+export function createRectangle(id: string, projectId: string, start: PlanPoint, end: PlanPoint): RectangleElement {
+  return {
+    ...baseFields(id, projectId),
+    element_type: 'rectangle',
+    ...rectGeometry(start, end),
+    properties: defaultPropertiesFor('rectangle') as RectangleElement['properties'],
+  };
+}
+
+export function createHatch(id: string, projectId: string, start: PlanPoint, end: PlanPoint): HatchElement {
+  return {
+    ...baseFields(id, projectId),
+    element_type: 'hatch',
+    ...rectGeometry(start, end),
+    properties: defaultPropertiesFor('hatch') as HatchElement['properties'],
+  };
+}
 
 export function defaultDesignSettings(): Project['design_settings'] {
   return {

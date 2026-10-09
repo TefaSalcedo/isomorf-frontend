@@ -142,6 +142,55 @@ export function polarSnapPoint(start: Point, point: Point, increment = POLAR_INC
   return { point: { x: start.x + Math.cos(snapped) * len, y: start.y + Math.sin(snapped) * len }, locked: true };
 }
 
+/** Circumscribed circle through three points. Returns null when the points
+ *  are (nearly) collinear, i.e. there is no finite circle through them. */
+export function circleThroughPoints(p1: Point, p2: Point, p3: Point): { center: Point; radius: number } | null {
+  const d = 2 * (p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y));
+  if (Math.abs(d) < 1e-9) return null;
+  const a1 = p1.x * p1.x + p1.y * p1.y;
+  const a2 = p2.x * p2.x + p2.y * p2.y;
+  const a3 = p3.x * p3.x + p3.y * p3.y;
+  const center = {
+    x: (a1 * (p2.y - p3.y) + a2 * (p3.y - p1.y) + a3 * (p1.y - p2.y)) / d,
+    y: (a1 * (p3.x - p2.x) + a2 * (p1.x - p3.x) + a3 * (p2.x - p1.x)) / d,
+  };
+  return { center, radius: distance(center, p1) };
+}
+
+/** Normalize an angle to [0, 2π). */
+export function normalizeAngle(radians: number): number {
+  const tau = Math.PI * 2;
+  return ((radians % tau) + tau) % tau;
+}
+
+/** Signed sweep from ``start`` to ``end`` going counterclockwise in standard
+ *  math orientation (result in [0, 2π)). */
+export function ccwSweep(start: number, end: number): number {
+  return normalizeAngle(end - start);
+}
+
+/** Sample an arc into polyline vertices. ``clockwise`` follows the screen
+ *  convention (y-axis down): it means the sweep travels in the *decreasing*
+ *  angle direction. Chord endpoints are always included. */
+export function sampleArcPoints(
+  cx: number,
+  cy: number,
+  radius: number,
+  startAngle: number,
+  endAngle: number,
+  clockwise: boolean,
+  maxSegments = 64,
+): Point[] {
+  const sweep = clockwise ? -ccwSweep(endAngle, startAngle) : ccwSweep(startAngle, endAngle);
+  const segments = Math.max(4, Math.min(maxSegments, Math.ceil((Math.abs(sweep) / Math.PI) * 32)));
+  const points: Point[] = [];
+  for (let i = 0; i <= segments; i += 1) {
+    const angle = startAngle + (sweep * i) / segments;
+    points.push({ x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius });
+  }
+  return points;
+}
+
 export function resolveTJoin(
   anchor: Point,
   hostStart: Point,

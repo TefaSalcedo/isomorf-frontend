@@ -35,6 +35,11 @@ import {
   Equal,
   StretchHorizontal,
   Box,
+  Spline,
+  Rainbow,
+  Ellipse,
+  RectangleHorizontal,
+  Hash,
 } from 'lucide-react';
 import type { EditorState, Tool, ActiveSection } from '@/hooks/use-editor-state';
 import type { LoadType } from '@/types/structural-load';
@@ -92,6 +97,18 @@ const TOOL_GROUPS: { id: string; tools: ToolEntry[] }[] = [
       { id: 'wall', icon: Minus },
       { id: 'door', icon: DoorOpen },
       { id: 'window', icon: GripVertical },
+    ],
+  },
+  {
+    id: 'draw',
+    tools: [
+      { id: 'line', icon: Minus },
+      { id: 'polyline', icon: Spline },
+      { id: 'arc', icon: Rainbow },
+      { id: 'circle', icon: Circle },
+      { id: 'ellipse', icon: Ellipse },
+      { id: 'rectangle', icon: RectangleHorizontal },
+      { id: 'hatch', icon: Hash },
     ],
   },
 ];

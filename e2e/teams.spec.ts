@@ -34,8 +34,8 @@ test.describe('teams', () => {
     const viewerContext = await browser.newContext();
     const viewer = await viewerContext.newPage();
     await viewer.goto(invitePath);
-    await expect(viewer.getByText('Sign in or create an account to accept.')).toBeVisible();
-    await viewer.getByRole('link', { name: 'Create account' }).click();
+    await expect(viewer.getByRole('link', { name: 'Sign in to accept' })).toBeVisible();
+    await viewer.getByRole('link', { name: 'Create an account' }).click();
     const viewerUser = disposableUser();
     await viewer.locator('input[name="first_name"]').fill(viewerUser.firstName);
     await viewer.locator('input[name="last_name"]').fill(viewerUser.lastName);

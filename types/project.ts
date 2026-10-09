@@ -12,11 +12,20 @@ export type ElementType =
   | 'joist'
   | 'grade_beam'
   | 'brace'
-  | 'pile';
+  | 'pile'
+  | 'line'
+  | 'polyline'
+  | 'arc'
+  | 'circle'
+  | 'ellipse'
+  | 'rectangle'
+  | 'hatch';
 
 /** How an element is drawn on the plan: two-point line, single click point,
- *  or corner-to-corner rectangle (x1,y1 = min corner, x2,y2 = max corner). */
-export type DrawMode = 'line' | 'point' | 'rect';
+ *  corner-to-corner rectangle (x1,y1 = min corner, x2,y2 = max corner),
+ *  multi-click vertex chain (polyline), three-point arc, or center+radius
+ *  (circle). */
+export type DrawMode = 'line' | 'point' | 'rect' | 'poly' | 'arc' | 'center';
 
 export type MaterialConstants = {
   compressive_strength?: number;
@@ -293,6 +302,92 @@ export type PileElement = BaseElement & {
   properties: PileProperties;
 };
 
+/* ------------------------------------------------------------------ */
+/* CAD annotation primitives (roadmap week 8). They carry no structural  */
+/* role: skipped by the 3D view and the structural selection summary.    */
+/* ------------------------------------------------------------------ */
+
+export type LineProperties = LayeredProperties & TaggedProperties;
+
+export type LineElement = BaseElement & {
+  element_type: 'line';
+  properties: LineProperties;
+};
+
+export type PlanPoint = { x: number; y: number };
+
+export type PolylineProperties = LayeredProperties & TaggedProperties & {
+  /** Ordered vertices in world units (cm). ``x1,y1`` mirrors the first
+   *  vertex and ``x2,y2`` the last; a closed polyline repeats the first. */
+  points: PlanPoint[];
+  closed?: boolean;
+};
+
+export type PolylineElement = BaseElement & {
+  element_type: 'polyline';
+  properties: PolylineProperties;
+};
+
+export type ArcProperties = LayeredProperties & TaggedProperties & {
+  /** Circle center in world units (cm). */
+  cx: number;
+  cy: number;
+  /** Arc radius in centimeters. */
+  radius: number;
+  /** Angles of the start/end chord points, radians, atan2 convention. */
+  start_angle: number;
+  end_angle: number;
+  /** Whether the arc sweeps clockwise (canvas y-down coordinates). */
+  clockwise: boolean;
+  /** The through-point used to define the arc, kept so dragging a chord
+   *  endpoint can recompute the circle. */
+  mid: PlanPoint;
+};
+
+export type ArcElement = BaseElement & {
+  element_type: 'arc';
+  properties: ArcProperties;
+};
+
+export type CircleProperties = LayeredProperties & TaggedProperties & {
+  /** Radius in centimeters; ``x1,y1`` is the center. */
+  radius: number;
+};
+
+export type CircleElement = BaseElement & {
+  element_type: 'circle';
+  properties: CircleProperties;
+};
+
+export type EllipseProperties = LayeredProperties & TaggedProperties;
+
+export type EllipseElement = BaseElement & {
+  element_type: 'ellipse';
+  properties: EllipseProperties;
+};
+
+export type RectangleProperties = LayeredProperties & TaggedProperties;
+
+export type RectangleElement = BaseElement & {
+  element_type: 'rectangle';
+  properties: RectangleProperties;
+};
+
+export type HatchPattern = 'ansi31' | 'cross' | 'grid';
+
+export type HatchProperties = LayeredProperties & TaggedProperties & {
+  pattern: HatchPattern;
+  /** Hatch line spacing in centimeters. */
+  spacing: number;
+  /** Pattern rotation in degrees. */
+  angle: number;
+};
+
+export type HatchElement = BaseElement & {
+  element_type: 'hatch';
+  properties: HatchProperties;
+};
+
 export type ProjectElement =
   | WallElement
   | DoorElement
@@ -307,7 +402,14 @@ export type ProjectElement =
   | FootingElement
   | StairElement
   | RampElement
-  | OpeningElement;
+  | OpeningElement
+  | LineElement
+  | PolylineElement
+  | ArcElement
+  | CircleElement
+  | EllipseElement
+  | RectangleElement
+  | HatchElement;
 
 export type MaterialCategory = 'concrete' | 'steel' | 'masonry' | 'timber' | 'aluminum' | 'generic';
 

@@ -20,6 +20,7 @@ import type {
   WallElement,
   BeamElement,
 } from '@/types/project';
+import { ANNOTATION_TYPES } from '@/lib/editor/elements';
 
 function cmToMeters(value: number): number {
   return value / 100;
@@ -335,10 +336,10 @@ export function Model3DPreview({
 }) {
   const t = useTranslations('editor.canvas');
   const renderable = useMemo(
-    () => elements.filter((el) => el.element_type !== 'door' && el.element_type !== 'window'),
+    () => elements.filter((el) => el.element_type !== 'door' && el.element_type !== 'window' && !ANNOTATION_TYPES.has(el.element_type)),
     [elements],
   );
-  const bounds = useMemo(() => sceneBounds(elements), [elements]);
+  const bounds = useMemo(() => sceneBounds(renderable), [renderable]);
   const cameraDistance = Math.max(bounds.size * 1.2, 8);
   const cameraY = Math.max(bounds.size * 0.6, 6);
 
