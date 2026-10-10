@@ -233,7 +233,10 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         return;
       }
       if (!(event.ctrlKey || event.metaKey)) {
-        if (!event.altKey && /^[a-z]$/.test(key) && !stateRef.current.draft) {
+        // Bare letters seed the palette only when the canvas is idle — during
+        // a draft or an edit session the session owns the keyboard (e.g. the
+        // 'x' in an array's "2x2" parameter must not reopen the palette).
+        if (!event.altKey && /^[a-z]$/.test(key) && !stateRef.current.draft && !stateRef.current.edit) {
           event.preventDefault();
           openPalette(key);
         }
@@ -315,6 +318,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     toggleCleanMode: actions.toggleCleanMode,
     exportPng: handleExport,
     print: handlePrint,
+    armEdit: actions.armEdit,
   });
   const visibleCommands = readOnly ? commands.filter((command) => !command.requiresEdit) : commands;
 

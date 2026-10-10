@@ -216,6 +216,23 @@ export function resolveTJoin(
   return add(anchor, scale(best, length));
 }
 
+/** The four bbox corners of a rect-mode element, rotated by ``rotation``
+ *  (radians) around the bbox center. Order in the unrotated frame:
+ *  min-min, max-min, max-max, min-max. */
+export function rectCorners(el: { x1: number; y1: number; x2: number; y2: number; rotation: number }): Point[] {
+  const cx = (el.x1 + el.x2) / 2;
+  const cy = (el.y1 + el.y2) / 2;
+  const corners = [
+    { x: el.x1, y: el.y1 },
+    { x: el.x2, y: el.y1 },
+    { x: el.x2, y: el.y2 },
+    { x: el.x1, y: el.y2 },
+  ];
+  if (!el.rotation) return corners;
+  const c = { x: cx, y: cy };
+  return corners.map((p) => add(c, rotate(sub(p, c), el.rotation)));
+}
+
 export function rectangleFromCenter(
   center: Point,
   width: number,

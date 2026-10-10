@@ -20,6 +20,7 @@ function makeContext(): EditorCommandContext {
     toggleCleanMode: vi.fn(),
     exportPng: vi.fn(),
     print: vi.fn(),
+    armEdit: vi.fn(),
   };
 }
 

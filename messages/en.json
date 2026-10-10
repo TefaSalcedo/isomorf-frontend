@@ -282,7 +282,8 @@
         "foundation": "Foundation",
         "floors": "Slabs & circulation",
         "envelope": "Envelope",
-        "draw": "Draw"
+        "draw": "Draw",
+        "modify": "Modify"
       }
     },
     "tools": {
@@ -709,9 +710,55 @@
       "doc": {
         "export": "Export as PNG",
         "print": "Print"
+      },
+      "edit": {
+        "move": "Move objects",
+        "copy": "Copy objects",
+        "rotate": "Rotate objects",
+        "mirror": "Mirror objects",
+        "scale": "Scale objects",
+        "arrayRect": "Rectangular array",
+        "arrayPolar": "Polar array",
+        "offset": "Offset",
+        "trim": "Trim",
+        "extend": "Extend",
+        "fillet": "Fillet"
       }
     },
-    "readOnly": "View only — you have viewer access to this shared project. Changes are not saved."
+    "readOnly": "View only — you have viewer access to this shared project. Changes are not saved.",
+    "edit": {
+      "ops": {
+        "move": "Move",
+        "copy": "Copy",
+        "rotate": "Rotate",
+        "mirror": "Mirror",
+        "scale": "Scale",
+        "arrayRect": "Array",
+        "arrayPolar": "Polar array",
+        "offset": "Offset",
+        "trim": "Trim",
+        "extend": "Extend",
+        "fillet": "Fillet"
+      },
+      "prompt": {
+        "selectObjects": "Select objects (click, drag a box) — Enter when done",
+        "clickToTrim": "Click the part to trim away",
+        "clickToExtend": "Click near the end to extend",
+        "pickFirst": "Pick the object to offset",
+        "offsetSide": "Pick a side, or type a distance",
+        "filletFirst": "Pick the first segment",
+        "filletSecond": "Pick the second segment",
+        "basePoint": "Pick base point",
+        "referencePoint": "Pick reference point",
+        "scaleFactor": "Pick scale or type a factor",
+        "rotateAngle": "Pick angle or type degrees",
+        "mirrorAxis": "Pick the second axis point",
+        "arrayCell": "Drag the cell spacing or type RxC e.g. 3x2",
+        "arrayCenter": "Pick the array center",
+        "arraySweep": "Pick sweep end or type count<angle e.g. 8<360",
+        "destination": "Pick destination or type a displacement"
+      }
+    }
   },
   "layers": {
     "architecture": "Architecture",

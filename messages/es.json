@@ -282,7 +282,8 @@
         "foundation": "Cimentación",
         "floors": "Losas y circulación",
         "envelope": "Cerramiento",
-        "draw": "Dibujo"
+        "draw": "Dibujo",
+        "modify": "Modificar"
       }
     },
     "tools": {
@@ -709,9 +710,55 @@
       "doc": {
         "export": "Exportar como PNG",
         "print": "Imprimir"
+      },
+      "edit": {
+        "move": "Mover objetos",
+        "copy": "Copiar objetos",
+        "rotate": "Rotar objetos",
+        "mirror": "Crear espejo",
+        "scale": "Escalar objetos",
+        "arrayRect": "Matriz rectangular",
+        "arrayPolar": "Matriz polar",
+        "offset": "Desfase",
+        "trim": "Recortar",
+        "extend": "Extender",
+        "fillet": "Empalme"
       }
     },
-    "readOnly": "Solo lectura: tienes acceso de observador a este proyecto compartido. Los cambios no se guardan."
+    "readOnly": "Solo lectura: tienes acceso de observador a este proyecto compartido. Los cambios no se guardan.",
+    "edit": {
+      "ops": {
+        "move": "Mover",
+        "copy": "Copiar",
+        "rotate": "Rotar",
+        "mirror": "Espejo",
+        "scale": "Escalar",
+        "arrayRect": "Matriz",
+        "arrayPolar": "Matriz polar",
+        "offset": "Desfase",
+        "trim": "Recortar",
+        "extend": "Extender",
+        "fillet": "Empalme"
+      },
+      "prompt": {
+        "selectObjects": "Selecciona objetos (clic o arrastra un cuadro) — Enter para terminar",
+        "clickToTrim": "Haz clic en la parte que quieres recortar",
+        "clickToExtend": "Haz clic cerca del extremo a extender",
+        "pickFirst": "Elige el objeto a desfasar",
+        "offsetSide": "Elige un lado o escribe una distancia",
+        "filletFirst": "Elige el primer segmento",
+        "filletSecond": "Elige el segundo segmento",
+        "basePoint": "Elige el punto base",
+        "referencePoint": "Elige el punto de referencia",
+        "scaleFactor": "Elige la escala o escribe un factor",
+        "rotateAngle": "Elige el ángulo o escribe grados",
+        "mirrorAxis": "Elige el segundo punto del eje",
+        "arrayCell": "Arrastra el espaciado o escribe FxC ej. 3x2",
+        "arrayCenter": "Elige el centro de la matriz",
+        "arraySweep": "Elige el fin del arco o escribe cuenta<ángulo ej. 8<360",
+        "destination": "Elige el destino o escribe un desplazamiento"
+      }
+    }
   },
   "layers": {
     "architecture": "Arquitectura",

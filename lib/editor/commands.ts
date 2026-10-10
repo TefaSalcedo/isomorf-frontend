@@ -1,4 +1,5 @@
 import type { ActiveSection, Tool } from '@/hooks/use-editor-state';
+import type { EditOp } from '@/lib/editor/edit-ops';
 
 export type EditorView = '2d' | '3d' | 'table' | 'loads' | 'fem';
 
@@ -26,6 +27,7 @@ export type EditorCommandContext = {
   toggleCleanMode: () => void;
   exportPng: () => void;
   print: () => void;
+  armEdit: (op: EditOp) => void;
 };
 
 const TOOL_COMMANDS: { id: Tool; keywords: string[] }[] = [
@@ -53,6 +55,22 @@ const TOOL_COMMANDS: { id: Tool; keywords: string[] }[] = [
   { id: 'hatch', keywords: ['hatch', 'hachura', 'sombreado', 'h', 'fill pattern'] },
 ];
 
+/** Week 9 modify suite — AutoCAD command aliases ride as keywords so typing
+ *  ``m``/``co``/``tr`` in the palette arms the same session as the buttons. */
+const EDIT_COMMANDS: { id: EditOp; keywords: string[] }[] = [
+  { id: 'move', keywords: ['move', 'm', 'mover', 'desplazar', 'trasladar'] },
+  { id: 'copy', keywords: ['copy', 'co', 'cp', 'copiar', 'copia', 'duplicate', 'duplicar'] },
+  { id: 'rotate', keywords: ['rotate', 'ro', 'rotar', 'girar'] },
+  { id: 'mirror', keywords: ['mirror', 'mi', 'espejo', 'simetria', 'simetría', 'reflect'] },
+  { id: 'scale', keywords: ['scale', 'sc', 'escalar', 'escala', 'resize'] },
+  { id: 'arrayRect', keywords: ['array', 'ar', 'arrayrect', 'rectangular array', 'matriz', 'matriz rectangular', 'multiple copies'] },
+  { id: 'arrayPolar', keywords: ['arraypolar', 'polar array', 'polar', 'matriz polar', 'matriz circular', 'circular array', 'ring'] },
+  { id: 'offset', keywords: ['offset', 'o', 'desfase', 'paralela', 'equidistancia', 'parallel copy'] },
+  { id: 'trim', keywords: ['trim', 'tr', 'recortar', 'recorte', 'cut'] },
+  { id: 'extend', keywords: ['extend', 'ex', 'extender', 'prolongar', 'lengthen'] },
+  { id: 'fillet', keywords: ['fillet', 'f', 'empalme', 'redondeo', 'round corner', 'fil'] },
+];
+
 export function buildEditorCommands(ctx: EditorCommandContext): EditorCommand[] {
   return [
     ...TOOL_COMMANDS.map(({ id, keywords }) => ({
@@ -60,6 +78,12 @@ export function buildEditorCommands(ctx: EditorCommandContext): EditorCommand[] 
       keywords,
       requiresEdit: id !== 'select',
       run: () => ctx.setTool(id),
+    })),
+    ...EDIT_COMMANDS.map(({ id, keywords }) => ({
+      id: `edit.${id}`,
+      keywords,
+      requiresEdit: true,
+      run: () => ctx.armEdit(id),
     })),
     { id: 'action.undo', keywords: ['undo', 'deshacer', 'u', 'ctrl+z'], requiresEdit: true, run: ctx.undo },
     { id: 'action.redo', keywords: ['redo', 'rehacer', 'ctrl+y'], requiresEdit: true, run: ctx.redo },
@@ -87,11 +111,23 @@ export function buildEditorCommands(ctx: EditorCommandContext): EditorCommand[] 
   ];
 }
 
+/** Rank matches so exact keywords and prefixes beat incidental substring
+ *  hits — otherwise typing ``scale`` arms Draw stair because the Spanish
+ *  keyword ``escalera`` merely *contains* "scale". Declaration order breaks
+ *  ties, keeping tool/edit commands ahead of view/section ones. */
+function matchScore(command: EditorCommand, q: string, text: string): number {
+  if (text === q || command.keywords.some((keyword) => keyword === q)) return 3;
+  if (text.startsWith(q) || command.keywords.some((keyword) => keyword.startsWith(q))) return 2;
+  if (text.includes(q) || command.keywords.some((keyword) => keyword.includes(q))) return 1;
+  return 0;
+}
+
 export function matchCommands(commands: EditorCommand[], query: string, label: (id: string) => string): EditorCommand[] {
   const q = query.trim().toLowerCase();
   if (!q) return commands;
-  return commands.filter((command) => {
-    const text = label(command.id).toLowerCase();
-    return text.includes(q) || command.keywords.some((keyword) => keyword.startsWith(q) || keyword.includes(q));
-  });
+  return commands
+    .map((command, order) => ({ command, order, score: matchScore(command, q, label(command.id).toLowerCase()) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || a.order - b.order)
+    .map((entry) => entry.command);
 }

@@ -1,8 +1,8 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { useTranslations } from 'next-intl';
-import { Stage, Layer, Line, Circle, Rect, Ellipse, Text, Label, Tag } from 'react-konva';
+import { Stage, Layer, Line, Circle, Rect, Ellipse, Text, Label, Tag, Group } from 'react-konva';
 import type Konva from 'konva';
 import type { EditorState } from '@/hooks/use-editor-state';
 import type { Point } from '@/lib/editor/geometry';
@@ -22,6 +22,16 @@ import {
 import { snapForWall, snapPixelsForZoom, snapToNearest } from '@/lib/editor/snapping';
 import { isElementLocked, isElementVisible, layerOf } from '@/lib/editor/layers';
 import type { PlanLayer } from '@/types/project';
+import {
+  applyGrip,
+  elementInBox,
+  gripsFor,
+  outlineSegments,
+  previewEditOutcome,
+  type BoxMode,
+  type Grip,
+} from '@/lib/editor/edit-ops';
+import type { EditSession } from '@/hooks/use-editor-state';
 
 const GRID_STEP = 100;
 const MIN_ZOOM = 0.2;
@@ -179,12 +189,36 @@ type CanvasStageProps = {
     setZoom: (zoom: number) => void;
     pan: (delta: Point) => void;
     setTool: (tool: EditorState['tool']) => void;
+    editCursor: (point: Point) => void;
+    editPick: (point: Point, elementId?: string | null, exact?: boolean) => void;
+    editPickMany: (ids: string[]) => void;
+    editDone: () => void;
+    editValue: (text: string, unit: DisplayUnit) => void;
+    cancelEdit: () => void;
+    replaceElement: (element: ProjectElement) => void;
   };
   stageRef: MutableRefObject<Konva.Stage | null>;
 };
 
+/** Which prompt line the HUD shows for the current edit phase. */
+function editPromptKey(edit: EditSession): string {
+  if (edit.phase === 'pick') return 'selectObjects';
+  if (edit.phase === 'apply') return edit.op === 'trim' ? 'clickToTrim' : 'clickToExtend';
+  switch (edit.op) {
+    case 'offset': return edit.phase === 'base' ? 'pickFirst' : 'offsetSide';
+    case 'fillet': return edit.phase === 'base' ? 'filletFirst' : 'filletSecond';
+    case 'scale': return edit.phase === 'base' ? 'basePoint' : edit.phase === 'ref' ? 'referencePoint' : 'scaleFactor';
+    case 'rotate': return edit.phase === 'base' ? 'basePoint' : 'rotateAngle';
+    case 'mirror': return edit.phase === 'base' ? 'basePoint' : 'mirrorAxis';
+    case 'arrayRect': return edit.phase === 'base' ? 'basePoint' : 'arrayCell';
+    case 'arrayPolar': return edit.phase === 'base' ? 'arrayCenter' : 'arraySweep';
+    default: return edit.phase === 'base' ? 'basePoint' : 'destination';
+  }
+}
+
 export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasStageProps) {
   const t = useTranslations('editor.canvas');
+  const te = useTranslations('editor.edit');
   const { ref, size } = useContainerSize();
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<Point | null>(null);
@@ -197,15 +231,31 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
   const pinchRef = useRef<{ distance: number; center: Point } | null>(null);
   const { zoom, pan } = state.viewport;
 
+  // Mirror of ``state`` for the persistent keydown listener: React batches
+  // reducer updates, so a fast second keystroke could otherwise hit a stale
+  // closure (e.g. re-running ``beginDraft`` instead of committing). The layout
+  // effect refreshes the ref synchronously at commit — before the next event.
+  const stateRef = useRef(state);
+  useLayoutEffect(() => {
+    stateRef.current = state;
+  });
+
+  /** Drop any half-typed numeric text — a click consumes or abandons it. */
+  const clearLengthBuffer = () => {
+    lengthInputRef.current = '';
+    setLengthInput('');
+  };
+
   const activeToolMode = state.tool === 'select' ? null : drawModeOf(state.tool);
 
   useEffect(() => {
-    const draft = state.draft;
-    const draftMode = draft && draft.tool !== 'select' ? drawModeOf(draft.tool) : null;
-    const activeDraft = draft && draftMode && draftMode !== 'point' ? draft : null;
-    const toolArmed = state.tool !== 'select';
-
     function handleLengthKeyDown(event: KeyboardEvent) {
+      const current = stateRef.current;
+      const draft = current.draft;
+      const draftMode = draft && draft.tool !== 'select' ? drawModeOf(draft.tool) : null;
+      const activeDraft = draft && draftMode && draftMode !== 'point' ? draft : null;
+      const toolArmed = current.tool !== 'select';
+      const editing = current.edit;
       const target = event.target as HTMLElement | null;
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
       const buffer = lengthInputRef.current;
@@ -213,6 +263,38 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
         lengthInputRef.current = value;
         setLengthInput(value);
       };
+      // An armed edit session owns the keyboard: numbers and point syntax go
+      // to its parameter slot, bare Enter advances the phase, Esc cancels.
+      if (editing) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          setBuffer('');
+          actions.cancelEdit();
+          return;
+        }
+        if (/^[0-9.<>x@-]$/.test(event.key) || event.key === ',') {
+          event.preventDefault();
+          setBuffer(`${buffer}${event.key}`);
+          return;
+        }
+        if (event.key === 'Backspace') {
+          if (buffer) {
+            event.preventDefault();
+            setBuffer(buffer.slice(0, -1));
+          }
+          return;
+        }
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          if (buffer) {
+            setBuffer('');
+            actions.editValue(buffer, displayUnit);
+          } else {
+            actions.editDone();
+          }
+        }
+        return;
+      }
       if (event.key === 'Escape') {
         event.preventDefault();
         setBuffer('');
@@ -263,9 +345,9 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
       // polyline, records the arc through-point, or commits the element.
       const advance = (point: Point) => {
         if (!activeDraft) {
-          if (!toolArmed || state.tool === 'select') return;
+          if (!toolArmed || current.tool === 'select') return;
           actions.beginDraft(point);
-          if (drawModeOf(state.tool) === 'point') actions.commitDraft();
+          if (drawModeOf(current.tool) === 'point') actions.commitDraft();
           return;
         }
         actions.updateDraft(point, true);
@@ -337,7 +419,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
 
     window.addEventListener('keydown', handleLengthKeyDown);
     return () => window.removeEventListener('keydown', handleLengthKeyDown);
-  }, [actions, displayUnit, state.draft, state.tool]);
+  }, [actions, displayUnit]);
 
   const visibleElements = useMemo(
     () => state.elements.filter((el) => isElementVisible(el, state.layers)),
@@ -400,6 +482,19 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     const stage = e.target.getStage();
     const pos = stage.getPointerPosition() as Point;
     const world = worldFromScreen(pos, pan, zoom);
+    if (state.edit) {
+      // Pick phase accepts a window/crossing drag on empty canvas; every
+      // other phase treats the click as a point pick with no element.
+      if (state.edit.phase === 'pick') {
+        setDragStart(world);
+        setDragEnd(world);
+        setDragging(true);
+        return;
+      }
+      clearLengthBuffer();
+      actions.editPick(world, null);
+      return;
+    }
     if (state.tool === 'select') {
       actions.clearSelection();
       setDragStart(world);
@@ -413,6 +508,15 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
       return;
     }
     advanceDraftClick(world);
+  }
+
+  function handleContextMenu(e: any) {
+    e.evt.preventDefault();
+    // Right-click confirms like Enter in AutoCAD.
+    if (state.edit) {
+      clearLengthBuffer();
+      actions.editDone();
+    }
   }
 
   function handleStageDoubleClick() {
@@ -430,6 +534,10 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
       setDragEnd(world);
       return;
     }
+    if (state.edit) {
+      actions.editCursor(world);
+      return;
+    }
     if (!state.draft) {
       if (activeToolMode === 'point') {
         actions.beginDraft(world);
@@ -445,42 +553,26 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     const dx = dragEnd.x - dragStart.x;
     const dy = dragEnd.y - dragStart.y;
     if (Math.hypot(dx, dy) > 5) {
-      const minX = Math.min(dragStart.x, dragEnd.x);
-      const minY = Math.min(dragStart.y, dragEnd.y);
-      const maxX = Math.max(dragStart.x, dragEnd.x);
-      const maxY = Math.max(dragStart.y, dragEnd.y);
+      const box = {
+        minX: Math.min(dragStart.x, dragEnd.x),
+        minY: Math.min(dragStart.y, dragEnd.y),
+        maxX: Math.max(dragStart.x, dragEnd.x),
+        maxY: Math.max(dragStart.y, dragEnd.y),
+      };
+      // AutoCAD convention: dragging left→right is a window (full
+      // containment), right→left is a crossing (anything touched).
+      const mode: BoxMode = dragEnd.x >= dragStart.x ? 'window' : 'crossing';
       const ids = visibleElements
-        .filter((el) => !isElementLocked(el, state.layers) && isInsideBox(el, minX, minY, maxX, maxY))
+        .filter((el) => !isElementLocked(el, state.layers) && elementInBox(el, box, mode))
         .map((el) => el.id);
-      if (ids.length) actions.selectMany(ids);
+      if (state.edit && state.edit.phase === 'pick') {
+        if (ids.length) actions.editPickMany(ids);
+      } else if (ids.length) {
+        actions.selectMany(ids);
+      }
     }
     setDragStart(null);
     setDragEnd(null);
-  }
-
-  function isInsideBox(el: ProjectElement, minX: number, minY: number, maxX: number, maxY: number): boolean {
-    const mode = drawMode(el);
-    const inside = (p: Point) => p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY;
-    if (mode === 'point') {
-      return inside({ x: el.x1, y: el.y1 });
-    }
-    if (mode === 'rect') {
-      const r = rectOf(el);
-      return r.x < maxX && r.x + r.w > minX && r.y < maxY && r.y + r.h > minY;
-    }
-    if (mode === 'center') {
-      const radius = (el.properties as { radius?: number }).radius ?? Math.abs(el.x2 - el.x1);
-      return el.x1 - radius < maxX && el.x1 + radius > minX && el.y1 - radius < maxY && el.y1 + radius > minY;
-    }
-    if (mode === 'poly') {
-      const points = (el.properties as { points?: Point[] }).points ?? [];
-      return points.some(inside) || inside({ x: el.x1, y: el.y1 }) || inside({ x: el.x2, y: el.y2 });
-    }
-    if (mode === 'arc') {
-      const props = (el as ArcElement).properties;
-      return inside({ x: el.x1, y: el.y1 }) || inside({ x: el.x2, y: el.y2 }) || inside(props.mid);
-    }
-    return inside({ x: el.x1, y: el.y1 }) || inside({ x: el.x2, y: el.y2 });
   }
 
   function touchPoints(event: TouchEvent): Point[] {
@@ -550,6 +642,15 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     if (isElementLocked(element, state.layers)) return;
     const id = element.id;
     e.cancelBubble = true;
+    // Inside an edit session every element click is a pick — targets for
+    // move/copy, the source for offset, or the victim for trim/extend.
+    if (state.edit) {
+      const stage = e.target.getStage();
+      const pos = stage.getPointerPosition() as Point;
+      clearLengthBuffer();
+      actions.editPick(worldFromScreen(pos, pan, zoom), element.id);
+      return;
+    }
     // With a multi-point tool armed, clicking on an existing element feeds its
     // snap targets into the draft (e.g. end a wall on another wall's face).
     if (activeToolMode && activeToolMode !== 'point' && activeToolMode !== 'rect') {
@@ -562,29 +663,32 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     if (state.tool !== 'select') actions.setTool('select');
   }
 
-  function handleElementDragEnd(e: any, element: ProjectElement) {
-    const position = e.target.position();
-    if (!position.x && !position.y) return;
+  /** Konva reports the dragged node's absolute position, so the real
+   *  displacement is ``position - anchor`` where ``anchor`` is whatever the
+   *  node was rendered at (``0,0`` for Line nodes with world-space points,
+   *  the center for Rect/Ellipse/Circle). */
+  function handleElementDragEnd(e: any, element: ProjectElement, anchor: Point) {
+    const position = e.target.position() as Point;
+    const dx = position.x - anchor.x;
+    const dy = position.y - anchor.y;
+    e.target.position(anchor);
+    if (!dx && !dy) return;
     actions.updateElement(element.id, {
-      x1: element.x1 + position.x,
-      y1: element.y1 + position.y,
-      x2: element.x2 + position.x,
-      y2: element.y2 + position.y,
+      x1: element.x1 + dx,
+      y1: element.y1 + dy,
+      x2: element.x2 + dx,
+      y2: element.y2 + dy,
     });
-    e.target.position({ x: 0, y: 0 });
   }
 
-  function handleEndpointDragEnd(e: any, element: ProjectElement, endpoint: 'start' | 'end') {
+  function handleGripDragEnd(e: any, element: ProjectElement, grip: Grip) {
     const rawPoint = e.target.position() as Point;
     const snap = element.element_type === 'wall'
       ? snapForWall(rawPoint, state.elements, zoom, 1, element.id)
       : snapToNearest(rawPoint, state.elements, zoom, 1, element.id);
-    const point = snap?.point ?? rawPoint;
-    const changes = endpoint === 'start'
-      ? { x1: point.x, y1: point.y }
-      : { x2: point.x, y2: point.y };
-    actions.updateElement(element.id, changes);
-    e.target.position({ x: 0, y: 0 });
+    const next = applyGrip(element, grip, snap?.point ?? rawPoint);
+    if (next !== element) actions.replaceElement(next);
+    e.target.position({ x: grip.point.x, y: grip.point.y });
   }
 
   const draftMeasurement = useMemo(() => {
@@ -637,6 +741,35 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     return { tool: draft.tool, point: draft.end, snap: draft.snap };
   }, [state.draft]);
 
+  // Ghost preview for the armed edit session: replaced elements render
+  // dashed cyan at their new geometry, clones dashed green, and the
+  // originals being transformed are dimmed underneath.
+  const editPreview = useMemo(
+    () => (state.edit ? previewEditOutcome(state.edit, visibleElements, hoverId) : null),
+    [state.edit, visibleElements, hoverId],
+  );
+  const dimmedIds = useMemo(() => new Set(editPreview?.movedIds ?? []), [editPreview]);
+  const pickedIds = useMemo(() => {
+    const edit = state.edit;
+    if (!edit) return new Set<string>();
+    const ids = edit.phase === 'pick' ? edit.ids : [];
+    return new Set(edit.pickedId ? [...ids, edit.pickedId] : ids);
+  }, [state.edit]);
+
+  const selectedGrips = useMemo(() => {
+    if (state.edit || state.readOnly || state.tool !== 'select') return [];
+    return visibleElements
+      .filter((el) => state.selectedIds.includes(el.id) && !isElementLocked(el, state.layers))
+      .flatMap((el) => gripsFor(el).map((grip) => ({ element: el, grip })));
+  }, [state.edit, state.readOnly, state.tool, state.selectedIds, state.layers, visibleElements]);
+
+  const dragBoxMode: BoxMode | null = dragging && dragStart && dragEnd
+    ? (dragEnd.x >= dragStart.x ? 'window' : 'crossing')
+    : null;
+
+  // The numeric buffer belongs to the active session/draft — it is wiped at
+  // every session click/key so stale digits never leak into the next flow.
+
   return (
     <div
       ref={ref}
@@ -667,6 +800,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
           onTouchMove={handleStageTouchMove}
           onTouchEnd={handleStageTouchEnd}
           onWheel={handleStageWheel}
+          onContextMenu={handleContextMenu}
           style={{ background: COLORS.canvas }}
         >
           <Layer>
@@ -682,18 +816,19 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
           </Layer>
           <Layer>
             {visibleElements.map((el) => {
-              const selected = state.selectedIds.includes(el.id);
+              const selected = state.selectedIds.includes(el.id) || pickedIds.has(el.id);
               const hovered = hoverId === el.id;
               const locked = isElementLocked(el, state.layers);
               const stroke = colorFor(el, selected, hovered, state.layers);
               const mode = drawMode(el);
+              const ghostDim = dimmedIds.has(el.id) ? 0.28 : 1;
               const interactive = {
                 onMouseDown: (e: any) => handleShapeClick(e, el),
                 onTouchStart: (e: any) => handleShapeClick(e, el),
                 onMouseEnter: () => setHoverId(el.id),
                 onMouseLeave: () => setHoverId(null),
               };
-              const draggable = state.tool === 'select' && selected && !locked && !state.readOnly;
+              const draggable = !state.edit && state.tool === 'select' && selected && !locked && !state.readOnly;
 
               if (el.element_type === 'column') {
                 const props = el.properties as { width: number; depth: number; diameter?: number; shape?: string };
@@ -706,9 +841,9 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                       y={el.y1}
                       radius={r}
                       fill={stroke}
-                      opacity={locked ? 0.45 : 0.9}
+                      opacity={(locked ? 0.45 : 0.9) * ghostDim}
                       draggable={draggable}
-                      onDragEnd={(e) => handleElementDragEnd(e, el)}
+                      onDragEnd={(e) => handleElementDragEnd(e, el, { x: el.x1, y: el.y1 })}
                       {...interactive}
                     />
                   );
@@ -726,9 +861,9 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                     offsetY={h / 2}
                     rotation={(el.rotation * 180) / Math.PI}
                     fill={stroke}
-                    opacity={locked ? 0.45 : 0.9}
+                    opacity={(locked ? 0.45 : 0.9) * ghostDim}
                     draggable={draggable}
-                    onDragEnd={(e) => handleElementDragEnd(e, el)}
+                    onDragEnd={(e) => handleElementDragEnd(e, el, { x: el.x1, y: el.y1 })}
                     {...interactive}
                   />
                 );
@@ -747,9 +882,9 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                       strokeWidth={2.5}
                       fill={selected ? 'rgba(34, 211, 238, 0.15)' : 'rgba(249, 115, 22, 0.12)'}
                       dash={[6, 3]}
-                      opacity={locked ? 0.45 : 1}
+                      opacity={(locked ? 0.45 : 1) * ghostDim}
                       draggable={draggable}
-                      onDragEnd={(e) => handleElementDragEnd(e, el)}
+                      onDragEnd={(e) => handleElementDragEnd(e, el, { x: el.x1, y: el.y1 })}
                       {...interactive}
                     />
                     <Line points={[el.x1 - arm, el.y1 - arm, el.x1 + arm, el.y1 + arm]} stroke={stroke} strokeWidth={1.5} listening={false} />
@@ -769,9 +904,9 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                     stroke={stroke}
                     strokeWidth={2}
                     fill={selected ? 'rgba(34, 211, 238, 0.10)' : undefined}
-                    opacity={locked ? 0.45 : 1}
+                    opacity={(locked ? 0.45 : 1) * ghostDim}
                     draggable={draggable}
-                    onDragEnd={(e) => handleElementDragEnd(e, el)}
+                    onDragEnd={(e) => handleElementDragEnd(e, el, { x: el.x1, y: el.y1 })}
                     hitStrokeWidth={12}
                     {...interactive}
                   />
@@ -791,9 +926,9 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                     strokeWidth={2}
                     lineCap="round"
                     lineJoin="round"
-                    opacity={locked ? 0.45 : 1}
+                    opacity={(locked ? 0.45 : 1) * ghostDim}
                     draggable={draggable}
-                    onDragEnd={(e) => handleElementDragEnd(e, el)}
+                    onDragEnd={(e) => handleElementDragEnd(e, el, { x: 0, y: 0 })}
                     hitStrokeWidth={12}
                     {...interactive}
                   />
@@ -812,9 +947,9 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                     strokeWidth={2}
                     lineCap="round"
                     lineJoin="round"
-                    opacity={locked ? 0.45 : 1}
+                    opacity={(locked ? 0.45 : 1) * ghostDim}
                     draggable={draggable}
-                    onDragEnd={(e) => handleElementDragEnd(e, el)}
+                    onDragEnd={(e) => handleElementDragEnd(e, el, { x: 0, y: 0 })}
                     hitStrokeWidth={12}
                     {...interactive}
                   />
@@ -828,14 +963,15 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                     key={el.id}
                     x={r.x + r.w / 2}
                     y={r.y + r.h / 2}
+                    rotation={(el.rotation * 180) / Math.PI}
                     radiusX={r.w / 2}
                     radiusY={r.h / 2}
                     stroke={stroke}
                     strokeWidth={2}
                     fill={selected ? 'rgba(34, 211, 238, 0.10)' : undefined}
-                    opacity={locked ? 0.45 : 1}
+                    opacity={(locked ? 0.45 : 1) * ghostDim}
                     draggable={draggable}
-                    onDragEnd={(e) => handleElementDragEnd(e, el)}
+                    onDragEnd={(e) => handleElementDragEnd(e, el, { x: r.x + r.w / 2, y: r.y + r.h / 2 })}
                     {...interactive}
                   />
                 );
@@ -843,30 +979,39 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
 
               if (el.element_type === 'hatch') {
                 const r = rectOf(el);
+                const cx = r.x + r.w / 2;
+                const cy = r.y + r.h / 2;
+                const deg = (el.rotation * 180) / Math.PI;
                 const hatch = el.properties as { pattern?: 'ansi31' | 'cross' | 'grid'; spacing?: number; angle?: number };
-                const segments = hatchSegments({ x: r.x, y: r.y, width: r.w, height: r.h }, hatch.pattern ?? 'ansi31', hatch.spacing ?? 35, hatch.angle ?? 45);
+                const segments = hatchSegments({ x: r.x, y: r.y, width: r.w, height: r.h }, hatch.pattern ?? 'ansi31', hatch.spacing ?? 35, hatch.angle ?? 45)
+                  .map((v, i) => (i % 2 === 0 ? v - cx : v - cy));
                 return (
                   <Fragment key={el.id}>
                     <Rect
-                      x={r.x}
-                      y={r.y}
+                      x={cx}
+                      y={cy}
                       width={r.w}
                       height={r.h}
+                      offsetX={r.w / 2}
+                      offsetY={r.h / 2}
+                      rotation={deg}
                       stroke={stroke}
                       strokeWidth={1.5}
                       fill={selected ? 'rgba(34, 211, 238, 0.08)' : 'rgba(100, 116, 139, 0.08)'}
-                      opacity={locked ? 0.45 : 1}
+                      opacity={(locked ? 0.45 : 1) * ghostDim}
                       draggable={draggable}
-                      onDragEnd={(e) => handleElementDragEnd(e, el)}
+                      onDragEnd={(e) => handleElementDragEnd(e, el, { x: cx, y: cy })}
                       {...interactive}
                     />
-                    <Line
-                      points={segments}
-                      stroke={stroke}
-                      strokeWidth={0.8}
-                      opacity={locked ? 0.3 : 0.85}
-                      listening={false}
-                    />
+                    <Group x={cx} y={cy} rotation={deg} listening={false}>
+                      <Line
+                        points={segments}
+                        stroke={stroke}
+                        strokeWidth={0.8}
+                        opacity={(locked ? 0.3 : 0.85) * ghostDim}
+                        listening={false}
+                      />
+                    </Group>
                   </Fragment>
                 );
               }
@@ -875,36 +1020,47 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 const r = rectOf(el);
                 const fill = fillFor(el);
                 const isOpening = el.element_type === 'opening';
+                const cx = r.x + r.w / 2;
+                const cy = r.y + r.h / 2;
+                const deg = (el.rotation * 180) / Math.PI;
                 return (
                   <Fragment key={el.id}>
                     <Rect
-                      x={r.x}
-                      y={r.y}
+                      x={cx}
+                      y={cy}
                       width={r.w}
                       height={r.h}
+                      offsetX={r.w / 2}
+                      offsetY={r.h / 2}
+                      rotation={deg}
                       fill={selected ? 'rgba(34, 211, 238, 0.14)' : fill ?? 'rgba(148, 163, 184, 0.12)'}
                       stroke={stroke}
                       strokeWidth={isOpening ? 1.5 : 2}
                       dash={isOpening || el.element_type === 'footing' ? [8, 4] : undefined}
-                      opacity={locked ? 0.45 : 1}
+                      opacity={(locked ? 0.45 : 1) * ghostDim}
                       draggable={draggable}
-                      onDragEnd={(e) => handleElementDragEnd(e, el)}
+                      onDragEnd={(e) => handleElementDragEnd(e, el, { x: cx, y: cy })}
                       {...interactive}
                     />
-                    {el.element_type === 'stair' && <StairDetails element={el} stroke={stroke} zoom={zoom} />}
-                    {el.element_type === 'ramp' && <RampArrow element={el} stroke={stroke} zoom={zoom} />}
-                    {isOpening && (
-                      <>
-                        <Line points={[r.x, r.y, r.x + r.w, r.y + r.h]} stroke={stroke} strokeWidth={1} opacity={0.6} listening={false} />
-                        <Line points={[r.x, r.y + r.h, r.x + r.w, r.y]} stroke={stroke} strokeWidth={1} opacity={0.6} listening={false} />
-                      </>
-                    )}
-                    {el.element_type === 'footing' && (
-                      <>
-                        <Line points={[r.x, r.y, r.x + r.w, r.y + r.h]} stroke={stroke} strokeWidth={1} dash={[4, 4]} opacity={0.5} listening={false} />
-                        <Line points={[r.x, r.y + r.h, r.x + r.w, r.y]} stroke={stroke} strokeWidth={1} dash={[4, 4]} opacity={0.5} listening={false} />
-                      </>
-                    )}
+                    {/* Inner details live in the rect's local frame: the group
+                        rotation reuses the element's ``rotation`` so steps,
+                        arrows and crosses follow the rotated outline. */}
+                    <Group x={cx} y={cy} rotation={deg} listening={false}>
+                      {el.element_type === 'stair' && <StairDetails element={el} stroke={stroke} zoom={zoom} origin={{ x: cx, y: cy }} />}
+                      {el.element_type === 'ramp' && <RampArrow element={el} stroke={stroke} zoom={zoom} origin={{ x: cx, y: cy }} />}
+                      {isOpening && (
+                        <>
+                          <Line points={[-r.w / 2, -r.h / 2, r.w / 2, r.h / 2]} stroke={stroke} strokeWidth={1} opacity={0.6} listening={false} />
+                          <Line points={[-r.w / 2, r.h / 2, r.w / 2, -r.h / 2]} stroke={stroke} strokeWidth={1} opacity={0.6} listening={false} />
+                        </>
+                      )}
+                      {el.element_type === 'footing' && (
+                        <>
+                          <Line points={[-r.w / 2, -r.h / 2, r.w / 2, r.h / 2]} stroke={stroke} strokeWidth={1} dash={[4, 4]} opacity={0.5} listening={false} />
+                          <Line points={[-r.w / 2, r.h / 2, r.w / 2, -r.h / 2]} stroke={stroke} strokeWidth={1} dash={[4, 4]} opacity={0.5} listening={false} />
+                        </>
+                      )}
+                    </Group>
                   </Fragment>
                 );
               }
@@ -919,9 +1075,9 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                   dash={style.dash}
                   lineCap="butt"
                   lineJoin="miter"
-                  opacity={locked ? 0.45 : 1}
+                  opacity={(locked ? 0.45 : 1) * ghostDim}
                   draggable={draggable}
-                  onDragEnd={(e) => handleElementDragEnd(e, el)}
+                  onDragEnd={(e) => handleElementDragEnd(e, el, { x: 0, y: 0 })}
                   hitStrokeWidth={Math.max(12, style.width)}
                   {...interactive}
                 />
@@ -994,33 +1150,26 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 listening={false}
               />
             ))}
-            {visibleElements.filter((el) => state.selectedIds.includes(el.id) && !isElementLocked(el, state.layers) && ['line', 'rect', 'arc'].includes(drawMode(el))).map((el) => (
-              <Fragment key={`handles-${el.id}`}>
-                <Circle
-                  key={`handle-start-${el.id}`}
-                  x={el.x1}
-                  y={el.y1}
-                  radius={7 / zoom}
-                  fill={COLORS.handleFill}
-                  stroke={COLORS.select}
-                  strokeWidth={2 / zoom}
-                  draggable={state.tool === 'select' && !state.readOnly}
-                  onMouseDown={(e) => { e.cancelBubble = true; }}
-                  onDragEnd={(e) => handleEndpointDragEnd(e, el, 'start')}
-                />
-                <Circle
-                  key={`handle-end-${el.id}`}
-                  x={el.x2}
-                  y={el.y2}
-                  radius={7 / zoom}
-                  fill={COLORS.handleFill}
-                  stroke={COLORS.select}
-                  strokeWidth={2 / zoom}
-                  draggable={state.tool === 'select' && !state.readOnly}
-                  onMouseDown={(e) => { e.cancelBubble = true; }}
-                  onDragEnd={(e) => handleEndpointDragEnd(e, el, 'end')}
-                />
-              </Fragment>
+            {/* AutoCAD-style grips: one square per defining point of each
+                selected element. Dragging a grip re-fits the element through
+                ``applyGrip`` (endpoints stretch, arc mids re-fit the circle,
+                rect corners reshape with the opposite corner anchored). */}
+            {selectedGrips.map(({ element, grip }) => (
+              <Rect
+                key={`grip-${element.id}-${grip.key}`}
+                x={grip.point.x}
+                y={grip.point.y}
+                width={10 / zoom}
+                height={10 / zoom}
+                offsetX={5 / zoom}
+                offsetY={5 / zoom}
+                fill={COLORS.handleFill}
+                stroke={COLORS.select}
+                strokeWidth={1.5 / zoom}
+                draggable
+                onMouseDown={(e) => { e.cancelBubble = true; }}
+                onDragEnd={(e) => handleGripDragEnd(e, element, grip)}
+              />
             ))}
             {state.draft && state.draft.tool !== 'select' && drawModeOf(state.draft.tool) === 'line' && (
               <>
@@ -1190,27 +1339,104 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 <Text text={draftMeasurement.text} fontSize={12} fill="#f8fafc" padding={6} />
               </Label>
             )}
+            {/* Edit-session ghosts: transformed elements in cyan, new clones
+                (copy / offset / array / fillet arc) in green. */}
+            {editPreview?.replaced.map((ghost, index) =>
+              outlineSegments(ghost).map(([a, b], seg) => (
+                <Line
+                  key={`ghost-edit-${index}-${seg}`}
+                  points={[a.x, a.y, b.x, b.y]}
+                  stroke={COLORS.select}
+                  strokeWidth={1.5 / zoom}
+                  dash={[6 / zoom, 4 / zoom]}
+                  opacity={0.85}
+                  listening={false}
+                />
+              )),
+            )}
+            {editPreview?.added.map((ghost, index) =>
+              outlineSegments(ghost).map(([a, b], seg) => (
+                <Line
+                  key={`ghost-add-${index}-${seg}`}
+                  points={[a.x, a.y, b.x, b.y]}
+                  stroke="#4ade80"
+                  strokeWidth={1.5 / zoom}
+                  dash={[6 / zoom, 4 / zoom]}
+                  opacity={0.85}
+                  listening={false}
+                />
+              )),
+            )}
+            {/* Session markers: base point anchor, rubber line to the cursor
+                and the shared snap ring. */}
+            {state.edit?.base && (
+              <Circle x={state.edit.base.x} y={state.edit.base.y} radius={5 / zoom} fill={COLORS.select} listening={false} />
+            )}
+            {state.edit?.ref && state.edit.phase === 'target' && (
+              <Circle x={state.edit.ref.x} y={state.edit.ref.y} radius={4 / zoom} fill="none" stroke={COLORS.select} strokeWidth={1.5 / zoom} listening={false} />
+            )}
+            {state.edit?.base && state.edit.cursor && (
+              <Line
+                points={[state.edit.base.x, state.edit.base.y, state.edit.cursor.x, state.edit.cursor.y]}
+                stroke={COLORS.select}
+                strokeWidth={1 / zoom}
+                dash={[4 / zoom, 4 / zoom]}
+                opacity={0.6}
+                listening={false}
+              />
+            )}
+            {state.edit?.snap && (
+              <Circle
+                x={state.edit.snap.point.x}
+                y={state.edit.snap.point.y}
+                radius={8 / zoom}
+                fill="transparent"
+                stroke={COLORS.select}
+                strokeWidth={2 / zoom}
+                listening={false}
+              />
+            )}
             {dragging && dragStart && dragEnd && (
               <Rect
                 x={Math.min(dragStart.x, dragEnd.x)}
                 y={Math.min(dragStart.y, dragEnd.y)}
                 width={Math.abs(dragEnd.x - dragStart.x)}
                 height={Math.abs(dragEnd.y - dragStart.y)}
-                fill="rgba(34, 211, 238, 0.08)"
-                stroke={COLORS.select}
+                fill={dragBoxMode === 'crossing' ? 'rgba(74, 222, 128, 0.10)' : 'rgba(34, 211, 238, 0.08)'}
+                stroke={dragBoxMode === 'crossing' ? '#4ade80' : COLORS.select}
                 strokeWidth={1 / zoom}
+                dash={dragBoxMode === 'crossing' ? [6 / zoom, 4 / zoom] : undefined}
                 listening={false}
               />
             )}
           </Layer>
         </Stage>
       )}
+      {state.edit && (
+        <div
+          data-testid="edit-prompt"
+          className="pointer-events-none absolute bottom-4 left-4 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/90 px-3 py-2 text-xs shadow-lg"
+        >
+          <span className="font-semibold uppercase tracking-wide text-cyan-300">
+            {te(`ops.${state.edit.op}`)}
+          </span>
+          <span className="text-slate-400">{te(`prompt.${editPromptKey(state.edit)}`)}</span>
+          {lengthInput && (
+            <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-cyan-200">{lengthInput}</span>
+          )}
+          {state.edit.phase === 'pick' && state.edit.ids.length > 0 && (
+            <span className="rounded bg-cyan-950 px-1.5 py-0.5 text-cyan-300">{state.edit.ids.length}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function StairDetails({ element, stroke, zoom }: { element: ProjectElement; stroke: string; zoom: number }) {
+function StairDetails({ element, stroke, zoom, origin }: { element: ProjectElement; stroke: string; zoom: number; origin: Point }) {
   const r = rectOf(element);
+  const ox = origin.x;
+  const oy = origin.y;
   const props = element.properties as { run_axis?: 'x' | 'y'; step_count?: number };
   const runAxis = props.run_axis ?? (r.w >= r.h ? 'x' : 'y');
   const steps = Math.max(2, Math.min(30, props.step_count ?? 10));
@@ -1218,19 +1444,19 @@ function StairDetails({ element, stroke, zoom }: { element: ProjectElement; stro
   for (let i = 1; i < steps; i += 1) {
     const f = i / steps;
     if (runAxis === 'x') {
-      const x = r.x + r.w * f;
-      lines.push(<Line key={i} points={[x, r.y, x, r.y + r.h]} stroke={stroke} strokeWidth={1 / Math.max(zoom, 0.5)} opacity={0.7} listening={false} />);
+      const x = r.x + r.w * f - ox;
+      lines.push(<Line key={i} points={[x, r.y - oy, x, r.y + r.h - oy]} stroke={stroke} strokeWidth={1 / Math.max(zoom, 0.5)} opacity={0.7} listening={false} />);
     } else {
-      const y = r.y + r.h * f;
-      lines.push(<Line key={i} points={[r.x, y, r.x + r.w, y]} stroke={stroke} strokeWidth={1 / Math.max(zoom, 0.5)} opacity={0.7} listening={false} />);
+      const y = r.y + r.h * f - oy;
+      lines.push(<Line key={i} points={[r.x - ox, y, r.x + r.w - ox, y]} stroke={stroke} strokeWidth={1 / Math.max(zoom, 0.5)} opacity={0.7} listening={false} />);
     }
   }
   // Direction arrow along the run axis.
-  const cx = r.x + r.w / 2;
-  const cy = r.y + r.h / 2;
+  const cx = r.x + r.w / 2 - ox;
+  const cy = r.y + r.h / 2 - oy;
   const arrow = runAxis === 'x'
-    ? [r.x + r.w * 0.15, cy, r.x + r.w * 0.85, cy]
-    : [cx, r.y + r.h * 0.15, cx, r.y + r.h * 0.85];
+    ? [r.x + r.w * 0.15 - ox, cy, r.x + r.w * 0.85 - ox, cy]
+    : [cx, r.y + r.h * 0.15 - oy, cx, r.y + r.h * 0.85 - oy];
   return (
     <>
       {lines}
@@ -1239,15 +1465,17 @@ function StairDetails({ element, stroke, zoom }: { element: ProjectElement; stro
   );
 }
 
-function RampArrow({ element, stroke, zoom }: { element: ProjectElement; stroke: string; zoom: number }) {
+function RampArrow({ element, stroke, zoom, origin }: { element: ProjectElement; stroke: string; zoom: number; origin: Point }) {
   const r = rectOf(element);
-  const cx = r.x + r.w / 2;
-  const cy = r.y + r.h / 2;
+  const ox = origin.x;
+  const oy = origin.y;
+  const cx = r.x + r.w / 2 - ox;
+  const cy = r.y + r.h / 2 - oy;
   const alongX = r.w >= r.h;
   const line = alongX
-    ? [r.x + r.w * 0.15, cy, r.x + r.w * 0.8, cy]
-    : [cx, r.y + r.h * 0.15, cx, r.y + r.h * 0.8];
-  const tip = alongX ? { x: r.x + r.w * 0.8, y: cy } : { x: cx, y: r.y + r.h * 0.8 };
+    ? [r.x + r.w * 0.15 - ox, cy, r.x + r.w * 0.8 - ox, cy]
+    : [cx, r.y + r.h * 0.15 - oy, cx, r.y + r.h * 0.8 - oy];
+  const tip = alongX ? { x: r.x + r.w * 0.8 - ox, y: cy } : { x: cx, y: r.y + r.h * 0.8 - oy };
   const headSize = Math.min(14, r.w * 0.08);
   const head = alongX
     ? [tip.x - headSize, tip.y - headSize * 0.6, tip.x, tip.y, tip.x - headSize, tip.y + headSize * 0.6]
@@ -1258,8 +1486,8 @@ function RampArrow({ element, stroke, zoom }: { element: ProjectElement; stroke:
       <Line points={head} stroke={stroke} strokeWidth={1.5} listening={false} />
       <Text
         text={`${(element.properties as { slope_percent?: number }).slope_percent ?? 0}%`}
-        x={alongX ? r.x + r.w * 0.15 : r.x + 6}
-        y={alongX ? r.y + 6 : r.y + r.h * 0.15}
+        x={alongX ? r.x + r.w * 0.15 - ox : r.x + 6 - ox}
+        y={alongX ? r.y + 6 - oy : r.y + r.h * 0.15 - oy}
         fontSize={Math.max(10, 12 / Math.max(zoom, 0.5))}
         fill={stroke}
         listening={false}

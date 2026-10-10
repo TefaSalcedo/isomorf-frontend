@@ -40,8 +40,20 @@ import {
   Ellipse,
   RectangleHorizontal,
   Hash,
+  Move,
+  Copy,
+  RotateCw,
+  UnfoldHorizontal,
+  Scaling,
+  Grid3x3,
+  Orbit,
+  CopyPlus,
+  Scissors,
+  ArrowRightToLine,
+  Radius,
 } from 'lucide-react';
 import type { EditorState, Tool, ActiveSection } from '@/hooks/use-editor-state';
+import type { EditOp } from '@/lib/editor/edit-ops';
 import type { LoadType } from '@/types/structural-load';
 import type { EditorView } from '@/lib/editor/commands';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -113,6 +125,22 @@ const TOOL_GROUPS: { id: string; tools: ToolEntry[] }[] = [
   },
 ];
 
+/** Week 9 modify suite. Keys double as the AutoCAD-style aliases shown in
+ *  tooltips so users learn the keyboard workflow from the buttons. */
+const MODIFY_TOOLS: { op: EditOp; icon: typeof Move; alias: string }[] = [
+  { op: 'move', icon: Move, alias: 'M' },
+  { op: 'copy', icon: Copy, alias: 'CO' },
+  { op: 'rotate', icon: RotateCw, alias: 'RO' },
+  { op: 'mirror', icon: UnfoldHorizontal, alias: 'MI' },
+  { op: 'scale', icon: Scaling, alias: 'SC' },
+  { op: 'arrayRect', icon: Grid3x3, alias: 'AR' },
+  { op: 'arrayPolar', icon: Orbit, alias: 'AR-P' },
+  { op: 'offset', icon: CopyPlus, alias: 'O' },
+  { op: 'trim', icon: Scissors, alias: 'TR' },
+  { op: 'extend', icon: ArrowRightToLine, alias: 'EX' },
+  { op: 'fillet', icon: Radius, alias: 'F' },
+];
+
 const LOAD_TOOLS: { type: LoadType; icon: typeof ArrowDown; className: string }[] = [
   { type: 'dead', icon: ArrowDown, className: 'bg-slate-800 text-slate-300' },
   { type: 'live', icon: ArrowDown, className: 'bg-blue-950 text-blue-400' },
@@ -135,7 +163,7 @@ export function EditorSidebar({
   onOpenPalette,
 }: {
   state: EditorState;
-  actions: { setSection: (section: ActiveSection) => void; setTool: (tool: Tool) => void };
+  actions: { setSection: (section: ActiveSection) => void; setTool: (tool: Tool) => void; armEdit: (op: EditOp) => void };
   view: EditorView;
   onOpenLoads: () => void;
   compact?: boolean;
@@ -186,12 +214,17 @@ export function EditorSidebar({
   );
 }
 
-function TwoDSidebar({ state, tool, actions: rawActions, activeSection, readOnly, onOpenPalette }: { state: EditorState; tool: Tool; actions: { setTool: (tool: Tool) => void; onClose?: () => void }; activeSection: ActiveSection; readOnly?: boolean; onOpenPalette?: () => void }) {
+function TwoDSidebar({ state, tool, actions: rawActions, activeSection, readOnly, onOpenPalette }: { state: EditorState; tool: Tool; actions: { setTool: (tool: Tool) => void; armEdit: (op: EditOp) => void; onClose?: () => void }; activeSection: ActiveSection; readOnly?: boolean; onOpenPalette?: () => void }) {
   const t = useTranslations('editor.sidebar');
   const tt = useTranslations('editor.tools');
+  const te = useTranslations('editor.edit');
   const actions = {
     setTool: (nextTool: Tool) => {
       rawActions.setTool(nextTool);
+      rawActions.onClose?.();
+    },
+    armEdit: (op: EditOp) => {
+      rawActions.armEdit(op);
       rawActions.onClose?.();
     },
   };
@@ -221,6 +254,13 @@ function TwoDSidebar({ state, tool, actions: rawActions, activeSection, readOnly
           </div>
         </SidebarSection>
       ))}
+      <SidebarSection title={t('toolGroups.modify')}>
+        <div className="grid grid-cols-3 gap-1.5">
+          {MODIFY_TOOLS.map(({ op, icon: Icon, alias }) => (
+            <ToolButton key={op} icon={Icon} label={`${te(`ops.${op}`)} · ${alias}`} active={state.edit?.op === op} disabled={readOnly} onClick={() => actions.armEdit(op)} />
+          ))}
+        </div>
+      </SidebarSection>
       {activeSection === 'calculations' && <p className="mt-4 text-xs text-slate-500">{t('calculationsHint')}</p>}
       {state.error && <p className="mt-4 rounded-lg bg-red-950/60 p-2 text-xs text-red-300" role="alert">{state.error}</p>}
     </>

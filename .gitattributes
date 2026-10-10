@@ -1,0 +1,3 @@
+# GitHub Linguist: keep generated/design artifacts out of language stats
+docs/design/** linguist-documentation
+docs/screenshots/** linguist-documentation
