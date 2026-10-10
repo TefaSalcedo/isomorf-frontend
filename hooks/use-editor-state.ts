@@ -42,8 +42,22 @@ import {
   pointsEqual,
   polarSnapPoint,
   resolveTJoin,
+  toRadians,
 } from '@/lib/editor/geometry';
 import { calculateSelectionSummary } from '@/lib/editor/calculations';
+import {
+  applyTransform,
+  bestExtend,
+  bestTrim,
+  CUTTER_OPS,
+  filletLines,
+  offsetElement,
+  PICK_FIRST_OPS,
+  type EditOp,
+  type EditRequest,
+} from '@/lib/editor/edit-ops';
+import { parsePointInput, resolvePoint } from '@/lib/editor/coords';
+import { displayToCm, type DisplayUnit } from '@/lib/editor/units';
 import { createLayer, defaultLayerFor, ensureLayers, isElementLocked } from '@/lib/editor/layers';
 import { useLocale } from '@/lib/i18n/locale-context';
 import type { Locale } from '@/lib/i18n/messages';
@@ -77,11 +91,21 @@ export type DraftState = {
   polar: boolean;
 };
 
+/** Interactive edit session (roadmap week 9): a small state machine on top
+ *  of the element list — pick targets → base point → target point → commit.
+ *  The pure math lives in ``lib/editor/edit-ops.ts``; this state only holds
+ *  where the user is inside that flow. */
+export type EditSession = EditRequest & {
+  /** Live snap marker under the cursor, like the draft's snap ring. */
+  snap: SnapResult | null;
+};
+
 export type EditorState = {
   elements: ProjectElement[];
   tool: Tool;
   selectedIds: string[];
   draft: DraftState | null;
+  edit: EditSession | null;
   viewport: { zoom: number; pan: Point };
   showGrid: boolean;
   snapEnabled: boolean;
@@ -120,6 +144,14 @@ export type EditorAction =
   | { type: 'extendDraft' }
   | { type: 'commitDraft'; close?: boolean }
   | { type: 'cancelDraft' }
+  | { type: 'armEdit'; op: EditOp }
+  | { type: 'editCursor'; point: Point }
+  | { type: 'editPick'; point: Point; elementId?: string | null; exact?: boolean }
+  | { type: 'editPickMany'; ids: string[] }
+  | { type: 'editDone' }
+  | { type: 'editValue'; text: string; unit: DisplayUnit }
+  | { type: 'cancelEdit' }
+  | { type: 'replaceElement'; element: ProjectElement }
   | { type: 'updateElement'; id: string; changes: Partial<ProjectElement> }
   | { type: 'updateMany'; ids: string[]; changes: Partial<ProjectElement> }
   | { type: 'deleteSelection' }
@@ -199,8 +231,9 @@ function normalizeRectCorners<T extends ProjectElement>(el: T): T {
   const minY = Math.min(el.y1, el.y2);
   const maxX = Math.max(el.x1, el.x2);
   const maxY = Math.max(el.y1, el.y2);
-  if (el.x1 === minX && el.y1 === minY && el.x2 === maxX && el.y2 === maxY && el.rotation === 0) return el;
-  return { ...el, x1: minX, y1: minY, x2: maxX, y2: maxY, length: Math.max(1, maxX - minX), rotation: 0 };
+  // ``rotation`` lives on the bbox center and must survive corner swaps.
+  if (el.x1 === minX && el.y1 === minY && el.x2 === maxX && el.y2 === maxY) return el;
+  return { ...el, x1: minX, y1: minY, x2: maxX, y2: maxY, length: Math.max(1, maxX - minX) };
 }
 
 function wallNeedsJoinRecompute(
@@ -345,6 +378,52 @@ function withLayer(element: ProjectElement, layerId: string): ProjectElement {
   return { ...element, properties: { ...element.properties, layer_id: layerId } } as ProjectElement;
 }
 
+/* ------------------------------------------------------------------ */
+/* Edit sessions (week 9)                                               */
+/* ------------------------------------------------------------------ */
+
+function editableSelection(state: EditorState): string[] {
+  const wanted = new Set(state.selectedIds);
+  return state.elements
+    .filter((el) => wanted.has(el.id) && !isElementLocked(el, state.layers))
+    .map((el) => el.id);
+}
+
+function newEditSession(op: EditOp): EditSession {
+  return {
+    op,
+    phase: 'pick',
+    ids: [],
+    base: null,
+    ref: null,
+    cursor: null,
+    pickedId: null,
+    value: null,
+    angle: null,
+    rows: 2,
+    cols: 2,
+    count: 6,
+    fill: null,
+    snap: null,
+  };
+}
+
+/** Swap edited elements in and append clones — one document change, one
+ *  dirty flag; persistence rides the existing PUT + revision flow. */
+function commitEdits(state: EditorState, replaced: ProjectElement[], added: ProjectElement[]): EditorState {
+  const byId = new Map(replaced.map((el) => [el.id, el]));
+  const elements = state.elements.map((el) => byId.get(el.id) ?? el).concat(added);
+  return { ...state, elements, dirty: true };
+}
+
+/** Cursor point with object snapping applied (edit sessions share the draw
+ *  tools' snap behaviour). ``exact`` bypasses snapping for typed input. */
+function editSnapPoint(state: EditorState, point: Point, exact?: boolean): { point: Point; snap: SnapResult | null } {
+  if (exact || !state.snapEnabled) return { point, snap: null };
+  const snap = snapToNearest(point, state.elements, state.viewport.zoom, WORLD_PER_PIXEL);
+  return { point: snap?.point ?? point, snap };
+}
+
 function dedupePoints(points: Point[]): Point[] {
   return points.filter((p, i) => i === 0 || !pointsEqual(p, points[i - 1]));
 }
@@ -433,6 +512,13 @@ const MUTATING_ACTIONS: ReadonlySet<EditorAction['type']> = new Set([
   'extendDraft',
   'commitDraft',
   'cancelDraft',
+  'armEdit',
+  'editPick',
+  'editPickMany',
+  'editDone',
+  'editValue',
+  'cancelEdit',
+  'replaceElement',
   'updateElement',
   'updateMany',
   'deleteSelection',
@@ -455,6 +541,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         activeLayerId: layers[0].id,
         selectedIds: [],
         draft: null,
+        edit: null,
         dirty: false,
         readOnly: action.project.access_role === 'viewer',
         revision: action.project.current_revision ?? 0,
@@ -464,7 +551,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     }
     case 'setTool':
       if (state.readOnly && action.tool !== 'select') return state;
-      return { ...state, tool: action.tool, draft: null };
+      return { ...state, tool: action.tool, draft: null, edit: null };
     case 'setSection':
       return { ...state, activeSection: action.section };
     case 'select': {
@@ -680,6 +767,226 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     }
     case 'cancelDraft':
       return { ...state, draft: null };
+    case 'armEdit': {
+      const session = newEditSession(action.op);
+      if (CUTTER_OPS.has(action.op)) {
+        const cutters = editableSelection(state);
+        return {
+          ...state,
+          draft: null,
+          tool: 'select',
+          edit: { ...session, ids: cutters, phase: cutters.length ? 'apply' : 'pick' },
+        };
+      }
+      if (PICK_FIRST_OPS.has(action.op)) {
+        return { ...state, draft: null, tool: 'select', edit: { ...session, phase: 'base' } };
+      }
+      const targets = editableSelection(state);
+      return {
+        ...state,
+        draft: null,
+        tool: 'select',
+        edit: { ...session, ids: targets, phase: targets.length ? 'base' : 'pick' },
+      };
+    }
+    case 'editCursor': {
+      const edit = state.edit;
+      if (!edit) return state;
+      const { point, snap } = editSnapPoint(state, action.point);
+      return { ...state, edit: { ...edit, cursor: point, snap } };
+    }
+    case 'editPick': {
+      const edit = state.edit;
+      if (!edit) return state;
+      const { point, snap } = editSnapPoint(state, action.point, action.exact);
+      const clicked = action.elementId
+        ? state.elements.find((el) => el.id === action.elementId) ?? null
+        : null;
+      if (clicked && isElementLocked(clicked, state.layers)) return state;
+      const touched: EditSession = { ...edit, cursor: point, snap };
+
+      switch (edit.phase) {
+        case 'pick': {
+          if (!clicked) return { ...state, edit: touched };
+          const has = edit.ids.includes(clicked.id);
+          const ids = has ? edit.ids.filter((id) => id !== clicked.id) : [...edit.ids, clicked.id];
+          return { ...state, edit: { ...touched, ids } };
+        }
+        case 'base': {
+          if (edit.op === 'offset' || edit.op === 'fillet') {
+            if (!clicked || (edit.op === 'fillet' && drawModeOf(clicked.element_type) !== 'line')) {
+              return { ...state, edit: touched };
+            }
+            return { ...state, edit: { ...touched, pickedId: clicked.id, phase: 'target' } };
+          }
+          return { ...state, edit: { ...touched, base: point, phase: edit.op === 'scale' ? 'ref' : 'target' } };
+        }
+        case 'ref': {
+          if (edit.base && distance(point, edit.base) < 1e-6) return { ...state, edit: touched };
+          return { ...state, edit: { ...touched, ref: point, phase: 'target' } };
+        }
+        case 'target': {
+          if (edit.op === 'fillet') {
+            if (!clicked || clicked.id === edit.pickedId || drawModeOf(clicked.element_type) !== 'line') {
+              return { ...state, edit: touched };
+            }
+            const first = state.elements.find((el) => el.id === edit.pickedId);
+            if (!first) return { ...state, edit: null };
+            const result = filletLines(first, clicked, edit.value ?? 0);
+            if (!result) return { ...state, edit: { ...touched, phase: 'base', pickedId: null } };
+            const sourceLayer = (first.properties as { layer_id?: string | null }).layer_id;
+            const additions = result.arc ? [withLayer(result.arc, sourceLayer ?? state.activeLayerId)] : [];
+            const committed = commitEdits(state, [result.a, result.b], additions);
+            return { ...committed, edit: { ...touched, phase: 'base', pickedId: null } };
+          }
+          if (edit.op === 'offset') {
+            const source = state.elements.find((el) => el.id === edit.pickedId);
+            if (!source) return { ...state, edit: null };
+            const copy = offsetElement(source, point, edit.value ?? undefined);
+            if (!copy) return { ...state, edit: touched };
+            const committed = commitEdits(state, [], [copy]);
+            return { ...committed, edit: touched };
+          }
+          const outcome = applyTransform(touched, state.elements);
+          if (!outcome || (!outcome.replaced.length && !outcome.added.length)) {
+            return { ...state, edit: touched };
+          }
+          const committed = commitEdits(state, outcome.replaced, outcome.added);
+          // COPY stays armed for repeated placements, like AutoCAD.
+          if (edit.op === 'copy') return { ...committed, edit: touched };
+          return { ...committed, edit: null };
+        }
+        case 'apply': {
+          if (!clicked || edit.ids.includes(clicked.id)) return { ...state, edit: touched };
+          const partners = state.elements.filter((el) => edit.ids.includes(el.id));
+          const result = edit.op === 'trim' ? bestTrim(clicked, partners, point) : bestExtend(clicked, partners, point);
+          if (!result) return { ...state, edit: touched };
+          return { ...state, elements: replaceInArray(state.elements, clicked.id, result), dirty: true, edit: touched };
+        }
+        default:
+          return state;
+      }
+    }
+    case 'editPickMany': {
+      const edit = state.edit;
+      if (!edit || edit.phase !== 'pick') return state;
+      const allowed = new Set(
+        state.elements.filter((el) => !isElementLocked(el, state.layers)).map((el) => el.id),
+      );
+      const ids = [...edit.ids];
+      for (const id of action.ids) {
+        if (allowed.has(id) && !ids.includes(id)) ids.push(id);
+      }
+      return { ...state, edit: { ...edit, ids } };
+    }
+    case 'editDone': {
+      const edit = state.edit;
+      if (!edit) return state;
+      if (edit.phase === 'pick') {
+        if (!edit.ids.length) return { ...state, edit: null };
+        return { ...state, edit: { ...edit, phase: CUTTER_OPS.has(edit.op) ? 'apply' : 'base' } };
+      }
+      return { ...state, edit: null };
+    }
+    case 'editValue': {
+      const edit = state.edit;
+      if (!edit) return state;
+      const text = action.text.trim().replace(/\s+/g, '');
+      if (!text) return state;
+      const sizeMatch = text.match(/^(-?\d+(?:\.\d+)?)[x×](-?\d+(?:\.\d+)?)$/i);
+      const numberMatch = /^-?\d+(?:\.\d+)?$/.test(text);
+
+      // Arrays take grid/fill parameters typed before the point clicks.
+      if (edit.op === 'arrayRect' && sizeMatch) {
+        return {
+          ...state,
+          edit: {
+            ...edit,
+            rows: Math.max(1, Math.round(Number(sizeMatch[1]))),
+            cols: Math.max(1, Math.round(Number(sizeMatch[2]))),
+          },
+        };
+      }
+      if (edit.op === 'arrayPolar') {
+        // Both ``NxD`` and ``N<D`` carry count + fill angle for a polar array.
+        const countAngle = sizeMatch ?? text.match(/^(\d+(?:\.\d+)?)<(-?\d+(?:\.\d+)?)$/);
+        if (countAngle) {
+          return {
+            ...state,
+            edit: {
+              ...edit,
+              count: Math.max(2, Math.round(Number(countAngle[1]))),
+              fill: toRadians(Number(countAngle[2])),
+            },
+          };
+        }
+        if (numberMatch) {
+          return { ...state, edit: { ...edit, count: Math.max(2, Math.round(Number(text))) } };
+        }
+      }
+      if (numberMatch) {
+        const numeric = Number(text);
+        if (edit.op === 'rotate' && edit.base) {
+          const outcome = applyTransform({ ...edit, angle: toRadians(numeric) }, state.elements);
+          if (outcome && outcome.replaced.length) {
+            return { ...commitEdits(state, outcome.replaced, outcome.added), edit: null };
+          }
+          return state;
+        }
+        if (edit.op === 'scale' && edit.base && numeric > 0) {
+          const outcome = applyTransform({ ...edit, value: numeric }, state.elements);
+          if (outcome && outcome.replaced.length) {
+            return { ...commitEdits(state, outcome.replaced, outcome.added), edit: null };
+          }
+          return state;
+        }
+        if (edit.op === 'offset' || edit.op === 'fillet') {
+          return { ...state, edit: { ...edit, value: displayToCm(numeric, action.unit) } };
+        }
+        if ((edit.op === 'move' || edit.op === 'copy') && edit.base && edit.cursor) {
+          // Direct-distance entry: a bare number displaces along the cursor.
+          const d = distance(edit.base, edit.cursor);
+          if (d < 1e-6) return state;
+          const gap = displayToCm(numeric, action.unit);
+          const point = {
+            x: edit.base.x + ((edit.cursor.x - edit.base.x) / d) * gap,
+            y: edit.base.y + ((edit.cursor.y - edit.base.y) / d) * gap,
+          };
+          const outcome = applyTransform({ ...edit, cursor: point }, state.elements);
+          if (!outcome || (!outcome.replaced.length && !outcome.added.length)) return state;
+          const committed = commitEdits(state, outcome.replaced, outcome.added);
+          if (edit.op === 'copy') return { ...committed, edit };
+          return { ...committed, edit: null };
+        }
+      }
+      // Coordinate input resolves to a pick at an exact (unsnapped) point.
+      const command = parsePointInput(text);
+      if (command && (command.kind === 'absolute' || command.kind === 'relative' || command.kind === 'polar')) {
+        const origin = edit.base ?? edit.cursor ?? { x: 0, y: 0 };
+        const point = resolvePoint(command, origin, action.unit);
+        return editorReducer(state, { type: 'editPick', point, elementId: null, exact: true });
+      }
+      return state;
+    }
+    case 'cancelEdit':
+      return { ...state, edit: null };
+    case 'replaceElement': {
+      const previous = state.elements.find((el) => el.id === action.element.id);
+      if (!previous || isElementLocked(previous, state.layers)) return state;
+      const oldStart = { x: previous.x1, y: previous.y1 };
+      const oldEnd = { x: previous.x2, y: previous.y2 };
+      let elements = replaceInArray(state.elements, previous.id, action.element);
+      // Line-mode endpoint grips keep the shared-endpoint propagation the
+      // old circular handles provided.
+      if (drawModeOf(previous.element_type) === 'line') {
+        const newStart = { x: action.element.x1, y: action.element.y1 };
+        const newEnd = { x: action.element.x2, y: action.element.y2 };
+        if (!pointsEqual(oldStart, newStart) || !pointsEqual(oldEnd, newEnd)) {
+          elements = propagateEndpointChange(elements, previous.id, oldStart, oldEnd, newStart, newEnd);
+        }
+      }
+      return { ...state, elements, dirty: true };
+    }
     case 'updateElement': {
       const el = state.elements.find((e) => e.id === action.id);
       if (!el) return state;
@@ -751,6 +1058,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         activeLayerId: activeLayerStillExists ? state.activeLayerId : layers[0].id,
         selectedIds: [],
         draft: null,
+        edit: null,
         revision: action.revision,
         headRevision: action.headRevision,
         historyBusy: false,
@@ -782,6 +1090,7 @@ const initialState: EditorState = {
   tool: 'select',
   selectedIds: [],
   draft: null,
+  edit: null,
   viewport: { zoom: 1, pan: { x: 0, y: 0 } },
   showGrid: false,
   snapEnabled: true,
@@ -833,6 +1142,15 @@ export function useEditorState(project: Project) {
       extendDraft: () => dispatch({ type: 'extendDraft' }),
       commitDraft: (close?: boolean) => dispatch({ type: 'commitDraft', close }),
       cancelDraft: () => dispatch({ type: 'cancelDraft' }),
+      armEdit: (op: EditOp) => dispatch({ type: 'armEdit', op }),
+      editCursor: (point: Point) => dispatch({ type: 'editCursor', point }),
+      editPick: (point: Point, elementId?: string | null, exact?: boolean) =>
+        dispatch({ type: 'editPick', point, elementId, exact }),
+      editPickMany: (ids: string[]) => dispatch({ type: 'editPickMany', ids }),
+      editDone: () => dispatch({ type: 'editDone' }),
+      editValue: (text: string, unit: DisplayUnit) => dispatch({ type: 'editValue', text, unit }),
+      cancelEdit: () => dispatch({ type: 'cancelEdit' }),
+      replaceElement: (element: ProjectElement) => dispatch({ type: 'replaceElement', element }),
       updateElement: (id: string, changes: Partial<ProjectElement>) => dispatch({ type: 'updateElement', id, changes }),
       updateMany: (ids: string[], changes: Partial<ProjectElement>) => dispatch({ type: 'updateMany', ids, changes }),
       deleteSelection: () => dispatch({ type: 'deleteSelection' }),

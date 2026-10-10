@@ -7,6 +7,7 @@ import {
   isClose,
   projectPointOnSegment,
   magnitude,
+  rectCorners,
   sub,
   dot,
   ccwSweep,
@@ -102,12 +103,9 @@ function anchorPointsFor(element: ProjectElement): SnapCandidate[] {
     candidates.push({ point: element.properties.mid, target: { type: 'vertex', elementId: element.id, index: -1 } });
   }
   if (isRectType(element.element_type)) {
-    const corners = [
-      { x: element.x1, y: element.y1 },
-      { x: element.x2, y: element.y1 },
-      { x: element.x2, y: element.y2 },
-      { x: element.x1, y: element.y2 },
-    ];
+    // Rotation-aware corners: the bbox stays axis-aligned but the rendered
+    // shape rotates around its center, so anchors must too.
+    const corners = rectCorners(element);
     corners.forEach((p, index) => candidates.push({ point: p, target: { type: 'corner', elementId: element.id, index } }));
     candidates.push({ point: midpoint({ x: element.x1, y: element.y1 }, { x: element.x2, y: element.y2 }), target: { type: 'center', elementId: element.id } });
   }
@@ -191,12 +189,7 @@ function nearestCandidates(cursor: PlanPoint, elements: ProjectElement[]): SnapC
       }
     }
     if (isRectType(el.element_type)) {
-      const corners = [
-        { x: el.x1, y: el.y1 },
-        { x: el.x2, y: el.y1 },
-        { x: el.x2, y: el.y2 },
-        { x: el.x1, y: el.y2 },
-      ];
+      const corners = rectCorners(el);
       for (let i = 0; i < 4; i += 1) {
         const projected = projectPointOnSegment(cursor, corners[i], corners[(i + 1) % 4]);
         result.push({ point: projected.point, target: { type: 'nearest', elementId: el.id } });

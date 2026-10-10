@@ -192,7 +192,6 @@ export function updateRectSize(element: ProjectElement, widthCm: number, depthCm
     x2: minX + Math.max(1, widthCm),
     y2: minY + Math.max(1, depthCm),
     length: Math.max(1, widthCm),
-    rotation: 0,
   };
 }
 

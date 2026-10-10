@@ -133,10 +133,11 @@
 - Command palette con aliases + lenguaje natural; polar tracking + dynamic input (iniciados en Bloque A, aquí se completan) ✅
 - **Criterio:** dibujar una planta 6×4m solo con teclado ✅ (`e2e/cad-primitives.spec.ts`)
 
-**Semana 9 — Herramientas de edición**
-- Move, copy, rotate, mirror, array (rectangular/polar), offset, trim, extend, fillet, scale
-- Selección múltiple (window/crossing) + grips
-- **Criterio:** suite de edición pasa pruebas geométricas unitarias
+**Semana 9 — Herramientas de edición** ✅ *completada*
+- Move, copy, rotate, mirror, array (rectangular/polar), offset, trim, extend, fillet, scale ✅ (`lib/editor/edit-ops.ts` + máquina de sesión en `use-editor-state.ts`)
+- Selección múltiple (window/crossing) + grips ✅ (caja azul sólida=window, verde punteada=crossing; grips cuadrados arrastrables por elemento)
+- **Criterio:** suite de edición pasa pruebas geométricas unitarias ✅ (56 tests en `edit-ops.test.ts`) + e2e `cad-edit-tools.spec.ts`
+- Extra: fix ranking de la paleta de comandos (substring `escalera`/`scale` armaba Draw stair), race de teclado con closures obsoletos (stateRef), rects/hatches rotados renderizan con `rotation` real
 
 **Semana 10 — Capas, bloques y estilos**
 - Layer manager completo (visibilidad, bloqueo, color, tipo de línea, grosor) — extiende `design_settings.layers`
@@ -282,8 +283,8 @@ Funciones que los productos de referencia tienen y ISOMORF aún no. Cada fila in
 |---|---|---|
 | Primitivas: línea, polilínea, arco, círculo, rectángulo, elipse, hatch | ✅ Hecho (semana 8) | Semana 8 |
 | Input numérico directo + snaps (endpoint, midpoint, center, intersection, perpendicular) | ✅ Hecho (semana 8) | Semana 8 |
-| Edición: move, copy, rotate, mirror, array, offset, trim, extend, fillet, scale | 📋 Planeado | Semana 9 |
-| Selección window/crossing + grips | 📋 Planeado | Semana 9 |
+| Edición: move, copy, rotate, mirror, array, offset, trim, extend, fillet, scale | ✅ Hecho (semana 9) | Semana 9 |
+| Selección window/crossing + grips | ✅ Hecho (semana 9) | Semana 9 |
 | Capas completas (visibilidad, bloqueo, color, tipo de línea, grosor) + bloques/símbolos | 📋 Planeado (parcial: capas básicas ya existen) | Semana 10 |
 | Cotas profesionales (alineadas, angulares, radiales), leaders, estilos DIM, tablas | 📋 Planeado | Semana 11 |
 | **Línea de comandos** (command line con autocompletado y alias) | 🔴 Brecha | Bloque A (inicia como command palette) + Semana 8 |
