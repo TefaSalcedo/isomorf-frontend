@@ -4,6 +4,8 @@ ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# pnpm patchedDependencies read patches/ at install time — copy before install.
+COPY patches ./patches
 RUN --mount=type=cache,id=isomorf-frontend-pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 FROM dependencies AS development

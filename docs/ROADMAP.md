@@ -160,10 +160,13 @@
 - **Criterio:** suite de edición pasa pruebas geométricas unitarias ✅ (56 tests en `edit-ops.test.ts`) + e2e `cad-edit-tools.spec.ts`
 - Extra: fix ranking de la paleta de comandos (substring `escalera`/`scale` armaba Draw stair), race de teclado con closures obsoletos (stateRef), rects/hatches rotados renderizan con `rotation` real
 
-**Semana 10 — Capas, bloques y estilos**
-- Layer manager completo (visibilidad, bloqueo, color, tipo de línea, grosor) — extiende `design_settings.layers`
-- Bloques/símbolos reutilizables con inserción
-- **Criterio:** importar paleta corporativa como bloque
+**Semana 10 — Capas, bloques y estilos** 🟡
+- ✅ Layer manager completo: visibilidad, bloqueo y color ya existían; se añaden **tipo de línea** (`solid/dashed/dotted/dashdot/center/hidden`) y **grosor** (lineweight en mm → stroke) en `design_settings.layers`, con resolución **ByLayer + override por elemento** (`resolveLineStyle` en `lib/editor/layers.ts`)
+- ✅ **Bloques/símbolos reutilizables**: biblioteca por proyecto en backend (`project_blocks` + API firmada), panel *Blocks* con buscar/crear-desde-selección/insertar/renombrar/importar-exportar JSON, inserción con preview fantasma y click único (INSERT repetido hasta Esc), explode selección→elementos (`explodeBlockRef`), refs escalables/rotables por grips
+- ✅ `block_ref` como elemento canónico (`rect` mode → transformaciones CAD gratis); items como snapshots sin id (keys `ref:index`); 3D expande refs a geometría real
+- ✅ Tests: `blocks.test.ts` (12) + `layers.test.ts` resolveLineStyle (5) + comandos explode/blocks + e2e `blocks.spec.ts`
+- **Criterio:** importar/exportar bloque como JSON desde el panel ✅
+- 🔴 Pendiente dentro de la semana: purge/audit de bloques sin uso (Semana 24), plot styles CTB/STB (Semana 22), linetypes personalizados con texto/formas complejas
 
 **Semana 11 — Acotación y anotación profesional**
 - Cotas lineales/alineadas/angulares/radiales, leaders, estilos de cota (DIM-style)
@@ -352,7 +355,7 @@ Funciones que los productos de referencia tienen y ISOMORF aún no. Cada fila in
 | Input numérico directo + snaps (endpoint, midpoint, center, intersection, perpendicular) | ✅ Hecho (semana 8) | Semana 8 |
 | Edición: move, copy, rotate, mirror, array, offset, trim, extend, fillet, scale | ✅ Hecho (semana 9) | Semana 9 |
 | Selección window/crossing + grips | ✅ Hecho (semana 9) | Semana 9 |
-| Capas completas (visibilidad, bloqueo, color, tipo de línea, grosor) + bloques/símbolos | 📋 Planeado (parcial: capas básicas ya existen) | Semana 10 |
+| Capas completas (visibilidad, bloqueo, color, tipo de línea, grosor) + bloques/símbolos | � En progreso (implementado; e2e/integración por verificar) | Semana 10 |
 | Cotas profesionales (alineadas, angulares, radiales), leaders, estilos DIM, tablas | 📋 Planeado | Semana 11 |
 | **Línea de comandos** (command line con autocompletado y alias) | 🔴 Brecha | Bloque A (inicia como command palette) + Semana 8 |
 | **Ortho / polar tracking** (modos ORTHO/POLAR con ángulos incrementales) | 🔴 Brecha | Bloque A + Semana 8 |

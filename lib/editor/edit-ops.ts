@@ -283,8 +283,10 @@ export function cloneElement(el: ProjectElement, id?: string): ProjectElement {
 
 /** Rewrite every positional field of ``el`` through ``fn`` and recompute
  *  the derived ``length``/``rotation`` for modes where they follow the
- *  endpoints. Rect/center/point modes keep their semantic invariants. */
-function mapElementPoints(el: ProjectElement, fn: (p: Point) => Point): ProjectElement {
+ *  endpoints. Rect/center/point modes keep their semantic invariants.
+ *  Exported so block instantiation can run each stored item through the
+ *  insertion transform with the same per-mode bookkeeping. */
+export function mapElementPoints(el: ProjectElement, fn: (p: Point) => Point): ProjectElement {
   const mode = drawModeOf(el.element_type);
   const next = { ...el, properties: { ...el.properties } } as ProjectElement;
 

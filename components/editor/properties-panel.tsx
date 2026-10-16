@@ -12,7 +12,8 @@ import {
 } from '@/lib/editor/catalog';
 import { drawModeOf, rectSize } from '@/lib/editor/elements';
 import { cmToMeters, metersToCm } from '@/lib/editor/geometry';
-import type { LayeredProperties, PlanLayer, ProjectElement } from '@/types/project';
+import { LINETYPES, LINEWEIGHT_OPTIONS } from '@/lib/editor/layers';
+import type { LayeredProperties, Linetype, PlanLayer, ProjectElement } from '@/types/project';
 
 type UpdateFn = (id: string, changes: Partial<ProjectElement>) => void;
 type UpdateManyFn = (ids: string[], changes: Partial<ProjectElement>) => void;
@@ -23,6 +24,7 @@ export function PropertiesPanel({
   catalog,
   onUpdate,
   onUpdateMany,
+  onExplode,
   readOnly,
 }: {
   elements: ProjectElement[];
@@ -30,6 +32,7 @@ export function PropertiesPanel({
   catalog: CatalogData;
   onUpdate: UpdateFn;
   onUpdateMany: UpdateManyFn;
+  onExplode?: () => void;
   readOnly?: boolean;
 }) {
   const t = useTranslations('editor.panels.properties');
@@ -57,7 +60,7 @@ export function PropertiesPanel({
     );
   }
 
-  return <SingleInspector element={elements[0]} layers={layers} catalog={catalog} onUpdate={onUpdate} readOnly={readOnly} />;
+  return <SingleInspector element={elements[0]} layers={layers} catalog={catalog} onUpdate={onUpdate} onExplode={onExplode} readOnly={readOnly} />;
 }
 
 function SingleInspector({
@@ -65,12 +68,14 @@ function SingleInspector({
   layers,
   catalog,
   onUpdate,
+  onExplode,
   readOnly,
 }: {
   element: ProjectElement;
   layers: PlanLayer[];
   catalog: CatalogData;
   onUpdate: UpdateFn;
+  onExplode?: () => void;
   readOnly?: boolean;
 }) {
   const t = useTranslations('editor.panels.properties');
@@ -169,6 +174,42 @@ function SingleInspector({
             onChange={(v) => setProp({ layer_id: v || null })}
           />
         </Section>
+
+        <Section title={t('sections.lineStyle')}>
+          <SelectInput
+            label={t('linetype')}
+            value={p.linetype ?? ''}
+            options={[
+              { value: '', label: t('byLayer') },
+              ...LINETYPES.map((type) => ({ value: type, label: t(`linetypes.${type}`) })),
+            ]}
+            onChange={(v) => setProp({ linetype: (v || null) as Linetype | null })}
+          />
+          <SelectInput
+            label={t('lineweight')}
+            value={p.lineweight == null ? '' : String(p.lineweight)}
+            options={[
+              { value: '', label: t('byLayer') },
+              ...LINEWEIGHT_OPTIONS.map((weight) => ({ value: String(weight), label: `${weight} mm` })),
+            ]}
+            onChange={(v) => setProp({ lineweight: v === '' ? null : Number(v) })}
+          />
+        </Section>
+
+        {el.element_type === 'block_ref' && (
+          <Section title={t('sections.block')} defaultOpen>
+            <TextInput label={t('blockName')} value={(p.block_name as string) ?? ''} onChange={(v) => setProp({ block_name: v })} />
+            {onExplode && (
+              <button
+                type="button"
+                onClick={onExplode}
+                className="w-full rounded-lg border border-dashed border-cyan-700 py-2 text-xs font-semibold text-cyan-400 hover:bg-slate-800"
+              >
+                {t('explode')}
+              </button>
+            )}
+          </Section>
+        )}
       </fieldset>
     </div>
   );
@@ -473,6 +514,26 @@ function BulkInspector({
             onChange={(v) => onUpdateMany(ids, { properties: { layer_id: v || null } } as Partial<ProjectElement>)}
           />
         </Section>
+        <Section title={t('sections.lineStyle')}>
+          <BulkStyleSelect
+            label={t('linetype')}
+            field="linetype"
+            elements={elements}
+            byLayerLabel={t('byLayer')}
+            mixedLabel={t('mixed')}
+            options={LINETYPES.map((type) => ({ value: type, label: t(`linetypes.${type}`) }))}
+            onApply={(value) => onUpdateMany(ids, { properties: { linetype: value === '' ? null : (value as Linetype) } } as Partial<ProjectElement>)}
+          />
+          <BulkStyleSelect
+            label={t('lineweight')}
+            field="lineweight"
+            elements={elements}
+            byLayerLabel={t('byLayer')}
+            mixedLabel={t('mixed')}
+            options={LINEWEIGHT_OPTIONS.map((weight) => ({ value: String(weight), label: `${weight} mm` }))}
+            onApply={(value) => onUpdateMany(ids, { properties: { lineweight: value === '' ? null : Number(value) } } as Partial<ProjectElement>)}
+          />
+        </Section>
         {sameType && (
           <BulkGeometry elements={elements} onUpdateMany={onUpdateMany} />
         )}
@@ -524,6 +585,49 @@ const SHARED_KEYS: Partial<Record<ProjectElement['element_type'], string[]>> = {
   door: ['width', 'height'],
   window: ['width', 'height', 'sill_height'],
 };
+
+/** Linetype/lineweight select for multi-selection — shows a ``Mixed``
+ *  pseudo-option when the selection disagrees, ``ByLayer`` clears the
+ *  override (value ``''`` → ``null``). */
+function BulkStyleSelect({
+  label,
+  field,
+  elements,
+  options,
+  byLayerLabel,
+  mixedLabel,
+  onApply,
+}: {
+  label: string;
+  field: 'linetype' | 'lineweight';
+  elements: ProjectElement[];
+  options: { value: string; label: string }[];
+  byLayerLabel: string;
+  mixedLabel: string;
+  onApply: (value: string) => void;
+}) {
+  const values = new Set(
+    elements.map((el) => {
+      const raw = (el.properties as LayeredProperties)[field];
+      return raw == null ? '' : String(raw);
+    }),
+  );
+  const mixed = values.size > 1;
+  return (
+    <SelectInput
+      label={label}
+      value={mixed ? '__mixed__' : [...values][0]}
+      options={[
+        ...(mixed ? [{ value: '__mixed__', label: mixedLabel }] : []),
+        { value: '', label: byLayerLabel },
+        ...options,
+      ]}
+      onChange={(v) => {
+        if (v !== '__mixed__') onApply(v);
+      }}
+    />
+  );
+}
 
 function Section({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);

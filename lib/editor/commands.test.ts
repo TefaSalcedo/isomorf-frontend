@@ -21,6 +21,7 @@ function makeContext(): EditorCommandContext {
     exportPng: vi.fn(),
     print: vi.fn(),
     armEdit: vi.fn(),
+    explodeSelection: vi.fn(),
   };
 }
 
@@ -67,6 +68,16 @@ describe('buildEditorCommands', () => {
     commands.find((command) => command.id === 'section.catalog')?.run();
     expect(ctx.setSection).toHaveBeenCalledWith('catalog');
   });
+
+  it('routes the blocks section and explode action', () => {
+    const ctx = makeContext();
+    const commands = buildEditorCommands(ctx);
+    commands.find((command) => command.id === 'section.blocks')?.run();
+    expect(ctx.setSection).toHaveBeenCalledWith('blocks');
+    commands.find((command) => command.id === 'action.explode')?.run();
+    expect(ctx.explodeSelection).toHaveBeenCalledOnce();
+    expect(commands.find((command) => command.id === 'action.explode')?.requiresEdit).toBe(true);
+  });
 });
 
 describe('matchCommands', () => {
@@ -95,6 +106,14 @@ describe('matchCommands', () => {
     expect(matchCommands(commands, 'pilote', label).map((command) => command.id)).toContain('tool.pile');
     expect(matchCommands(commands, 'tabla', label).map((command) => command.id)).toContain('view.table');
     expect(matchCommands(commands, 'catalogo', label).map((command) => command.id)).toContain('section.catalog');
+  });
+
+  it('matches bilingual block and explode aliases', () => {
+    expect(matchCommands(commands, 'bloques', label).map((command) => command.id)).toContain('section.blocks');
+    expect(matchCommands(commands, 'insert', label).map((command) => command.id)).toContain('section.blocks');
+    expect(matchCommands(commands, 'explode', label).map((command) => command.id)).toContain('action.explode');
+    expect(matchCommands(commands, 'explotar', label).map((command) => command.id)).toContain('action.explode');
+    expect(matchCommands(commands, 'ungroup', label).map((command) => command.id)).toContain('action.explode');
   });
 
   it('matches by label text', () => {

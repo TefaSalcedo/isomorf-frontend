@@ -75,6 +75,11 @@ export const DRAW_MODE: Record<ElementType, DrawMode> = {
   ellipse: 'rect',
   rectangle: 'rect',
   hatch: 'rect',
+  // A block reference stores its axis-aligned world bbox in ``x1..y2`` so
+  // the rect transforms (move/rotate/scale/mirror/array, window selection,
+  // corner grips) apply to it unchanged; insertion is a single click
+  // handled specially in ``makeElementFromDraft``.
+  block_ref: 'rect',
 };
 
 /** CAD drawing/annotation primitives (week 8): they carry no structural role,
@@ -158,6 +163,8 @@ export function defaultPropertiesFor(type: ElementType): Record<string, unknown>
       return { cx: 0, cy: 0, radius: 50, start_angle: 0, end_angle: Math.PI / 2, clockwise: false, mid: { x: 0, y: 0 } };
     case 'hatch':
       return { pattern: 'ansi31', spacing: HATCH_DEFAULT_SPACING_CM, angle: HATCH_DEFAULT_ANGLE };
+    case 'block_ref':
+      return { block_id: '', block_name: '' };
     default:
       return {};
   }

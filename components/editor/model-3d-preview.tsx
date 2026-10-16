@@ -6,6 +6,8 @@ import { Euler } from 'three';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import type {
+  BlockDefinition,
+  BlockRefElement,
   BraceElement,
   ColumnElement,
   FootingElement,
@@ -21,6 +23,7 @@ import type {
   BeamElement,
 } from '@/types/project';
 import { ANNOTATION_TYPES } from '@/lib/editor/elements';
+import { blockById, instantiateBlock } from '@/lib/editor/blocks';
 
 function cmToMeters(value: number): number {
   return value / 100;
@@ -327,18 +330,49 @@ function sceneBounds(elements: ProjectElement[]) {
 
 export function Model3DPreview({
   elements,
+  blocks = [],
   selectedIds = [],
   onSelectElement,
 }: {
   elements: ProjectElement[];
+  blocks?: BlockDefinition[];
   selectedIds?: string[];
   onSelectElement?: (id: string) => void;
 }) {
   const t = useTranslations('editor.canvas');
-  const renderable = useMemo(
-    () => elements.filter((el) => el.element_type !== 'door' && el.element_type !== 'window' && !ANNOTATION_TYPES.has(el.element_type)),
-    [elements],
-  );
+  // Block refs expand into their items so the 3D scene shows real geometry;
+  // ``ghostParent`` lets a click on a ghost select its owning ref, and the
+  // selected ref highlights every ghost it spawned.
+  const { renderable, ghostParent } = useMemo(() => {
+    const ghostParent = new Map<string, string>();
+    const expanded: ProjectElement[] = [];
+    for (const el of elements) {
+      if (el.element_type === 'block_ref') {
+        const def = blockById(blocks, (el.properties as { block_id?: string }).block_id);
+        if (def) {
+          for (const ghost of instantiateBlock(def, el as BlockRefElement)) {
+            ghostParent.set(ghost.id, el.id);
+            expanded.push(ghost);
+          }
+        }
+        continue;
+      }
+      expanded.push(el);
+    }
+    return {
+      renderable: expanded.filter(
+        (el) => el.element_type !== 'door' && el.element_type !== 'window' && !ANNOTATION_TYPES.has(el.element_type),
+      ),
+      ghostParent,
+    };
+  }, [elements, blocks]);
+  const effectiveSelected = useMemo(() => {
+    const ids = new Set(selectedIds);
+    for (const [ghostId, parentId] of ghostParent) {
+      if (ids.has(parentId)) ids.add(ghostId);
+    }
+    return [...ids];
+  }, [selectedIds, ghostParent]);
   const bounds = useMemo(() => sceneBounds(renderable), [renderable]);
   const cameraDistance = Math.max(bounds.size * 1.2, 8);
   const cameraY = Math.max(bounds.size * 0.6, 6);
@@ -369,7 +403,12 @@ export function Model3DPreview({
         />
         <gridHelper args={[bounds.size, 20, '#334155', '#1e293b']} position={[bounds.center.x, 0, bounds.center.z]} />
         {renderable.map((element) => (
-          <ElementMesh key={element.id} element={element} selectedIds={selectedIds} onSelectElement={onSelectElement} />
+          <ElementMesh
+            key={element.id}
+            element={element}
+            selectedIds={effectiveSelected}
+            onSelectElement={(id) => onSelectElement?.(ghostParent.get(id) ?? id)}
+          />
         ))}
         <OrbitControls makeDefault target={[bounds.center.x, 1, bounds.center.z]} />
       </Canvas>

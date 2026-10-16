@@ -28,6 +28,7 @@ export type EditorCommandContext = {
   exportPng: () => void;
   print: () => void;
   armEdit: (op: EditOp) => void;
+  explodeSelection: () => void;
 };
 
 const TOOL_COMMANDS: { id: Tool; keywords: string[] }[] = [
@@ -89,6 +90,7 @@ export function buildEditorCommands(ctx: EditorCommandContext): EditorCommand[] 
     { id: 'action.redo', keywords: ['redo', 'rehacer', 'ctrl+y'], requiresEdit: true, run: ctx.redo },
     { id: 'action.save', keywords: ['save', 'guardar', 'ctrl+s'], requiresEdit: true, run: ctx.save },
     { id: 'action.delete', keywords: ['delete', 'eliminar', 'borrar', 'del', 'erase'], requiresEdit: true, run: ctx.deleteSelection },
+    { id: 'action.explode', keywords: ['explode', 'x', 'explotar', 'descomponer', 'burst', 'ungroup'], requiresEdit: true, run: ctx.explodeSelection },
     { id: 'view.fit', keywords: ['fit', 'zoom extents', 'extents', 'encajar', 'ze'], run: ctx.fit },
     { id: 'view.zoomIn', keywords: ['zoom in', 'zoomin', 'acercar', 'z+'], run: ctx.zoomIn },
     { id: 'view.zoomOut', keywords: ['zoom out', 'zoomout', 'alejar', 'z-'], run: ctx.zoomOut },
@@ -102,6 +104,7 @@ export function buildEditorCommands(ctx: EditorCommandContext): EditorCommand[] 
     { id: 'view.loads', keywords: ['loads', 'cargas', 'load editor'], run: () => ctx.setView('loads') },
     { id: 'view.fem', keywords: ['fem', 'analysis', 'analisis', 'análisis', 'finite element'], run: () => ctx.setView('fem') },
     { id: 'section.layers', keywords: ['layers', 'capas', 'layer', 'la'], run: () => ctx.setSection('layers') },
+    { id: 'section.blocks', keywords: ['blocks', 'bloques', 'block', 'symbols', 'simbolos', 'símbolos', 'library', 'biblioteca', 'insert', 'insertar'], run: () => ctx.setSection('blocks') },
     { id: 'section.catalog', keywords: ['catalog', 'catalogo', 'catálogo', 'materials', 'materiales', 'sections', 'secciones'], run: () => ctx.setSection('catalog') },
     { id: 'section.history', keywords: ['history', 'historial', 'versions', 'versiones'], run: () => ctx.setSection('history') },
     { id: 'section.settings', keywords: ['settings', 'configuracion', 'configuración', 'options', 'opciones'], run: () => ctx.setSection('settings') },
