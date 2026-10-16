@@ -120,6 +120,8 @@ export type EditorState = {
    *  armed for single-click insertion. */
   blocks: BlockDefinition[];
   armedBlockId: string | null;
+  /** Owning project id, kept so elements can be created before any exist. */
+  projectId: string;
   revision: number;
   headRevision: number;
   historyBusy: boolean;
@@ -554,6 +556,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         elements,
         layers,
         activeLayerId: layers[0].id,
+        projectId: action.project.id,
         selectedIds: [],
         draft: null,
         edit: null,
@@ -786,7 +789,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     }
     case 'commitDraft': {
       if (!state.draft) return state;
-      const projectId = state.elements[0]?.project_id ?? '';
+      const projectId = state.projectId || state.elements[0]?.project_id || '';
       const armedBlock = state.draft.tool === 'block_ref' ? blockById(state.blocks, state.armedBlockId) ?? null : null;
       const created = makeElementFromDraft(state.draft, projectId, action.close, armedBlock);
       if (!created) return { ...state, draft: null };
@@ -1146,6 +1149,7 @@ const initialState: EditorState = {
   activeLayerId: ensureLayers(undefined)[0].id,
   blocks: [],
   armedBlockId: null,
+  projectId: '',
   revision: 0,
   headRevision: 0,
   historyBusy: false,
