@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import type Konva from 'konva';
 import { Layers3, PanelRightClose, SlidersHorizontal, X } from 'lucide-react';
@@ -31,6 +31,23 @@ import { createBlockFromSelection } from '@/lib/editor/blocks';
 import type { BlockCreatePayload, DocumentState, MaterialCategory, Project, ProjectElement, SectionShape } from '@/types/project';
 import { defaultDesignSettings } from '@/lib/editor/elements';
 import { ensureLayers } from '@/lib/editor/layers';
+import { ensureDimStyles } from '@/lib/editor/annotations';
+
+function ensureAnnotationSettings(settings: Project['design_settings'], locale: string): Project['design_settings'] {
+  const dimStyles = ensureDimStyles(settings.dim_styles).map((style) =>
+    style.id === 'arq' && ['Architectural', 'Arquitectónico'].includes(style.name)
+      ? { ...style, name: locale === 'es' ? 'Arquitectónico' : 'Architectural' }
+      : style,
+  );
+  return {
+    ...settings,
+    annotation_scale: settings.annotation_scale ?? 50,
+    dim_styles: dimStyles,
+    active_dim_style_id: dimStyles.some((style) => style.id === settings.active_dim_style_id)
+      ? settings.active_dim_style_id
+      : dimStyles[0].id,
+  };
+}
 
 const Model3DPreview = dynamic(
   () => import('@/components/editor/model-3d-preview').then((mod) => mod.Model3DPreview),
@@ -39,12 +56,13 @@ const Model3DPreview = dynamic(
 
 export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   const t = useTranslations('editor');
+  const locale = useLocale();
   const tm = useTranslations('editor.mobile');
   const { state, actions, selectedElements, summary } = useEditorState(initialProject);
   const [projectName, setProjectName] = useState(initialProject.name || t('defaults.projectName'));
   const [saving, setSaving] = useState(false);
   const [designSettings, setDesignSettings] = useState<Project['design_settings']>(
-    initialProject.design_settings ?? defaultDesignSettings(),
+    ensureAnnotationSettings(initialProject.design_settings ?? defaultDesignSettings(), locale),
   );
   const [activeView, setActiveView] = useState<EditorView>('2d');
   const [catalog, setCatalog] = useState<CatalogData>(emptyCatalog);
@@ -68,7 +86,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   const initialNameRef = useRef(initialProject.name || t('defaults.projectName'));
   const initialSettingsRef = useRef(
     JSON.stringify({
-      ...(initialProject.design_settings ?? defaultDesignSettings()),
+      ...ensureAnnotationSettings(initialProject.design_settings ?? defaultDesignSettings(), locale),
       layers: ensureLayers(initialProject.design_settings?.layers),
     }),
   );
@@ -95,7 +113,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     const layersSnapshot = state.layers;
     const run = (async () => {
       try {
-        const settingsToSave = { ...designSettingsRef.current, layers: layersSnapshot };
+        const settingsToSave = { ...ensureAnnotationSettings(designSettingsRef.current, locale), layers: layersSnapshot };
         const nameToSave = projectNameRef.current.trim() || t('defaults.projectName');
         const doc = await api.saveDocument(initialProject.id, {
           name: nameToSave,
@@ -147,9 +165,9 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   }
 
   function applyDocumentState(doc: DocumentState) {
-    setDesignSettings(doc.design_settings);
+    setDesignSettings(ensureAnnotationSettings(doc.design_settings, locale));
     initialSettingsRef.current = JSON.stringify({
-      ...doc.design_settings,
+      ...ensureAnnotationSettings(doc.design_settings, locale),
       layers: ensureLayers(doc.design_settings?.layers),
     });
     actions.applyDocument(doc.elements, doc.design_settings, doc.revision, doc.head_revision);
@@ -292,13 +310,14 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
 
   useEffect(() => {
     if (state.readOnly) return undefined;
+    if (state.annotationEditingId) return undefined;
     const projectChanged =
       projectName.trim() !== initialNameRef.current ||
       JSON.stringify({ ...designSettings, layers: state.layers }) !== initialSettingsRef.current;
     if (!state.dirty && !projectChanged) return undefined;
     const timeout = window.setTimeout(() => void saveRef.current(), 700);
     return () => window.clearTimeout(timeout);
-  }, [state.dirty, state.elements, state.readOnly, state.layers, projectName, designSettings, initialProject.name]);
+  }, [state.dirty, state.elements, state.readOnly, state.layers, state.annotationEditingId, projectName, designSettings, initialProject.name]);
 
   function commitProjectName(value: string) {
     if (state.readOnly) return;
@@ -336,6 +355,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
 
   const commands = buildEditorCommands({
     setTool: actions.setTool,
+    armDimension: actions.armDimension,
     setSection: actions.setSection,
     setView: setActiveView,
     undo: () => void undoRef.current(),
@@ -422,6 +442,9 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         onUpdateMany={actions.updateMany}
         onExplode={actions.explodeSelection}
         readOnly={readOnly}
+        annotationScale={designSettings.annotation_scale ?? 50}
+        dimStyles={ensureDimStyles(designSettings.dim_styles)}
+        activeDimStyleId={designSettings.active_dim_style_id}
       />
     );
   }
@@ -450,7 +473,15 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   ) : activeView === 'fem' ? (
     <FemComingSoon />
   ) : (
-    <CanvasStage state={state} actions={actions} stageRef={stageRef} displayUnit={designSettings.unit ?? 'm'} />
+    <CanvasStage
+      state={state}
+      actions={actions}
+      stageRef={stageRef}
+      displayUnit={designSettings.unit ?? 'm'}
+      annotationScale={designSettings.annotation_scale ?? 50}
+      dimStyles={ensureDimStyles(designSettings.dim_styles)}
+      activeDimStyleId={designSettings.active_dim_style_id}
+    />
   );
 
   const sidebar = (

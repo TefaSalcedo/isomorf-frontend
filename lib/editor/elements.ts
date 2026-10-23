@@ -25,8 +25,10 @@ import type {
   EllipseElement,
   RectangleElement,
   HatchElement,
+  DimStyle,
 } from '@/types/project';
 import { ccwSweep, circleThroughPoints, cmToMeters, distance, metersToCm, normalizeAngle, pointsEqual, resolveTJoin } from '@/lib/editor/geometry';
+import { DEFAULT_DIM_STYLES } from '@/lib/editor/annotations';
 
 export const WALL_DEFAULT_HEIGHT = 2.5;
 export const WALL_DEFAULT_THICKNESS = 0.15;
@@ -80,6 +82,10 @@ export const DRAW_MODE: Record<ElementType, DrawMode> = {
   // corner grips) apply to it unchanged; insertion is a single click
   // handled specially in ``makeElementFromDraft``.
   block_ref: 'rect',
+  dimension: 'dim',
+  leader: 'line',
+  text: 'point',
+  table: 'rect',
 };
 
 /** CAD drawing/annotation primitives (week 8): they carry no structural role,
@@ -92,6 +98,10 @@ export const ANNOTATION_TYPES: ReadonlySet<ElementType> = new Set([
   'ellipse',
   'rectangle',
   'hatch',
+  'dimension',
+  'leader',
+  'text',
+  'table',
 ]);
 
 export const LINE_TYPES: ReadonlySet<ElementType> = new Set(
@@ -165,6 +175,14 @@ export function defaultPropertiesFor(type: ElementType): Record<string, unknown>
       return { pattern: 'ansi31', spacing: HATCH_DEFAULT_SPACING_CM, angle: HATCH_DEFAULT_ANGLE };
     case 'block_ref':
       return { block_id: '', block_name: '' };
+    case 'dimension':
+      return { kind: 'linear', dim_point: { x: 0, y: 0 }, orientation: 'horizontal', dim_style_id: null, text_override: '' };
+    case 'leader':
+      return { text: '', dim_style_id: null };
+    case 'text':
+      return { text: '', height: 2.5, align: 'left' };
+    case 'table':
+      return { rows: 3, cols: 3, cells: [['', '', ''], ['', '', ''], ['', '', '']], header: true, text_height: 2.5 };
     default:
       return {};
   }
@@ -591,5 +609,8 @@ export function defaultDesignSettings(): Project['design_settings'] {
       density: undefined,
       elastic_modulus: undefined,
     },
+    annotation_scale: 50,
+    dim_styles: DEFAULT_DIM_STYLES.map((style: DimStyle) => ({ ...style })),
+    active_dim_style_id: 'iso-25',
   };
 }

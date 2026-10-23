@@ -18,9 +18,11 @@ import {
   scale,
   sub,
   unit,
+  sampleArcPoints,
   type Point,
 } from '@/lib/editor/geometry';
 import { arcSpecFromPoints, createArc, drawModeOf } from '@/lib/editor/elements';
+import { DEFAULT_DIM_STYLES, dimensionGeometry } from '@/lib/editor/annotations';
 
 export { rectCorners };
 
@@ -69,6 +71,8 @@ export const PICK_FIRST_OPS: ReadonlySet<EditOp> = new Set(['offset', 'fillet'])
 
 /** Ops that ask for a cutting/boundary edge before accepting targets. */
 export const CUTTER_OPS: ReadonlySet<EditOp> = new Set(['trim', 'extend']);
+const ANNOTATION_EDIT_EXCLUSIONS = new Set(['dimension', 'leader', 'text', 'table']);
+const isAnnotationEditExcluded = (element: ProjectElement) => ANNOTATION_EDIT_EXCLUSIONS.has(element.element_type);
 
 const MIN_LENGTH_CM = 0.1;
 
@@ -182,9 +186,11 @@ export function applyTransform(req: EditRequest, elements: ProjectElement[]): Ed
 /** Pick the trim result whose cut point sits closest to the pick — the
  *  AutoCAD behaviour when several cutting edges cross the same target. */
 export function bestTrim(target: ProjectElement, cutters: ProjectElement[], pick: Point): ProjectElement | null {
+  if (isAnnotationEditExcluded(target)) return null;
   let best: ProjectElement | null = null;
   let bestDistance = Infinity;
   for (const cutter of cutters) {
+    if (isAnnotationEditExcluded(cutter)) continue;
     const result = trimLineEnd(target, cutter, pick);
     if (!result) continue;
     const cut = (result.x1 !== target.x1 || result.y1 !== target.y1)
@@ -202,9 +208,11 @@ export function bestTrim(target: ProjectElement, cutters: ProjectElement[], pick
 /** Same nearest-cut selection for extend: choose the boundary whose grown
  *  endpoint lands closest to where the user clicked. */
 export function bestExtend(target: ProjectElement, boundaries: ProjectElement[], pick: Point): ProjectElement | null {
+  if (isAnnotationEditExcluded(target)) return null;
   let best: ProjectElement | null = null;
   let bestDistance = Infinity;
   for (const boundary of boundaries) {
+    if (isAnnotationEditExcluded(boundary)) continue;
     const result = extendLineTo(target, boundary, pick);
     if (!result) continue;
     const grown = (result.x1 !== target.x1 || result.y1 !== target.y1)
@@ -229,22 +237,22 @@ export function previewEditOutcome(req: EditRequest, elements: ProjectElement[],
   if (req.op === 'offset') {
     if (!req.pickedId || !req.cursor) return null;
     const source = elements.find((el) => el.id === req.pickedId);
-    if (!source) return null;
+    if (!source || isAnnotationEditExcluded(source)) return null;
     const copy = offsetElement(source, req.cursor, req.value ?? undefined);
     return copy ? outcomeOf([], [copy]) : null;
   }
   if ((req.op === 'trim' || req.op === 'extend') && req.phase === 'apply' && hoverId && req.cursor) {
     if (req.ids.includes(hoverId)) return null;
     const target = elements.find((el) => el.id === hoverId);
-    if (!target) return null;
-    const cutters = elements.filter((el) => req.ids.includes(el.id));
+    if (!target || isAnnotationEditExcluded(target)) return null;
+    const cutters = elements.filter((el) => req.ids.includes(el.id) && !isAnnotationEditExcluded(el));
     const result = req.op === 'trim' ? bestTrim(target, cutters, req.cursor) : bestExtend(target, cutters, req.cursor);
     return result ? outcomeOf([result], [], [hoverId]) : null;
   }
   if (req.op === 'fillet' && req.phase === 'target' && req.pickedId && hoverId && hoverId !== req.pickedId) {
     const a = elements.find((el) => el.id === req.pickedId);
     const b = elements.find((el) => el.id === hoverId);
-    if (!a || !b) return null;
+    if (!a || !b || isAnnotationEditExcluded(a) || isAnnotationEditExcluded(b)) return null;
     const result = filletLines(a, b, req.value ?? 0);
     if (!result) return null;
     return outcomeOf([result.a, result.b], result.arc ? [result.arc] : [], [a.id, b.id]);
@@ -292,10 +300,34 @@ export function mapElementPoints(el: ProjectElement, fn: (p: Point) => Point): P
 
   if (mode === 'point') {
     const c = fn({ x: el.x1, y: el.y1 });
+    const anglePoint = el.element_type === 'text'
+      ? fn({ x: el.x1 + Math.cos(el.rotation), y: el.y1 + Math.sin(el.rotation) })
+      : null;
     next.x1 = c.x;
     next.y1 = c.y;
     next.x2 = c.x + 1;
     next.y2 = c.y;
+    if (anglePoint) next.rotation = Math.atan2(anglePoint.y - c.y, anglePoint.x - c.x);
+    return next;
+  }
+  if (mode === 'dim') {
+    const start = fn(segStart(el));
+    const end = fn(segEnd(el));
+    const props = el.properties as ProjectElement['properties'] & { dim_point: Point; vertex?: Point; radius?: number };
+    const transformedRadius = props.radius === undefined
+      ? undefined
+      : distance(start, fn({ x: el.x1 + props.radius, y: el.y1 }));
+    next.x1 = start.x;
+    next.y1 = start.y;
+    next.x2 = end.x;
+    next.y2 = end.y;
+    next.length = Math.max(1, distance(start, end));
+    next.properties = {
+      ...next.properties,
+      dim_point: fn(props.dim_point),
+      ...(props.vertex ? { vertex: fn(props.vertex) } : {}),
+      ...(transformedRadius !== undefined ? { radius: transformedRadius } : {}),
+    } as typeof next.properties;
     return next;
   }
   if (mode === 'center') {
@@ -383,7 +415,10 @@ export function rotateElement(el: ProjectElement, pivot: Point, angle: number): 
     const h = Math.abs(el.y2 - el.y1);
     return retime(rebuildRect({ ...next, rotation: normalizeAngle(el.rotation + angle) }, center, w, h, normalizeAngle(el.rotation + angle)));
   }
-  if (mode === 'point' && el.element_type === 'column') {
+  if (el.element_type === 'dimension' && el.properties.kind === 'linear') {
+    next.rotation = normalizeAngle(el.rotation + angle);
+  }
+  if (mode === 'point' && (el.element_type === 'column' || el.element_type === 'text')) {
     next.rotation = normalizeAngle(el.rotation + angle);
   }
   if (el.element_type === 'hatch') {
@@ -408,7 +443,7 @@ export function mirrorElement(el: ProjectElement, a: Point, b: Point): ProjectEl
     const props = next.properties as ArcElement['properties'];
     next.properties = { ...props, clockwise: !props.clockwise } as typeof next.properties;
   }
-  if (mode === 'rect' || (mode === 'point' && el.element_type === 'column')) {
+  if (mode === 'rect' || (mode === 'point' && (el.element_type === 'column' || el.element_type === 'text'))) {
     // A mirrored rectangle keeps its shape; its orientation maps to 2θ − α.
     const mirrored = normalizeAngle(2 * axisAngle - el.rotation);
     const center = reflect(rectCenter(el));
@@ -421,6 +456,10 @@ export function mirrorElement(el: ProjectElement, a: Point, b: Point): ProjectEl
       return retime(rebuildRect(next, center, w, h, mirrored));
     }
     next.rotation = mirrored;
+  }
+  if (el.element_type === 'dimension' && el.properties.kind === 'linear') {
+    const baseAngle = el.properties.orientation === 'vertical' ? Math.PI / 2 : 0;
+    next.rotation = normalizeAngle(2 * axisAngle - 2 * baseAngle - el.rotation);
   }
   if (el.element_type === 'hatch') {
     const props = el.properties as { angle?: number };
@@ -573,6 +612,7 @@ export function offsetChain(points: Point[], d: number, closed: boolean): Point[
  *  (AutoCAD "through point" mode). Returns a new element, or null when the
  *  element type cannot be offset or the result degenerates. */
 export function offsetElement(el: ProjectElement, side: Point, distanceCm?: number): ProjectElement | null {
+  if (isAnnotationEditExcluded(el)) return null;
   const mode = drawModeOf(el.element_type);
   const gap = distanceCm ?? null;
 
@@ -830,7 +870,8 @@ export type GripKind =
   | 'vertex'
   | 'corner'
   | 'center'
-  | 'radius';
+  | 'radius'
+  | 'dim-point';
 
 export type Grip = {
   kind: GripKind;
@@ -849,6 +890,15 @@ export function gripsFor(el: ProjectElement): Grip[] {
   const start = segStart(el);
   const end = segEnd(el);
 
+  if (el.element_type === 'dimension') {
+    grips.push(
+      { kind: 'start', key: 'start', point: start },
+      { kind: 'end', key: 'end', point: end },
+      { kind: 'dim-point', key: 'dim-point', point: el.properties.dim_point },
+    );
+    if (el.properties.vertex) grips.push({ kind: 'vertex', key: 'vertex', point: el.properties.vertex });
+    return grips;
+  }
   if (mode === 'line') {
     grips.push(
       { kind: 'start', key: 'start', point: start },
@@ -900,6 +950,23 @@ export function applyGrip(el: ProjectElement, grip: Grip, point: Point): Project
   const mode = drawModeOf(el.element_type);
   const next = { ...el, properties: { ...el.properties } } as ProjectElement;
 
+  if (el.element_type === 'dimension') {
+    if (grip.kind === 'start') {
+      next.x1 = point.x;
+      next.y1 = point.y;
+    } else if (grip.kind === 'end') {
+      next.x2 = point.x;
+      next.y2 = point.y;
+    } else if (grip.kind === 'dim-point') {
+      next.properties = { ...el.properties, dim_point: point };
+      return retime(next);
+    } else if (grip.kind === 'vertex') {
+      next.properties = { ...el.properties, vertex: point };
+      return retime(next);
+    }
+    next.length = Math.max(1, distance(segStart(next), segEnd(next)));
+    return retime(next);
+  }
   if ((grip.kind === 'start' || grip.kind === 'end') && mode === 'line') {
     return setEndpoint(el, grip.kind, point);
   }
@@ -1037,11 +1104,24 @@ function dragRectCorner(el: ProjectElement, index: number, point: Point): Projec
 
 export type PickableHit = { element: ProjectElement; distance: number };
 
+function dimensionSegments(el: Extract<ProjectElement, { element_type: 'dimension' }>): [Point, Point][] {
+  const geometry = dimensionGeometry(el, DEFAULT_DIM_STYLES[0], 50);
+  const segments: [Point, Point][] = geometry.lines.map((line) => [line.start, line.end]);
+  for (const arc of geometry.arcs) {
+    const points = sampleArcPoints(arc.center.x, arc.center.y, arc.radius, arc.startAngle, arc.endAngle, false);
+    for (let i = 1; i < points.length; i += 1) segments.push([points[i - 1], points[i]]);
+  }
+  return segments.length ? segments : [[segStart(el), segEnd(el)]];
+}
+
 /** Distance from ``p`` to the element's pickable curve. Elements are picked
  *  on their outline (not their fill) like CAD entities; point footprints
  *  count as filled discs. Returns Infinity for unhandled modes. */
 export function pickDistance(p: Point, el: ProjectElement): number {
   const mode = drawModeOf(el.element_type);
+  if (el.element_type === 'dimension') {
+    return Math.min(...dimensionSegments(el).map(([a, b]) => projectPointOnSegment(p, a, b).distance));
+  }
   if (mode === 'line') {
     return projectPointOnSegment(p, segStart(el), segEnd(el)).distance;
   }
@@ -1117,6 +1197,14 @@ export function pickElementAt(
  *  quadrant points for circles, chord + mid for arcs. */
 export function definingPoints(el: ProjectElement): Point[] {
   const mode = drawModeOf(el.element_type);
+  if (el.element_type === 'dimension') {
+    return [
+      segStart(el),
+      segEnd(el),
+      el.properties.dim_point,
+      ...(el.properties.vertex ? [el.properties.vertex] : []),
+    ];
+  }
   if (mode === 'point') return [segStart(el)];
   if (mode === 'line') return [segStart(el), segEnd(el)];
   if (mode === 'rect') return rectCorners(el);
@@ -1142,6 +1230,7 @@ export function definingPoints(el: ProjectElement): Point[] {
  *  and edit ghosts). Point footprints emit a small cross centred on them. */
 export function outlineSegments(el: ProjectElement): [Point, Point][] {
   const mode = drawModeOf(el.element_type);
+  if (el.element_type === 'dimension') return dimensionSegments(el);
   if (mode === 'point') {
     const c = segStart(el);
     if (el.element_type === 'column') {

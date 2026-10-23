@@ -54,7 +54,7 @@ test.describe('cad primitives (keyboard only)', () => {
     await page.keyboard.press('Enter');
 
     // The element table lists every drawn entity (view via palette).
-    await armTool('table');
+    await armTool('elements');
     for (const label of ['Polyline', 'Line', 'Circle', 'Rectangle']) {
       await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
     }
@@ -64,7 +64,7 @@ test.describe('cad primitives (keyboard only)', () => {
     await expect(page.getByText(/Saved/)).toBeVisible({ timeout: 15_000 });
     await page.reload();
     await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
-    await armTool('table');
+    await armTool('elements');
     for (const label of ['Polyline', 'Line', 'Circle', 'Rectangle']) {
       await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
     }

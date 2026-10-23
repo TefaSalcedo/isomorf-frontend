@@ -1,5 +1,6 @@
 import type { ActiveSection, Tool } from '@/hooks/use-editor-state';
 import type { EditOp } from '@/lib/editor/edit-ops';
+import type { DimKind } from '@/types/project';
 
 export type EditorView = '2d' | '3d' | 'table' | 'loads' | 'fem';
 
@@ -12,6 +13,7 @@ export type EditorCommand = {
 
 export type EditorCommandContext = {
   setTool: (tool: Tool) => void;
+  armDimension: (kind: DimKind) => void;
   setSection: (section: ActiveSection) => void;
   setView: (view: EditorView) => void;
   undo: () => void;
@@ -31,7 +33,7 @@ export type EditorCommandContext = {
   explodeSelection: () => void;
 };
 
-const TOOL_COMMANDS: { id: Tool; keywords: string[] }[] = [
+const TOOL_COMMANDS: { id: Tool; keywords: string[]; dimKind?: DimKind }[] = [
   { id: 'select', keywords: ['select', 'sel', 'seleccionar', 'escape', 'pointer'] },
   { id: 'wall', keywords: ['wall', 'w', 'muro', 'muro cortante'] },
   { id: 'door', keywords: ['door', 'puerta', 'd'] },
@@ -54,6 +56,14 @@ const TOOL_COMMANDS: { id: Tool; keywords: string[] }[] = [
   { id: 'ellipse', keywords: ['ellipse', 'elipse', 'el'] },
   { id: 'rectangle', keywords: ['rectangle', 'rectangulo', 'rectángulo', 'rec', 'rect'] },
   { id: 'hatch', keywords: ['hatch', 'hachura', 'sombreado', 'h', 'fill pattern'] },
+  { id: 'dimension', dimKind: 'linear', keywords: ['dli', 'dimlinear', 'cota', 'acotar'] },
+  { id: 'dimension', dimKind: 'aligned', keywords: ['dal', 'dimaligned', 'cota alineada'] },
+  { id: 'dimension', dimKind: 'angular', keywords: ['dan', 'dimangular', 'cota angular'] },
+  { id: 'dimension', dimKind: 'radial', keywords: ['dra', 'dimradius', 'radio'] },
+  { id: 'dimension', dimKind: 'diameter', keywords: ['ddi', 'dimdiameter', 'diametro', 'diámetro'] },
+  { id: 'leader', keywords: ['le', 'mleader', 'leader', 'directriz'] },
+  { id: 'text', keywords: ['t', 'mtext', 'text', 'texto'] },
+  { id: 'table', keywords: ['tb', 'table', 'tabla'] },
 ];
 
 /** Week 9 modify suite — AutoCAD command aliases ride as keywords so typing
@@ -74,11 +84,11 @@ const EDIT_COMMANDS: { id: EditOp; keywords: string[] }[] = [
 
 export function buildEditorCommands(ctx: EditorCommandContext): EditorCommand[] {
   return [
-    ...TOOL_COMMANDS.map(({ id, keywords }) => ({
-      id: `tool.${id}`,
+    ...TOOL_COMMANDS.map(({ id, keywords, dimKind }) => ({
+      id: dimKind ? `tool.dimension.${dimKind}` : `tool.${id}`,
       keywords,
       requiresEdit: id !== 'select',
-      run: () => ctx.setTool(id),
+      run: () => dimKind ? ctx.armDimension(dimKind) : ctx.setTool(id),
     })),
     ...EDIT_COMMANDS.map(({ id, keywords }) => ({
       id: `edit.${id}`,
@@ -100,7 +110,7 @@ export function buildEditorCommands(ctx: EditorCommandContext): EditorCommand[] 
     { id: 'view.clean', keywords: ['clean', 'clean mode', 'presentation', 'modo limpio'], run: ctx.toggleCleanMode },
     { id: 'view.2d', keywords: ['2d', 'plan', 'planta', 'plan view'], run: () => ctx.setView('2d') },
     { id: 'view.3d', keywords: ['3d', 'model', 'modelo', 'isometric'], run: () => ctx.setView('3d') },
-    { id: 'view.table', keywords: ['table', 'tabla', 'spreadsheet', 'hoja', 'database', 'tabular'], run: () => ctx.setView('table') },
+    { id: 'view.table', keywords: ['elements', 'element table', 'spreadsheet', 'hoja', 'database', 'tabular'], run: () => ctx.setView('table') },
     { id: 'view.loads', keywords: ['loads', 'cargas', 'load editor'], run: () => ctx.setView('loads') },
     { id: 'view.fem', keywords: ['fem', 'analysis', 'analisis', 'análisis', 'finite element'], run: () => ctx.setView('fem') },
     { id: 'section.layers', keywords: ['layers', 'capas', 'layer', 'la'], run: () => ctx.setSection('layers') },

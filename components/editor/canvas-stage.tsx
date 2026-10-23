@@ -8,7 +8,7 @@ import type { EditorState } from '@/hooks/use-editor-state';
 import type { Point } from '@/lib/editor/geometry';
 import { ccwSweep, distance, lineIntersection, sampleArcPoints, toRadians } from '@/lib/editor/geometry';
 import { cmToDisplay, displayToCm, formatAngle, formatDisplayValue } from '@/lib/editor/units';
-import type { ArcElement, CircleElement, DrawMode, PolylineElement, ProjectElement } from '@/types/project';
+import type { ArcElement, CircleElement, DimKind, DimStyle, DrawMode, DimensionElement, PlanPoint, ProjectElement, TableElement } from '@/types/project';
 import type { DisplayUnit } from '@/lib/editor/units';
 import { parsePointInput, resolvePoint } from '@/lib/editor/coords';
 import { hatchSegments } from '@/lib/editor/hatch';
@@ -28,11 +28,13 @@ import {
   elementInBox,
   gripsFor,
   outlineSegments,
+  pickElementAt,
   previewEditOutcome,
   type BoxMode,
   type Grip,
 } from '@/lib/editor/edit-ops';
 import type { EditSession } from '@/hooks/use-editor-state';
+import { activeDimStyle, dimensionGeometry, leaderGeometry, linearOrientation, paperToWorld, resolveDimStyle } from '@/lib/editor/annotations';
 
 const GRID_STEP = 100;
 const MIN_ZOOM = 0.2;
@@ -87,6 +89,39 @@ function typeColor(element: ProjectElement): string {
   }
 }
 
+function relativeLuminance(color: string): number | null {
+  const match = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!match) return null;
+  const channels = [0, 2, 4].map((index) => Number.parseInt(match[1].slice(index, index + 2), 16) / 255);
+  const linear = channels.map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
+
+function resolveCanvasColor(color: string): string {
+  const match = /^#([0-9a-f]{6})$/i.exec(color);
+  const backgroundLuminance = relativeLuminance(COLORS.canvas);
+  if (!match || backgroundLuminance === null) return color;
+
+  const channels = [0, 2, 4].map((index) => Number.parseInt(match[1].slice(index, index + 2), 16));
+  const contrast = (rgb: number[]) => {
+    const hex = `#${rgb.map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`;
+    const luminance = relativeLuminance(hex);
+    if (luminance === null) return 1;
+    return (Math.max(luminance, backgroundLuminance) + 0.05) / (Math.min(luminance, backgroundLuminance) + 0.05);
+  };
+  if (contrast(channels) >= 4.5) return color;
+
+  let low = 0;
+  let high = 1;
+  for (let iteration = 0; iteration < 20; iteration += 1) {
+    const amount = (low + high) / 2;
+    const candidate = channels.map((channel) => channel + (255 - channel) * amount);
+    if (contrast(candidate) >= 4.5) high = amount;
+    else low = amount;
+  }
+  return `#${channels.map((channel) => Math.round(channel + (255 - channel) * high).toString(16).padStart(2, '0')).join('')}`;
+}
+
 function fillFor(element: ProjectElement): string | null {
   switch (element.element_type) {
     case 'slab': return 'rgba(51, 65, 85, 0.45)';
@@ -101,9 +136,7 @@ function fillFor(element: ProjectElement): string | null {
 function colorFor(element: ProjectElement, selected: boolean, hovered: boolean, layers: PlanLayer[]): string {
   if (selected) return COLORS.select;
   if (hovered) return COLORS.hover;
-  const layerColor = layerOf(element, layers)?.color;
-  if (layerColor) return layerColor;
-  return typeColor(element);
+  return resolveCanvasColor(layerOf(element, layers)?.color ?? typeColor(element));
 }
 
 function lineStyle(element: ProjectElement): { width: number; dash?: number[] } {
@@ -182,11 +215,14 @@ function useContainerSize() {
 type CanvasStageProps = {
   state: EditorState;
   displayUnit: DisplayUnit;
+  annotationScale: number;
+  dimStyles: DimStyle[];
+  activeDimStyleId?: string | null;
   actions: {
-    beginDraft: (point: Point) => void;
+    beginDraft: (point: Point, dimensionTarget?: ProjectElement) => void;
     updateDraft: (point: Point, exact?: boolean) => void;
     extendDraft: () => void;
-    commitDraft: (close?: boolean) => void;
+    commitDraft: (close?: boolean, annotationScale?: number) => void;
     cancelDraft: () => void;
     select: (id: string, add: boolean) => void;
     selectMany: (ids: string[]) => void;
@@ -202,6 +238,9 @@ type CanvasStageProps = {
     editValue: (text: string, unit: DisplayUnit) => void;
     cancelEdit: () => void;
     replaceElement: (element: ProjectElement) => void;
+    armDimension: (kind: DimKind) => void;
+    setAnnotationEditing: (id: string | null) => void;
+    cancelAnnotationEditing: () => void;
   };
   stageRef: MutableRefObject<Konva.Stage | null>;
 };
@@ -222,7 +261,7 @@ function editPromptKey(edit: EditSession): string {
   }
 }
 
-export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasStageProps) {
+export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, activeDimStyleId, actions, stageRef }: CanvasStageProps) {
   const t = useTranslations('editor.canvas');
   const te = useTranslations('editor.edit');
   const { ref, size } = useContainerSize();
@@ -236,6 +275,19 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
   const lengthInputRef = useRef('');
   const pinchRef = useRef<{ distance: number; center: Point } | null>(null);
   const { zoom, pan } = state.viewport;
+  const dimStyle = activeDimStyle(dimStyles, activeDimStyleId);
+  const [editingCell, setEditingCell] = useState<{ id: string; row: number; col: number } | null>(null);
+  const [annotationText, setAnnotationText] = useState('');
+  const [annotationAnchor, setAnnotationAnchor] = useState<Point | null>(null);
+  const annotationInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const annotationEditingElement = state.elements.find((element) => element.id === state.annotationEditingId);
+  const annotationEditorAnchor = annotationAnchor ?? (
+    state.annotationEditingNew && (annotationEditingElement?.element_type === 'text' || annotationEditingElement?.element_type === 'leader')
+      ? annotationEditingElement.element_type === 'leader'
+        ? { x: annotationEditingElement.x2, y: annotationEditingElement.y2 }
+        : { x: annotationEditingElement.x1, y: annotationEditingElement.y1 }
+      : null
+  );
 
   // Mirror of ``state`` for the persistent keydown listener: React batches
   // reducer updates, so a fast second keystroke could otherwise hit a stale
@@ -245,6 +297,61 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
   useLayoutEffect(() => {
     stateRef.current = state;
   });
+
+  useEffect(() => {
+    if (!state.annotationEditingId || !state.annotationEditingNew) return;
+    const element = state.elements.find((candidate) => candidate.id === state.annotationEditingId);
+    if (!element || (element.element_type !== 'text' && element.element_type !== 'leader')) return;
+    requestAnimationFrame(() => annotationInputRef.current?.focus());
+  }, [state.annotationEditingId, state.annotationEditingNew, state.elements]);
+
+  function openAnnotationEditor(element: ProjectElement, cell?: { row: number; col: number }) {
+    if (state.readOnly) return;
+    if (element.element_type === 'text' || element.element_type === 'leader') {
+      setEditingCell(null);
+      setAnnotationText(element.properties.text);
+      setAnnotationAnchor(element.element_type === 'leader' ? { x: element.x2, y: element.y2 } : { x: element.x1, y: element.y1 });
+    } else if (element.element_type === 'table' && cell) {
+      const cellWidth = Math.abs(element.x2 - element.x1) / element.properties.cols;
+      const cellHeight = Math.abs(element.y2 - element.y1) / element.properties.rows;
+      setEditingCell({ id: element.id, ...cell });
+      setAnnotationText(element.properties.cells[cell.row]?.[cell.col] ?? '');
+      setAnnotationAnchor({ x: element.x1 + cell.col * cellWidth, y: element.y1 + cell.row * cellHeight });
+    } else {
+      return;
+    }
+    actions.select(element.id, false);
+    actions.setAnnotationEditing(element.id);
+    requestAnimationFrame(() => annotationInputRef.current?.focus());
+  }
+
+  function finishAnnotationEditor(cancel = false) {
+    const id = state.annotationEditingId;
+    if (!id) return;
+    const editedText = annotationInputRef.current?.value ?? annotationText;
+    const element = state.elements.find((candidate) => candidate.id === id);
+    if (cancel) {
+      actions.cancelAnnotationEditing();
+    } else if (element?.element_type === 'table' && editingCell) {
+      const cells = element.properties.cells.map((row) => [...row]);
+      while (cells.length <= editingCell.row) cells.push([]);
+      while (cells[editingCell.row].length <= editingCell.col) cells[editingCell.row].push('');
+      cells[editingCell.row][editingCell.col] = editedText;
+      actions.updateElement(id, { properties: { cells } } as Partial<ProjectElement>);
+      actions.setAnnotationEditing(null);
+    } else if (element?.element_type === 'text' || element?.element_type === 'leader') {
+      if (state.annotationEditingNew && !editedText.trim()) {
+        actions.cancelAnnotationEditing();
+      } else {
+        actions.updateElement(id, { properties: { text: editedText } } as Partial<ProjectElement>);
+        actions.setAnnotationEditing(null);
+      }
+    } else {
+      actions.setAnnotationEditing(null);
+    }
+    setEditingCell(null);
+    setAnnotationAnchor(null);
+  }
 
   /** Drop any half-typed numeric text — a click consumes or abandons it. */
   const clearLengthBuffer = () => {
@@ -339,6 +446,11 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
         if (activeDraft && draftMode === 'poly') {
           event.preventDefault();
           actions.commitDraft();
+        } else if (activeDraft && draftMode === 'dim') {
+          event.preventDefault();
+          const needed = current.dimKind === 'angular' ? 3 : current.dimKind === 'radial' || current.dimKind === 'diameter' ? 1 : 2;
+          if (activeDraft.vertices.length < needed) actions.extendDraft();
+          else actions.commitDraft(false, annotationScale);
         }
         return;
       }
@@ -352,11 +464,28 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
       const advance = (point: Point) => {
         if (!activeDraft) {
           if (!toolArmed || current.tool === 'select') return;
+          if (current.tool === 'dimension' && (current.dimKind === 'radial' || current.dimKind === 'diameter')) {
+            const hit = pickElementAt(
+              point,
+              current.elements.filter((element) => isElementVisible(element, current.layers)),
+              8 / Math.max(0.1, current.viewport.zoom),
+              (element) => element.element_type === 'circle' || element.element_type === 'arc',
+            );
+            if (hit) actions.beginDraft(point, hit.element);
+            return;
+          }
           actions.beginDraft(point);
           if (drawModeOf(current.tool) === 'point') actions.commitDraft();
+          else if (current.tool === 'table') actions.commitDraft(false, annotationScale);
           return;
         }
         actions.updateDraft(point, true);
+        if (draftMode === 'dim') {
+          const needed = current.dimKind === 'angular' ? 3 : current.dimKind === 'radial' || current.dimKind === 'diameter' ? 1 : 2;
+          if (activeDraft.vertices.length < needed) actions.extendDraft();
+          else actions.commitDraft(false, annotationScale);
+          return;
+        }
         if (draftMode === 'poly') actions.extendDraft();
         else if (draftMode === 'arc' && activeDraft.vertices.length < 2) actions.extendDraft();
         else actions.commitDraft();
@@ -425,7 +554,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
 
     window.addEventListener('keydown', handleLengthKeyDown);
     return () => window.removeEventListener('keydown', handleLengthKeyDown);
-  }, [actions, displayUnit]);
+  }, [actions, annotationScale, displayUnit]);
 
   const visibleElements = useMemo(
     () => state.elements.filter((el) => isElementVisible(el, state.layers)),
@@ -460,6 +589,24 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
  *  arc chain, or commits the element depending on the draw mode. */
   function advanceDraftClick(world: Point) {
     const draft = state.draft;
+    if (state.tool === 'dimension') {
+      const kind = state.dimKind;
+      if (!draft) {
+        if (kind === 'radial' || kind === 'diameter') {
+          const hit = pickElementAt(world, visibleElements, 8 / Math.max(0.1, zoom), (element) => element.element_type === 'circle' || element.element_type === 'arc');
+          if (hit) actions.beginDraft(world, hit.element);
+        } else {
+          actions.beginDraft(world);
+        }
+        return;
+      }
+      actions.updateDraft(world);
+      const confirmed = draft.vertices.length;
+      const needed = kind === 'angular' ? 3 : kind === 'radial' || kind === 'diameter' ? 1 : 2;
+      if (confirmed < needed) actions.extendDraft();
+      else actions.commitDraft(false, annotationScale);
+      return;
+    }
     if (!draft) {
       actions.beginDraft(world);
       return;
@@ -514,6 +661,12 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
       clearLengthBuffer();
       actions.beginDraft(world);
       actions.commitDraft();
+      return;
+    }
+    if (state.tool === 'table' && !state.draft) {
+      clearLengthBuffer();
+      actions.beginDraft(world);
+      actions.commitDraft(false, annotationScale);
       return;
     }
     if (!state.draft && activeToolMode === 'point') {
@@ -766,6 +919,48 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     return instantiateBlock(def, previewRef);
   }, [state.draft, state.blocks, state.armedBlockId, state.elements]);
 
+  const dimensionDraftPreview = useMemo(() => {
+    const draft = state.draft;
+    if (!draft || draft.tool !== 'dimension') return null;
+    const kind = draft.dimKind;
+    let p1: PlanPoint = draft.vertices[0] ?? draft.start;
+    let p2: PlanPoint = draft.vertices[1] ?? draft.end;
+    let vertex: PlanPoint | undefined;
+    let radius: number | undefined;
+    if (kind === 'angular') {
+      vertex = draft.vertices[0];
+      p1 = draft.vertices[1] ?? draft.end;
+      p2 = draft.vertices[2] ?? draft.end;
+    } else if ((kind === 'radial' || kind === 'diameter') && draft.dimensionTarget) {
+      const target = draft.dimensionTarget;
+      if (target.element_type !== 'circle' && target.element_type !== 'arc') return null;
+      const targetProperties = target.properties as { cx?: number; cy?: number; radius?: number };
+      radius = targetProperties.radius;
+      if (radius === undefined) return null;
+      p1 = target.element_type === 'circle'
+        ? { x: target.x1, y: target.y1 }
+        : { x: targetProperties.cx ?? target.x1, y: targetProperties.cy ?? target.y1 };
+      const click = draft.dimensionTargetPoint ?? p1;
+      const angle = Math.atan2(click.y - p1.y, click.x - p1.x);
+      p2 = { x: p1.x + Math.cos(angle) * radius, y: p1.y + Math.sin(angle) * radius };
+    }
+    const preview = {
+      id: 'dimension-preview',
+      project_id: '',
+      element_type: 'dimension',
+      x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, length: Math.max(1, distance(p1, p2)), rotation: 0,
+      material_id: null, section_id: null, created_at: '', updated_at: '',
+      properties: {
+        kind,
+        dim_point: draft.end,
+        ...(vertex ? { vertex } : {}),
+        ...(kind === 'linear' ? { orientation: linearOrientation(p1, p2, draft.end) } : {}),
+        ...(radius !== undefined ? { radius } : {}),
+      },
+    } as DimensionElement;
+    return dimensionGeometry(preview, dimStyle, annotationScale);
+  }, [state.draft, dimStyle, annotationScale]);
+
   // Ghost preview for the armed edit session: replaced elements render
   // dashed cyan at their new geometry, clones dashed green, and the
   // originals being transformed are dimmed underneath.
@@ -848,13 +1043,152 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
               const mode = drawMode(el);
               const ghostDim = dimmedIds.has(el.id) ? 0.28 : 1;
               const resolved = resolveLineStyle(el, state.layers);
-              const interactive = {
+    const interactive = {
                 onMouseDown: (e: any) => handleShapeClick(e, el),
                 onTouchStart: (e: any) => handleShapeClick(e, el),
                 onMouseEnter: () => setHoverId(el.id),
-                onMouseLeave: () => setHoverId(null),
-              };
+      onMouseLeave: () => setHoverId(null),
+      onDblClick: (e: any) => {
+        e.cancelBubble = true;
+        openAnnotationEditor(el);
+      },
+      onDblTap: (e: any) => {
+        e.cancelBubble = true;
+        openAnnotationEditor(el);
+      },
+    };
               const draggable = !state.edit && state.tool === 'select' && selected && !locked && !state.readOnly;
+
+              if (el.element_type === 'dimension') {
+                const style = resolveDimStyle(dimStyles, el.properties.dim_style_id, activeDimStyleId);
+                const geometry = dimensionGeometry(el, style, annotationScale);
+                const arcLines = geometry.arcs.flatMap((arc) => {
+                  const points = sampleArcPoints(arc.center.x, arc.center.y, arc.radius, arc.startAngle, arc.endAngle, false);
+                  return points.slice(1).map((point, index) => [points[index].x, points[index].y, point.x, point.y]);
+                });
+                return (
+                  <Group key={el.id} opacity={(locked ? 0.45 : 1) * ghostDim} {...interactive}>
+                    {geometry.lines.map((line, index) => (
+                      <Line key={`dim-line-${index}`} points={[line.start.x, line.start.y, line.end.x, line.end.y]} stroke={stroke} strokeWidth={1.4 / zoom} hitStrokeWidth={12 / zoom} />
+                    ))}
+                    {arcLines.map((points, index) => (
+                      <Line key={`dim-arc-${index}`} points={points} stroke={stroke} strokeWidth={1.4 / zoom} hitStrokeWidth={12 / zoom} />
+                    ))}
+                    {geometry.arrows.map((arrow, index) => (
+                      <AnnotationArrow key={`dim-arrow-${index}`} arrow={arrow} color={stroke} zoom={zoom} />
+                    ))}
+                    <Text
+                      x={geometry.text.point.x}
+                      y={geometry.text.point.y}
+                      text={geometry.text.value}
+                      fontSize={paperToWorld(style.text_height, annotationScale)}
+                      fill={stroke}
+                      rotation={(geometry.text.angle * 180) / Math.PI}
+                      offsetX={geometry.text.value.length * paperToWorld(style.text_height, annotationScale) * 0.25}
+                      offsetY={paperToWorld(style.text_height, annotationScale) / 2}
+                    />
+                  </Group>
+                );
+              }
+
+              if (el.element_type === 'leader') {
+                const style = resolveDimStyle(dimStyles, el.properties.dim_style_id, activeDimStyleId);
+                const geometry = leaderGeometry(el, style, annotationScale)!;
+                return (
+                  <Group key={el.id} opacity={(locked ? 0.45 : 1) * ghostDim} {...interactive}>
+                    {geometry.lines.map((line, index) => (
+                      <Line key={`leader-line-${index}`} points={[line.start.x, line.start.y, line.end.x, line.end.y]} stroke={stroke} strokeWidth={1.5 / zoom} hitStrokeWidth={12 / zoom} />
+                    ))}
+                    {geometry.arrows.map((arrow, index) => (
+                      <AnnotationArrow key={`leader-arrow-${index}`} arrow={arrow} color={stroke} zoom={zoom} />
+                    ))}
+                    {el.properties.text && (
+                      <Text x={geometry.text.point.x} y={geometry.text.point.y - paperToWorld(style.text_height, annotationScale) / 2} text={geometry.text.value} fontSize={paperToWorld(style.text_height, annotationScale)} fill={stroke} />
+                    )}
+                  </Group>
+                );
+              }
+
+              if (el.element_type === 'text') {
+                const fontSize = paperToWorld(el.properties.height, annotationScale);
+                const textWidth = Math.max(fontSize * 2, el.properties.text.length * fontSize);
+                return (
+                  <Text
+                    key={el.id}
+                    x={el.x1}
+                    y={el.y1}
+                    text={el.properties.text || ' '}
+                    width={textWidth}
+                    fontSize={fontSize}
+                    fontStyle={`${el.properties.bold ? 'bold' : ''}${el.properties.italic ? ' italic' : ''}`.trim()}
+                    textDecoration={el.properties.underline ? 'underline' : undefined}
+                    align={el.properties.align ?? 'left'}
+                    offsetX={el.properties.align === 'center' ? textWidth / 2 : el.properties.align === 'right' ? textWidth : 0}
+                    rotation={(el.rotation * 180) / Math.PI}
+                    fill={stroke}
+                    opacity={(locked ? 0.45 : 1) * ghostDim}
+                    hitStrokeWidth={12 / zoom}
+                    {...interactive}
+                  />
+                );
+              }
+
+              if (el.element_type === 'table') {
+                const table = el as TableElement;
+                const rect = rectOf(table);
+                const cellWidth = rect.w / Math.max(1, table.properties.cols);
+                const cellHeight = rect.h / Math.max(1, table.properties.rows);
+                const tableFontSize = Math.min(paperToWorld(table.properties.text_height, annotationScale), cellHeight * 0.7);
+                const tableTextPadding = tableFontSize * 0.25;
+                const center = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
+                return (
+                  <Group
+                    key={el.id}
+                    x={center.x}
+                    y={center.y}
+                    offsetX={center.x}
+                    offsetY={center.y}
+                    rotation={(el.rotation * 180) / Math.PI}
+                    opacity={(locked ? 0.45 : 1) * ghostDim}
+                    draggable={draggable}
+                    onDragEnd={(e) => handleElementDragEnd(e, el, center)}
+                    {...interactive}
+                  >
+                    {Array.from({ length: table.properties.rows }, (_, row) =>
+                      Array.from({ length: table.properties.cols }, (_, col) => (
+                        <Fragment key={`cell-${row}-${col}`}>
+                          <Rect
+                            x={rect.x + col * cellWidth}
+                            y={rect.y + row * cellHeight}
+                            width={cellWidth}
+                            height={cellHeight}
+                            fill={row === 0 && table.properties.header ? 'rgba(148, 163, 184, 0.18)' : 'transparent'}
+                            stroke={stroke}
+                            strokeWidth={1 / zoom}
+                            onDblClick={(event) => { event.cancelBubble = true; openAnnotationEditor(table, { row, col }); }}
+                            onDblTap={(event) => { event.cancelBubble = true; openAnnotationEditor(table, { row, col }); }}
+                          />
+                          <Text
+                            x={rect.x + col * cellWidth + tableTextPadding}
+                            y={rect.y + row * cellHeight}
+                            text={table.properties.cells[row]?.[col] ?? ''}
+                            width={Math.max(0, cellWidth - tableTextPadding * 2)}
+                            height={cellHeight}
+                            fontSize={tableFontSize}
+                            fontStyle={row === 0 && table.properties.header ? 'bold' : 'normal'}
+                            verticalAlign="middle"
+                            wrap="none"
+                            ellipsis
+                            fill={stroke}
+                            onDblClick={(event) => { event.cancelBubble = true; openAnnotationEditor(table, { row, col }); }}
+                            onDblTap={(event) => { event.cancelBubble = true; openAnnotationEditor(table, { row, col }); }}
+                          />
+                        </Fragment>
+                      )),
+                    )}
+                  </Group>
+                );
+              }
 
               if (el.element_type === 'column') {
                 const props = el.properties as { width: number; depth: number; diameter?: number; shape?: string };
@@ -1406,6 +1740,38 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 )}
               </>
             )}
+            {dimensionDraftPreview && (
+              <>
+                {dimensionDraftPreview.lines.map((line, index) => (
+                  <Line
+                    key={`dimension-draft-line-${index}`}
+                    points={[line.start.x, line.start.y, line.end.x, line.end.y]}
+                    stroke={COLORS.select}
+                    strokeWidth={2 / zoom}
+                    dash={[8 / zoom, 4 / zoom]}
+                    listening={false}
+                  />
+                ))}
+                {dimensionDraftPreview.arcs.map((arc, index) => (
+                  <Line
+                    key={`dimension-draft-arc-${index}`}
+                    points={sampleArcPoints(arc.center.x, arc.center.y, arc.radius, arc.startAngle, arc.endAngle, false).flatMap((point) => [point.x, point.y])}
+                    stroke={COLORS.select}
+                    strokeWidth={2 / zoom}
+                    dash={[8 / zoom, 4 / zoom]}
+                    listening={false}
+                  />
+                ))}
+                <Text
+                  x={dimensionDraftPreview.text.point.x}
+                  y={dimensionDraftPreview.text.point.y}
+                  text={dimensionDraftPreview.text.value}
+                  fontSize={paperToWorld(dimStyle.text_height, annotationScale)}
+                  fill={COLORS.select}
+                  listening={false}
+                />
+              </>
+            )}
             {state.draft?.snap && (
               <Circle
                 x={state.draft.snap.point.x}
@@ -1529,8 +1895,59 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
           )}
         </div>
       )}
+      {state.annotationEditingId && annotationEditorAnchor && (
+        <textarea
+          ref={annotationInputRef}
+          key={`${state.annotationEditingId}:${editingCell?.row ?? ''}:${editingCell?.col ?? ''}:${state.annotationEditingNew ? 'new' : 'existing'}`}
+          data-testid="annotation-editor"
+          aria-label={t('annotationEditor')}
+          defaultValue={state.annotationEditingNew ? '' : annotationText}
+          onChange={(event) => setAnnotationText(event.target.value)}
+          onKeyDown={(event) => {
+            event.stopPropagation();
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              finishAnnotationEditor(true);
+            } else if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              finishAnnotationEditor();
+            }
+          }}
+          style={{
+            left: pan.x + annotationEditorAnchor.x * zoom,
+            top: pan.y + annotationEditorAnchor.y * zoom,
+            fontSize: Math.max(12, paperToWorld(dimStyle.text_height, annotationScale) * zoom),
+          }}
+          className="absolute z-30 min-h-8 min-w-40 resize border border-cyan-500 bg-slate-950/95 px-2 py-1 text-slate-100 outline-none"
+        />
+      )}
     </div>
   );
+}
+
+function AnnotationArrow({
+  arrow,
+  color,
+  zoom,
+}: {
+  arrow: { tip: Point; angle: number; kind: DimStyle['arrow']; size: number };
+  color: string;
+  zoom: number;
+}) {
+  if (arrow.kind === 'dot') {
+    return <Circle x={arrow.tip.x} y={arrow.tip.y} radius={Math.max(2 / zoom, arrow.size / 2)} fill={color} listening={false} />;
+  }
+  if (arrow.kind === 'tick') {
+    const angle = arrow.angle + Math.PI / 4;
+    const dx = Math.cos(angle) * arrow.size * 0.6;
+    const dy = Math.sin(angle) * arrow.size * 0.6;
+    return <Line points={[arrow.tip.x - dx, arrow.tip.y - dy, arrow.tip.x + dx, arrow.tip.y + dy]} stroke={color} strokeWidth={1.5 / zoom} listening={false} />;
+  }
+  const back = { x: arrow.tip.x - Math.cos(arrow.angle) * arrow.size, y: arrow.tip.y - Math.sin(arrow.angle) * arrow.size };
+  const half = arrow.size * 0.35;
+  const px = Math.cos(arrow.angle + Math.PI / 2) * half;
+  const py = Math.sin(arrow.angle + Math.PI / 2) * half;
+  return <Line points={[arrow.tip.x, arrow.tip.y, back.x + px, back.y + py, back.x - px, back.y - py]} closed fill={color} stroke={color} strokeWidth={1 / zoom} listening={false} />;
 }
 
 /** Renders one ghost element of a block instance — a simplified outline
