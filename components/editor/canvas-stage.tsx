@@ -89,6 +89,39 @@ function typeColor(element: ProjectElement): string {
   }
 }
 
+function relativeLuminance(color: string): number | null {
+  const match = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!match) return null;
+  const channels = [0, 2, 4].map((index) => Number.parseInt(match[1].slice(index, index + 2), 16) / 255);
+  const linear = channels.map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
+
+function resolveCanvasColor(color: string): string {
+  const match = /^#([0-9a-f]{6})$/i.exec(color);
+  const backgroundLuminance = relativeLuminance(COLORS.canvas);
+  if (!match || backgroundLuminance === null) return color;
+
+  const channels = [0, 2, 4].map((index) => Number.parseInt(match[1].slice(index, index + 2), 16));
+  const contrast = (rgb: number[]) => {
+    const hex = `#${rgb.map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`;
+    const luminance = relativeLuminance(hex);
+    if (luminance === null) return 1;
+    return (Math.max(luminance, backgroundLuminance) + 0.05) / (Math.min(luminance, backgroundLuminance) + 0.05);
+  };
+  if (contrast(channels) >= 4.5) return color;
+
+  let low = 0;
+  let high = 1;
+  for (let iteration = 0; iteration < 20; iteration += 1) {
+    const amount = (low + high) / 2;
+    const candidate = channels.map((channel) => channel + (255 - channel) * amount);
+    if (contrast(candidate) >= 4.5) high = amount;
+    else low = amount;
+  }
+  return `#${channels.map((channel) => Math.round(channel + (255 - channel) * high).toString(16).padStart(2, '0')).join('')}`;
+}
+
 function fillFor(element: ProjectElement): string | null {
   switch (element.element_type) {
     case 'slab': return 'rgba(51, 65, 85, 0.45)';
@@ -103,9 +136,7 @@ function fillFor(element: ProjectElement): string | null {
 function colorFor(element: ProjectElement, selected: boolean, hovered: boolean, layers: PlanLayer[]): string {
   if (selected) return COLORS.select;
   if (hovered) return COLORS.hover;
-  const layerColor = layerOf(element, layers)?.color;
-  if (layerColor) return layerColor;
-  return typeColor(element);
+  return resolveCanvasColor(layerOf(element, layers)?.color ?? typeColor(element));
 }
 
 function lineStyle(element: ProjectElement): { width: number; dash?: number[] } {

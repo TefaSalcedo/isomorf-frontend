@@ -158,22 +158,24 @@ export function dimensionGeometry(element: DimensionElement, style: DimStyle, sc
     const axisAngle = (props.orientation === 'vertical' ? Math.PI / 2 : 0) + element.rotation;
     const direction = { x: Math.cos(axisAngle), y: Math.sin(axisAngle) };
     const normal = { x: -direction.y, y: direction.x };
-    const offsetFromStart = (dimPoint.x - p1.x) * normal.x + (dimPoint.y - p1.y) * normal.y;
-    const sign = offsetFromStart >= 0 ? 1 : -1;
-    const displacement = multiply(normal, offsetFromStart);
-    const q1 = add(p1, displacement);
-    const q2 = add(p2, displacement);
-    const n = multiply(normal, sign);
-    const e1 = add(p1, multiply(n, offset));
-    const e2 = add(p2, multiply(n, offset));
-    const lineEnd1 = add(q1, multiply(n, extend));
-    const lineEnd2 = add(q2, multiply(n, extend));
+    const offset1 = (dimPoint.x - p1.x) * normal.x + (dimPoint.y - p1.y) * normal.y;
+    const offset2 = (dimPoint.x - p2.x) * normal.x + (dimPoint.y - p2.y) * normal.y;
+    const q1 = add(p1, multiply(normal, offset1));
+    const q2 = add(p2, multiply(normal, offset2));
+    const n1 = multiply(normal, offset1 >= 0 ? 1 : -1);
+    const n2 = multiply(normal, offset2 >= 0 ? 1 : -1);
+    const e1 = Math.abs(offset1) < offset ? p1 : add(p1, multiply(n1, offset));
+    const e2 = Math.abs(offset2) < offset ? p2 : add(p2, multiply(n2, offset));
+    const lineEnd1 = add(q1, multiply(n1, extend));
+    const lineEnd2 = add(q2, multiply(n2, extend));
+    const midpoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+    const textSide = (dimPoint.x - midpoint.x) * normal.x + (dimPoint.y - midpoint.y) * normal.y >= 0 ? 1 : -1;
     geometry.lines.push({ start: e1, end: lineEnd1 }, { start: e2, end: lineEnd2 }, { start: q1, end: q2 });
     arrow(geometry, q1, q2, style, scale);
     arrow(geometry, q2, q1, style, scale);
     geometry.text.point = add(
       { x: (q1.x + q2.x) / 2, y: (q1.y + q2.y) / 2 },
-      multiply(n, paperToWorld(style.text_height * 0.6, scale)),
+      multiply(normal, textSide * paperToWorld(style.text_height * 0.6, scale)),
     );
     geometry.text.angle = normalizeTextAngle(axisAngle);
     return geometry;

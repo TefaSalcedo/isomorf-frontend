@@ -90,6 +90,40 @@ describe('annotation dimensions', () => {
     expect(normalizeTextAngle((-3 * Math.PI) / 4)).toBeCloseTo(Math.PI / 4);
   });
 
+  it('projects each measured endpoint onto horizontal and vertical linear dimensions', () => {
+    const horizontal = dimensionGeometry(
+      baseDimension('linear', {
+        x1: 500,
+        y1: 100,
+        x2: 800,
+        y2: 300,
+        properties: { kind: 'linear', orientation: 'horizontal', dim_point: { x: 650, y: 50 } },
+      }),
+      DEFAULT_DIM_STYLES[0],
+      50,
+    );
+    expect(horizontal.lines[2].start).toEqual({ x: 500, y: 50 });
+    expect(horizontal.lines[2].end).toEqual({ x: 800, y: 50 });
+    expect(horizontal.text.value).toBe('3.00');
+
+    const vertical = dimensionGeometry(
+      baseDimension('linear', {
+        x1: 500,
+        y1: 100,
+        x2: 800,
+        y2: 300,
+        properties: { kind: 'linear', orientation: 'vertical', dim_point: { x: 300, y: 200 } },
+      }),
+      DEFAULT_DIM_STYLES[0],
+      50,
+    );
+    expect(vertical.lines[2].start.x).toBeCloseTo(300);
+    expect(vertical.lines[2].start.y).toBeCloseTo(100);
+    expect(vertical.lines[2].end.x).toBeCloseTo(300);
+    expect(vertical.lines[2].end.y).toBeCloseTo(300);
+    expect(vertical.text.value).toBe('2.00');
+  });
+
   it('builds scale-aware dimension extension, offset, arrow and label geometry', () => {
     const geometry = dimensionGeometry(
       baseDimension('linear', { x2: 500, y2: 0, properties: { kind: 'linear', dim_point: { x: 250, y: 200 } } }),

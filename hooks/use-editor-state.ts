@@ -268,7 +268,7 @@ function wallNeedsJoinRecompute(
   return false;
 }
 
-function applyElementChanges(
+export function applyElementChanges(
   el: ProjectElement,
   changes: Partial<ProjectElement>,
   allElements: ProjectElement[],
@@ -374,7 +374,7 @@ function applyElementChanges(
       const start = { x: next.x1, y: next.y1 };
       const end = { x: next.x2, y: next.y2 };
       next.length = distance(start, end);
-      next.rotation = Math.atan2(end.y - start.y, end.x - start.x);
+      if (next.element_type !== 'text') next.rotation = Math.atan2(end.y - start.y, end.x - start.x);
       if (next.element_type === 'beam') {
         next.properties = { ...next.properties, length: cmToMeters(next.length) };
       }
