@@ -22,11 +22,13 @@ import { MemberDesignPanel, isDesignable } from '@/components/editor/member-desi
 import type { DesignPatch } from '@/components/editor/member-design-panel';
 import { CommandPalette } from '@/components/editor/command-palette';
 import { CatalogPanel } from '@/components/editor/catalog-panel';
+import { BlocksPanel } from '@/components/editor/blocks-panel';
 import { ElementTable } from '@/components/editor/element-table';
 import { buildEditorCommands, type EditorView } from '@/lib/editor/commands';
 import { api } from '@/lib/api-client';
 import { emptyCatalog, type CatalogData } from '@/lib/editor/catalog';
-import type { DocumentState, MaterialCategory, Project, ProjectElement, SectionShape } from '@/types/project';
+import { createBlockFromSelection } from '@/lib/editor/blocks';
+import type { BlockCreatePayload, DocumentState, MaterialCategory, Project, ProjectElement, SectionShape } from '@/types/project';
 import { defaultDesignSettings } from '@/lib/editor/elements';
 import { ensureLayers } from '@/lib/editor/layers';
 
@@ -193,15 +195,18 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([api.materials(initialProject.id), api.sections(initialProject.id), api.catalogPresets()])
-      .then(([materials, sections, presets]) => {
-        if (!cancelled) setCatalog({ materials, sections, presets });
+    Promise.all([api.materials(initialProject.id), api.sections(initialProject.id), api.catalogPresets(), api.blocks(initialProject.id)])
+      .then(([materials, sections, presets, blocks]) => {
+        if (!cancelled) {
+          setCatalog({ materials, sections, presets });
+          actions.setBlocks(blocks);
+        }
       })
       .catch(() => {
         if (!cancelled) setCatalog(emptyCatalog());
       });
     return () => { cancelled = true; };
-  }, [initialProject.id]);
+  }, [initialProject.id, actions]);
 
   const catalogActions = useMemo(() => ({
     addMaterial: async (payload: { name: string; category: MaterialCategory }) => {
@@ -221,6 +226,34 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
       setCatalog((prev) => ({ ...prev, sections: prev.sections.filter((section) => section.id !== id) }));
     },
   }), [initialProject.id]);
+
+  // Block library CRUD rides the same project-scoped API as materials and
+  // sections; the reducer keeps ``state.blocks`` in sync for insertion,
+  // explode and the canvas previews.
+  const blockActions = useMemo(() => ({
+    createFromSelection: async (name: string, description?: string) => {
+      const current = stateRef.current;
+      const selected = current.elements.filter((el) => current.selectedIds.includes(el.id));
+      const payload = createBlockFromSelection(name, selected, description);
+      if (!payload) return;
+      const created = await api.createBlock(initialProject.id, payload);
+      actions.setBlocks([...stateRef.current.blocks, created]);
+    },
+    rename: async (id: string, name: string) => {
+      const updated = await api.updateBlock(initialProject.id, id, { name });
+      actions.setBlocks(stateRef.current.blocks.map((block) => (block.id === id ? updated : block)));
+    },
+    remove: async (id: string) => {
+      await api.deleteBlock(initialProject.id, id);
+      actions.setBlocks(stateRef.current.blocks.filter((block) => block.id !== id));
+    },
+    importPayloads: async (payloads: BlockCreatePayload[]) => {
+      for (const payload of payloads) {
+        const created = await api.createBlock(initialProject.id, payload);
+        actions.setBlocks([...stateRef.current.blocks, created]);
+      }
+    },
+  }), [initialProject.id, actions]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -319,6 +352,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     exportPng: handleExport,
     print: handlePrint,
     armEdit: actions.armEdit,
+    explodeSelection: actions.explodeSelection,
   });
   const visibleCommands = readOnly ? commands.filter((command) => !command.requiresEdit) : commands;
 
@@ -347,6 +381,16 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     );
   } else if (state.activeSection === 'catalog') {
     rightPanel = <CatalogPanel catalog={catalog} actions={catalogActions} readOnly={readOnly} />;
+  } else if (state.activeSection === 'blocks') {
+    rightPanel = (
+      <BlocksPanel
+        blocks={state.blocks}
+        armedBlockId={state.tool === 'block_ref' ? state.armedBlockId : null}
+        selectionCount={state.selectedIds.length}
+        readOnly={readOnly}
+        actions={{ armBlock: actions.armBlock, ...blockActions }}
+      />
+    );
   } else if (state.activeSection === 'history') {
     rightPanel = (
       <HistoryPanel
@@ -376,6 +420,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         catalog={catalog}
         onUpdate={actions.updateElement}
         onUpdateMany={actions.updateMany}
+        onExplode={actions.explodeSelection}
         readOnly={readOnly}
       />
     );
@@ -384,6 +429,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
   const canvas = activeView === '3d' ? (
     <Model3DPreview
       elements={state.elements}
+      blocks={state.blocks}
       selectedIds={state.selectedIds}
       onSelectElement={(id) => {
         actions.select(id, false);

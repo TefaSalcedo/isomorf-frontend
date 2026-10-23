@@ -20,7 +20,8 @@ import {
   drawModeOf,
 } from '@/lib/editor/elements';
 import { snapForWall, snapPixelsForZoom, snapToNearest } from '@/lib/editor/snapping';
-import { isElementLocked, isElementVisible, layerOf } from '@/lib/editor/layers';
+import { isElementLocked, isElementVisible, layerOf, resolveLineStyle } from '@/lib/editor/layers';
+import { blockById, createBlockRef, instantiateBlock } from '@/lib/editor/blocks';
 import type { PlanLayer } from '@/types/project';
 import {
   applyGrip,
@@ -118,6 +119,11 @@ function lineStyle(element: ProjectElement): { width: number; dash?: number[] } 
     default: return { width: 4 };
   }
 }
+
+/** Line-mode types whose stroke encodes a real plan dimension (wall
+ *  thickness, beam width). ByLayer lineweight never overrides geometry —
+ *  only style strokes adopt it. */
+const GEOMETRY_WIDTH_TYPES: ReadonlySet<string> = new Set(['wall', 'beam', 'grade_beam']);
 
 function worldFromScreen(screen: Point, pan: Point, zoom: number): Point {
   return { x: (screen.x - pan.x) / zoom, y: (screen.y - pan.y) / zoom };
@@ -502,6 +508,14 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
       setDragging(true);
       return;
     }
+    if (state.tool === 'block_ref') {
+      // Single-click insert: the draft exists only to feed the snapped
+      // insertion point into ``commitDraft``.
+      clearLengthBuffer();
+      actions.beginDraft(world);
+      actions.commitDraft();
+      return;
+    }
     if (!state.draft && activeToolMode === 'point') {
       actions.beginDraft(world);
       actions.commitDraft();
@@ -539,7 +553,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
       return;
     }
     if (!state.draft) {
-      if (activeToolMode === 'point') {
+      if (activeToolMode === 'point' || state.tool === 'block_ref') {
         actions.beginDraft(world);
       }
       return;
@@ -741,6 +755,17 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
     return { tool: draft.tool, point: draft.end, snap: draft.snap };
   }, [state.draft]);
 
+  /** Armed block preview: the library definition instantiated at the
+   *  cursor so the user sees exactly what lands on click. */
+  const blockInsertPreview = useMemo(() => {
+    const draft = state.draft;
+    if (!draft || draft.tool !== 'block_ref') return null;
+    const def = blockById(state.blocks, state.armedBlockId);
+    if (!def) return null;
+    const previewRef = createBlockRef('block-preview', state.elements[0]?.project_id ?? '', def, draft.end);
+    return instantiateBlock(def, previewRef);
+  }, [state.draft, state.blocks, state.armedBlockId, state.elements]);
+
   // Ghost preview for the armed edit session: replaced elements render
   // dashed cyan at their new geometry, clones dashed green, and the
   // originals being transformed are dimmed underneath.
@@ -822,6 +847,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
               const stroke = colorFor(el, selected, hovered, state.layers);
               const mode = drawMode(el);
               const ghostDim = dimmedIds.has(el.id) ? 0.28 : 1;
+              const resolved = resolveLineStyle(el, state.layers);
               const interactive = {
                 onMouseDown: (e: any) => handleShapeClick(e, el),
                 onTouchStart: (e: any) => handleShapeClick(e, el),
@@ -879,9 +905,9 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                       y={el.y1}
                       radius={r}
                       stroke={stroke}
-                      strokeWidth={2.5}
+                      strokeWidth={resolved.width ?? 2.5}
                       fill={selected ? 'rgba(34, 211, 238, 0.15)' : 'rgba(249, 115, 22, 0.12)'}
-                      dash={[6, 3]}
+                      dash={resolved.dash ?? [6, 3]}
                       opacity={(locked ? 0.45 : 1) * ghostDim}
                       draggable={draggable}
                       onDragEnd={(e) => handleElementDragEnd(e, el, { x: el.x1, y: el.y1 })}
@@ -902,7 +928,8 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                     y={el.y1}
                     radius={radius}
                     stroke={stroke}
-                    strokeWidth={2}
+                    strokeWidth={resolved.width ?? 2}
+                    dash={resolved.dash}
                     fill={selected ? 'rgba(34, 211, 238, 0.10)' : undefined}
                     opacity={(locked ? 0.45 : 1) * ghostDim}
                     draggable={draggable}
@@ -923,7 +950,8 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                     key={el.id}
                     points={flat}
                     stroke={stroke}
-                    strokeWidth={2}
+                    strokeWidth={resolved.width ?? 2}
+                    dash={resolved.dash}
                     lineCap="round"
                     lineJoin="round"
                     opacity={(locked ? 0.45 : 1) * ghostDim}
@@ -944,7 +972,8 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                     key={el.id}
                     points={flat}
                     stroke={stroke}
-                    strokeWidth={2}
+                    strokeWidth={resolved.width ?? 2}
+                    dash={resolved.dash}
                     lineCap="round"
                     lineJoin="round"
                     opacity={(locked ? 0.45 : 1) * ghostDim}
@@ -967,7 +996,8 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                     radiusX={r.w / 2}
                     radiusY={r.h / 2}
                     stroke={stroke}
-                    strokeWidth={2}
+                    strokeWidth={resolved.width ?? 2}
+                    dash={resolved.dash}
                     fill={selected ? 'rgba(34, 211, 238, 0.10)' : undefined}
                     opacity={(locked ? 0.45 : 1) * ghostDim}
                     draggable={draggable}
@@ -996,7 +1026,8 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                       offsetY={r.h / 2}
                       rotation={deg}
                       stroke={stroke}
-                      strokeWidth={1.5}
+                      strokeWidth={resolved.width ?? 1.5}
+                      dash={resolved.dash}
                       fill={selected ? 'rgba(34, 211, 238, 0.08)' : 'rgba(100, 116, 139, 0.08)'}
                       opacity={(locked ? 0.45 : 1) * ghostDim}
                       draggable={draggable}
@@ -1012,6 +1043,65 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                         listening={false}
                       />
                     </Group>
+                  </Fragment>
+                );
+              }
+
+              if (el.element_type === 'block_ref') {
+                const def = blockById(state.blocks, (el.properties as { block_id?: string }).block_id);
+                const ghosts = def ? instantiateBlock(def, el) : [];
+                const r = rectOf(el);
+                const cx = r.x + r.w / 2;
+                const cy = r.y + r.h / 2;
+                const name = (el.properties as { block_name?: string }).block_name ?? def?.name ?? '';
+                return (
+                  <Fragment key={el.id}>
+                    {/* Ghost contents render non-listening: the instance is a
+                        single object — the transparent hit rect below owns
+                        the pointer interaction. */}
+                    {ghosts.map((ghost) => (
+                      <GhostItem key={ghost.id} element={ghost} layers={state.layers} />
+                    ))}
+                    <Rect
+                      x={cx}
+                      y={cy}
+                      width={r.w}
+                      height={r.h}
+                      offsetX={r.w / 2}
+                      offsetY={r.h / 2}
+                      rotation={(el.rotation * 180) / Math.PI}
+                      stroke={stroke}
+                      strokeWidth={1.5}
+                      dash={[6, 4]}
+                      fill={selected ? 'rgba(34, 211, 238, 0.10)' : undefined}
+                      opacity={(locked ? 0.45 : selected || hovered ? 0.9 : 0.35) * ghostDim}
+                      listening={false}
+                    />
+                    <Rect
+                      x={cx}
+                      y={cy}
+                      width={r.w}
+                      height={r.h}
+                      offsetX={r.w / 2}
+                      offsetY={r.h / 2}
+                      rotation={(el.rotation * 180) / Math.PI}
+                      fill="transparent"
+                      opacity={ghostDim}
+                      draggable={draggable}
+                      onDragEnd={(e) => handleElementDragEnd(e, el, { x: cx, y: cy })}
+                      {...interactive}
+                    />
+                    {name && (
+                      <Text
+                        x={r.x + 3}
+                        y={r.y + 3}
+                        text={name}
+                        fontSize={Math.max(10, 12 / Math.max(zoom, 0.5))}
+                        fill={stroke}
+                        opacity={0.85 * ghostDim}
+                        listening={false}
+                      />
+                    )}
                   </Fragment>
                 );
               }
@@ -1035,8 +1125,8 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                       rotation={deg}
                       fill={selected ? 'rgba(34, 211, 238, 0.14)' : fill ?? 'rgba(148, 163, 184, 0.12)'}
                       stroke={stroke}
-                      strokeWidth={isOpening ? 1.5 : 2}
-                      dash={isOpening || el.element_type === 'footing' ? [8, 4] : undefined}
+                      strokeWidth={resolved.width ?? (isOpening ? 1.5 : 2)}
+                      dash={resolved.dash ?? (isOpening || el.element_type === 'footing' ? [8, 4] : undefined)}
                       opacity={(locked ? 0.45 : 1) * ghostDim}
                       draggable={draggable}
                       onDragEnd={(e) => handleElementDragEnd(e, el, { x: cx, y: cy })}
@@ -1071,8 +1161,8 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                   key={el.id}
                   points={[el.x1, el.y1, el.x2, el.y2]}
                   stroke={stroke}
-                  strokeWidth={style.width}
-                  dash={style.dash}
+                  strokeWidth={GEOMETRY_WIDTH_TYPES.has(el.element_type) ? style.width : (resolved.width ?? style.width)}
+                  dash={resolved.dash ?? style.dash}
                   lineCap="butt"
                   lineJoin="miter"
                   opacity={(locked ? 0.45 : 1) * ghostDim}
@@ -1184,7 +1274,7 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                 <Circle x={state.draft.end.x} y={state.draft.end.y} radius={5 / zoom} fill={COLORS.select} listening={false} />
               </>
             )}
-            {state.draft && state.draft.tool !== 'select' && drawModeOf(state.draft.tool) === 'rect' && (
+            {state.draft && state.draft.tool !== 'select' && state.draft.tool !== 'block_ref' && drawModeOf(state.draft.tool) === 'rect' && (
               <>
                 <Rect
                   x={Math.min(state.draft.start.x, state.draft.end.x)}
@@ -1304,6 +1394,16 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
                   listening={false}
                 />
                 <Circle x={pointPreview.point.x} y={pointPreview.point.y} radius={5 / zoom} fill={COLORS.select} listening={false} />
+              </>
+            )}
+            {blockInsertPreview && (
+              <>
+                {blockInsertPreview.map((ghost) => (
+                  <GhostItem key={ghost.id} element={ghost} layers={state.layers} />
+                ))}
+                {state.draft && (
+                  <Circle x={state.draft.end.x} y={state.draft.end.y} radius={5 / zoom} fill={COLORS.select} listening={false} />
+                )}
               </>
             )}
             {state.draft?.snap && (
@@ -1430,6 +1530,81 @@ export function CanvasStage({ state, displayUnit, actions, stageRef }: CanvasSta
         </div>
       )}
     </div>
+  );
+}
+
+/** Renders one ghost element of a block instance — a simplified outline
+ *  per draw mode, non-listening, colored by the item's own layer. */
+function GhostItem({ element, layers }: { element: ProjectElement; layers: PlanLayer[] }) {
+  const stroke = colorFor(element, false, false, layers);
+  const resolved = resolveLineStyle(element, layers);
+  const mode = drawMode(element);
+
+  if (mode === 'point') {
+    const props = element.properties as { width?: number; depth?: number; diameter?: number; shape?: string };
+    if (props.shape === 'circular' && props.diameter) {
+      return <Circle x={element.x1} y={element.y1} radius={(props.diameter * 100) / 2} fill={stroke} opacity={0.9} listening={false} />;
+    }
+    const w = (props.width ?? 0.3) * 100;
+    const h = (props.depth ?? props.diameter ?? 0.3) * 100;
+    return (
+      <Rect
+        x={element.x1}
+        y={element.y1}
+        width={w}
+        height={h}
+        offsetX={w / 2}
+        offsetY={h / 2}
+        rotation={(element.rotation * 180) / Math.PI}
+        fill={stroke}
+        opacity={0.9}
+        listening={false}
+      />
+    );
+  }
+  if (mode === 'center') {
+    const radius = (element.properties as { radius?: number }).radius ?? Math.abs(element.x2 - element.x1);
+    return <Circle x={element.x1} y={element.y1} radius={radius} stroke={stroke} strokeWidth={resolved.width ?? 2} dash={resolved.dash} listening={false} />;
+  }
+  if (mode === 'poly') {
+    const points = ((element.properties as { points?: Point[] }).points ?? []).flatMap((p) => [p.x, p.y]);
+    if (points.length < 4) return null;
+    return <Line points={points} stroke={stroke} strokeWidth={resolved.width ?? 2} dash={resolved.dash} lineCap="round" lineJoin="round" listening={false} />;
+  }
+  if (mode === 'arc') {
+    const props = (element as ArcElement).properties;
+    const flat = sampleArcPoints(props.cx, props.cy, props.radius, props.start_angle, props.end_angle, props.clockwise).flatMap((p) => [p.x, p.y]);
+    return <Line points={flat} stroke={stroke} strokeWidth={resolved.width ?? 2} dash={resolved.dash} lineCap="round" lineJoin="round" listening={false} />;
+  }
+  if (mode === 'rect') {
+    const r = rectOf(element);
+    return (
+      <Rect
+        x={r.x + r.w / 2}
+        y={r.y + r.h / 2}
+        width={r.w}
+        height={r.h}
+        offsetX={r.w / 2}
+        offsetY={r.h / 2}
+        rotation={(element.rotation * 180) / Math.PI}
+        stroke={stroke}
+        strokeWidth={resolved.width ?? 2}
+        dash={resolved.dash}
+        fill={fillFor(element) ?? 'rgba(148, 163, 184, 0.08)'}
+        listening={false}
+      />
+    );
+  }
+  const style = lineStyle(element);
+  return (
+    <Line
+      points={[element.x1, element.y1, element.x2, element.y2]}
+      stroke={stroke}
+      strokeWidth={GEOMETRY_WIDTH_TYPES.has(element.element_type) ? style.width : (resolved.width ?? style.width)}
+      dash={resolved.dash ?? style.dash}
+      lineCap="butt"
+      listening={false}
+    />
   );
 }
 

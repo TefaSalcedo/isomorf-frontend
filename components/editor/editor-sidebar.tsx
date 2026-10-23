@@ -51,6 +51,7 @@ import {
   Scissors,
   ArrowRightToLine,
   Radius,
+  Boxes,
 } from 'lucide-react';
 import type { EditorState, Tool, ActiveSection } from '@/hooks/use-editor-state';
 import type { EditOp } from '@/lib/editor/edit-ops';
@@ -64,6 +65,7 @@ const SECTIONS: { id: ActiveSection; icon: typeof Home }[] = [
   { id: 'draw', icon: Pencil },
   { id: 'structure', icon: Columns3 },
   { id: 'layers', icon: Layers3 },
+  { id: 'blocks', icon: Boxes },
   { id: 'catalog', icon: BookMarked },
   { id: 'calculations', icon: Calculator },
   { id: 'history', icon: History },

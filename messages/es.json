@@ -252,6 +252,7 @@
         "draw": "Dibujar",
         "structure": "Estructura",
         "layers": "Capas",
+        "blocks": "Bloques",
         "calculations": "Cálculos",
         "history": "Historial",
         "settings": "Configuración",
@@ -320,7 +321,8 @@
       "circle": "Círculo",
       "ellipse": "Elipse",
       "rectangle": "Rectángulo",
-      "hatch": "Hachurado"
+      "hatch": "Hachurado",
+      "block_ref": "Bloque"
     },
     "loadTypes": {
       "dead": "Muerta",
@@ -422,12 +424,27 @@
         "closed": "Cerrada",
         "yes": "Sí",
         "no": "No",
+        "linetype": "Tipo de línea",
+        "lineweight": "Grosor de línea",
+        "byLayer": "Por capa",
+        "linetypes": {
+          "solid": "Continua",
+          "dashed": "Discontinua",
+          "dotted": "Punteada",
+          "dashdot": "Trazo y punto",
+          "center": "Eje",
+          "hidden": "Oculta"
+        },
+        "blockName": "Nombre del bloque",
+        "explode": "Explotar bloque en elementos",
         "sections": {
           "identity": "Identidad",
           "position": "Posición",
           "geometry": "Geometría",
           "material": "Material y sección",
-          "layer": "Capa"
+          "layer": "Capa",
+          "lineStyle": "Estilo de línea",
+          "block": "Bloque"
         },
         "bulk": {
           "height": "Altura (m)",
@@ -466,7 +483,18 @@
         "applyColor": "Aplicar color {color} a {name}",
         "activate": "Activar",
         "active": "Activa",
-        "moveSelection": "Mover selección ({count}) a esta capa"
+        "moveSelection": "Mover selección ({count}) a esta capa",
+        "linetype": "Tipo de línea",
+        "lineweight": "Grosor",
+        "styleDefault": "Por defecto",
+        "linetypes": {
+          "solid": "Continua",
+          "dashed": "Discontinua",
+          "dotted": "Punteada",
+          "dashdot": "Trazo y punto",
+          "center": "Eje",
+          "hidden": "Oculta"
+        }
       },
       "history": {
         "title": "Historial del documento",
@@ -562,6 +590,28 @@
         "downloadMemory": "Descargar memoria",
         "notes": "Observaciones",
         "modalTitle": "Memoria de cálculo — {element}"
+      },
+      "blocks": {
+        "title": "Biblioteca de bloques",
+        "subtitle": "Símbolos reutilizables compartidos por este proyecto. Insertar coloca una referencia; explotar la devuelve a elementos sueltos.",
+        "search": "Buscar bloques…",
+        "empty": "Aún no hay bloques. Selecciona elementos y crea uno arriba.",
+        "items": "{count, plural, one {# elemento} other {# elementos}}",
+        "insert": "Insertar",
+        "armed": "Clic en el lienzo para colocar",
+        "createTitle": "Nuevo bloque",
+        "createHint": "{count} elementos seleccionados — pasan a ser el contenido del bloque.",
+        "createPlaceholder": "Nombre del bloque",
+        "createButton": "Crear",
+        "rename": "Renombrar",
+        "delete": "Eliminar",
+        "export": "Exportar JSON",
+        "import": "Importar bloques (.json)",
+        "invalidFile": "Archivo de bloques no válido",
+        "importError": "No se pudieron importar los bloques",
+        "saveError": "No se pudo guardar el bloque",
+        "deleteError": "No se pudo eliminar el bloque (puede estar en uso)",
+        "deleteInUse": "Este bloque está en uso: explota o elimina sus referencias primero."
       },
       "catalog": {
         "title": "Materiales y secciones",
@@ -684,7 +734,8 @@
         "undo": "Deshacer",
         "redo": "Rehacer",
         "save": "Guardar ahora",
-        "delete": "Eliminar selección"
+        "delete": "Eliminar selección",
+        "explode": "Explotar referencia de bloque"
       },
       "view": {
         "fit": "Encajar en pantalla",
@@ -702,6 +753,7 @@
       },
       "section": {
         "layers": "Abrir capas",
+        "blocks": "Abrir biblioteca de bloques",
         "history": "Abrir historial",
         "settings": "Abrir configuración",
         "calculations": "Abrir cálculos",

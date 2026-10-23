@@ -1,6 +1,6 @@
 import { useReducer, useCallback, useMemo } from 'react';
 import type { Point } from '@/lib/editor/geometry';
-import type { ArcElement, ElementType, PlanLayer, Project, ProjectElement, WallElement } from '@/types/project';
+import type { ArcElement, BlockDefinition, BlockRefElement, ElementType, PlanLayer, Project, ProjectElement, WallElement } from '@/types/project';
 import {
   createArc,
   createBeam,
@@ -59,6 +59,7 @@ import {
 import { parsePointInput, resolvePoint } from '@/lib/editor/coords';
 import { displayToCm, type DisplayUnit } from '@/lib/editor/units';
 import { createLayer, defaultLayerFor, ensureLayers, isElementLocked } from '@/lib/editor/layers';
+import { blockById, createBlockRef, explodeBlockRef } from '@/lib/editor/blocks';
 import { useLocale } from '@/lib/i18n/locale-context';
 import type { Locale } from '@/lib/i18n/messages';
 
@@ -70,6 +71,7 @@ export type ActiveSection =
   | 'draw'
   | 'structure'
   | 'layers'
+  | 'blocks'
   | 'catalog'
   | 'calculations'
   | 'history'
@@ -114,6 +116,12 @@ export type EditorState = {
   activeSection: ActiveSection;
   layers: PlanLayer[];
   activeLayerId: string;
+  /** Project block library (server rows) plus the definition currently
+   *  armed for single-click insertion. */
+  blocks: BlockDefinition[];
+  armedBlockId: string | null;
+  /** Owning project id, kept so elements can be created before any exist. */
+  projectId: string;
   revision: number;
   headRevision: number;
   historyBusy: boolean;
@@ -163,6 +171,9 @@ export type EditorAction =
   | { type: 'removeLayer'; id: string }
   | { type: 'setActiveLayer'; id: string }
   | { type: 'assignSelectionToLayer'; id: string }
+  | { type: 'setBlocks'; blocks: BlockDefinition[] }
+  | { type: 'armBlock'; blockId: string }
+  | { type: 'explodeSelection' }
   | { type: 'markClean' }
   | { type: 'setError'; error: string }
   | { type: 'clearError' };
@@ -428,11 +439,16 @@ function dedupePoints(points: Point[]): Point[] {
   return points.filter((p, i) => i === 0 || !pointsEqual(p, points[i - 1]));
 }
 
-function makeElementFromDraft(draft: DraftState, projectId: string, close = false): ProjectElement | null {
+function makeElementFromDraft(draft: DraftState, projectId: string, close = false, armedBlock?: BlockDefinition | null): ProjectElement | null {
   const id = crypto.randomUUID();
   let start = draft.start;
   let end = draft.end;
   const mode = draft.tool === 'select' ? null : drawModeOf(draft.tool);
+  // A block ref inserts at the click — the rect-mode bbox comes from the
+  // definition's bounds, not from a dragged corner pair.
+  if (draft.tool === 'block_ref') {
+    return armedBlock ? createBlockRef(id, projectId, armedBlock, end) : null;
+  }
   if (draft.tool === 'wall' && draft.host && draft.joinAt) {
     const hostStart = { x: draft.host.x1, y: draft.host.y1 };
     const hostEnd = { x: draft.host.x2, y: draft.host.y2 };
@@ -526,6 +542,7 @@ const MUTATING_ACTIONS: ReadonlySet<EditorAction['type']> = new Set([
   'updateLayer',
   'removeLayer',
   'assignSelectionToLayer',
+  'explodeSelection',
 ]);
 
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
@@ -539,6 +556,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         elements,
         layers,
         activeLayerId: layers[0].id,
+        projectId: action.project.id,
         selectedIds: [],
         draft: null,
         edit: null,
@@ -604,6 +622,31 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         state.selectedIds.includes(element.id) ? withLayer(element, action.id) : element,
       );
       return { ...state, elements, dirty: true };
+    }
+    case 'setBlocks': {
+      const armedBlockId = action.blocks.some((block) => block.id === state.armedBlockId) ? state.armedBlockId : null;
+      return { ...state, blocks: action.blocks, armedBlockId };
+    }
+    case 'armBlock': {
+      if (state.readOnly || !blockById(state.blocks, action.blockId)) return state;
+      return { ...state, tool: 'block_ref', armedBlockId: action.blockId, draft: null, edit: null };
+    }
+    case 'explodeSelection': {
+      const selected = new Set(state.selectedIds);
+      const refs = state.elements.filter((el): el is BlockRefElement =>
+        selected.has(el.id) && el.element_type === 'block_ref' && !isElementLocked(el, state.layers),
+      );
+      if (!refs.length) return state;
+      const expanded = new Map<string, ProjectElement[]>();
+      for (const ref of refs) {
+        const def = blockById(state.blocks, ref.properties.block_id);
+        const items = explodeBlockRef(ref, def);
+        if (items.length) expanded.set(ref.id, items);
+      }
+      if (!expanded.size) return state;
+      const elements = state.elements.flatMap((el) => expanded.get(el.id) ?? [el]);
+      const newIds = [...expanded.values()].flat().map((el) => el.id);
+      return { ...state, elements, selectedIds: newIds, dirty: true };
     }
     case 'clearSelection':
       return { ...state, selectedIds: [] };
@@ -746,8 +789,9 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     }
     case 'commitDraft': {
       if (!state.draft) return state;
-      const projectId = state.elements[0]?.project_id ?? '';
-      const created = makeElementFromDraft(state.draft, projectId, action.close);
+      const projectId = state.projectId || state.elements[0]?.project_id || '';
+      const armedBlock = state.draft.tool === 'block_ref' ? blockById(state.blocks, state.armedBlockId) ?? null : null;
+      const created = makeElementFromDraft(state.draft, projectId, action.close, armedBlock);
       if (!created) return { ...state, draft: null };
       if (created.element_type === 'wall') {
         const elementsWithCreated = state.elements.concat(created);
@@ -756,12 +800,16 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         }
       }
       const placed = withLayer(created, state.activeLayerId);
+      // Block insertion stays armed like AutoCAD's INSERT: the preview
+      // re-anchors on the next mouse move and every click drops another
+      // instance until Escape returns to the select tool.
+      const stayArmed = placed.element_type === 'block_ref';
       return {
         ...state,
         elements: [...state.elements, placed],
         selectedIds: [placed.id],
         draft: null,
-        tool: 'select',
+        tool: stayArmed ? 'block_ref' : 'select',
         dirty: true,
       };
     }
@@ -1099,6 +1147,9 @@ const initialState: EditorState = {
   activeSection: 'draw',
   layers: ensureLayers(undefined),
   activeLayerId: ensureLayers(undefined)[0].id,
+  blocks: [],
+  armedBlockId: null,
+  projectId: '',
   revision: 0,
   headRevision: 0,
   historyBusy: false,
@@ -1163,6 +1214,9 @@ export function useEditorState(project: Project) {
       removeLayer: (id: string) => dispatch({ type: 'removeLayer', id }),
       setActiveLayer: (id: string) => dispatch({ type: 'setActiveLayer', id }),
       assignSelectionToLayer: (id: string) => dispatch({ type: 'assignSelectionToLayer', id }),
+      setBlocks: (blocks: BlockDefinition[]) => dispatch({ type: 'setBlocks', blocks }),
+      armBlock: (blockId: string) => dispatch({ type: 'armBlock', blockId }),
+      explodeSelection: () => dispatch({ type: 'explodeSelection' }),
       markClean: () => dispatch({ type: 'markClean' }),
       setError: (error: string) => dispatch({ type: 'setError', error }),
       clearError: () => dispatch({ type: 'clearError' }),

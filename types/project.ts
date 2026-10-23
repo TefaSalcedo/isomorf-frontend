@@ -19,7 +19,8 @@ export type ElementType =
   | 'circle'
   | 'ellipse'
   | 'rectangle'
-  | 'hatch';
+  | 'hatch'
+  | 'block_ref';
 
 /** How an element is drawn on the plan: two-point line, single click point,
  *  corner-to-corner rectangle (x1,y1 = min corner, x2,y2 = max corner),
@@ -33,12 +34,21 @@ export type MaterialConstants = {
   elastic_modulus?: number;
 };
 
+/** CAD linetypes (week 10). ``solid`` means a continuous stroke; the rest
+ *  map to dash patterns at render time. */
+export type Linetype = 'solid' | 'dashed' | 'dotted' | 'dashdot' | 'center' | 'hidden';
+
 export type PlanLayer = {
   id: string;
   name: string;
   color: string;
   visible: boolean;
   locked: boolean;
+  /** Layer-wide linetype applied to elements without their own override
+   *  (``null`` = continuous). */
+  linetype?: Linetype | null;
+  /** Layer-wide stroke weight in millimeters (``null`` = per-type default). */
+  lineweight?: number | null;
 };
 
 export type DesignSettings = {
@@ -68,6 +78,12 @@ export type BaseElement = {
 
 export type LayeredProperties = {
   layer_id?: string | null;
+  /** Per-element linetype override; ``null``/undefined inherits the layer
+   *  (ByLayer, like AutoCAD). */
+  linetype?: Linetype | null;
+  /** Per-element stroke weight override in millimeters; inherits the layer
+   *  when unset. */
+  lineweight?: number | null;
 };
 
 /** Identity fields common to every element. */
@@ -388,6 +404,62 @@ export type HatchElement = BaseElement & {
   properties: HatchProperties;
 };
 
+/* ------------------------------------------------------------------ */
+/* Reusable blocks (roadmap week 10). A ``block_ref`` is a single        */
+/* element that renders a stored ``BlockDefinition``. Its unrotated     */
+/* bbox spans ``x1,y1`` to ``x2,y2``, with ``x1,y1`` as the insertion    */
+/* anchor; rect-mode transforms apply rotation around the bbox center.   */
+/* ------------------------------------------------------------------ */
+
+export type BlockRefProperties = LayeredProperties & TaggedProperties & {
+  /** ``ProjectBlock`` row this reference instantiates. */
+  block_id: string;
+  /** Denormalized display name kept so the UI survives a stale library. */
+  block_name?: string;
+  /** Whether the instantiated contents are reflected across the local x-axis. */
+  mirrored?: boolean;
+};
+
+export type BlockRefElement = BaseElement & {
+  element_type: 'block_ref';
+  properties: BlockRefProperties;
+};
+
+/** Serialized element snapshot stored inside a block definition — a pure
+ *  geometry/style copy with no identity (the server drops element ids). */
+export type BlockItemData = {
+  element_type: ElementType;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  length: number;
+  rotation: number;
+  material_id?: string | null;
+  section_id?: string | null;
+  properties: Record<string, unknown>;
+};
+
+export type BlockDefinition = {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string;
+  base_x: number;
+  base_y: number;
+  items: BlockItemData[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type BlockCreatePayload = {
+  name: string;
+  description: string;
+  base_x: number;
+  base_y: number;
+  items: BlockItemData[];
+};
+
 export type ProjectElement =
   | WallElement
   | DoorElement
@@ -409,7 +481,8 @@ export type ProjectElement =
   | CircleElement
   | EllipseElement
   | RectangleElement
-  | HatchElement;
+  | HatchElement
+  | BlockRefElement;
 
 export type MaterialCategory = 'concrete' | 'steel' | 'masonry' | 'timber' | 'aluminum' | 'generic';
 

@@ -252,6 +252,7 @@
         "draw": "Draw",
         "structure": "Structure",
         "layers": "Layers",
+        "blocks": "Blocks",
         "calculations": "Calculations",
         "history": "History",
         "settings": "Settings",
@@ -320,7 +321,8 @@
       "circle": "Circle",
       "ellipse": "Ellipse",
       "rectangle": "Rectangle",
-      "hatch": "Hatch"
+      "hatch": "Hatch",
+      "block_ref": "Block"
     },
     "loadTypes": {
       "dead": "Dead",
@@ -422,12 +424,27 @@
         "closed": "Closed",
         "yes": "Yes",
         "no": "No",
+        "linetype": "Linetype",
+        "lineweight": "Lineweight",
+        "byLayer": "ByLayer",
+        "linetypes": {
+          "solid": "Continuous",
+          "dashed": "Dashed",
+          "dotted": "Dotted",
+          "dashdot": "Dash-dot",
+          "center": "Center",
+          "hidden": "Hidden"
+        },
+        "blockName": "Block name",
+        "explode": "Explode block into elements",
         "sections": {
           "identity": "Identity",
           "position": "Position",
           "geometry": "Geometry",
           "material": "Material & section",
-          "layer": "Layer"
+          "layer": "Layer",
+          "lineStyle": "Line style",
+          "block": "Block"
         },
         "bulk": {
           "height": "Height (m)",
@@ -466,7 +483,18 @@
         "applyColor": "Apply color {color} to {name}",
         "activate": "Set active",
         "active": "Active",
-        "moveSelection": "Move selection ({count}) to this layer"
+        "moveSelection": "Move selection ({count}) to this layer",
+        "linetype": "Linetype",
+        "lineweight": "Lineweight",
+        "styleDefault": "Default",
+        "linetypes": {
+          "solid": "Continuous",
+          "dashed": "Dashed",
+          "dotted": "Dotted",
+          "dashdot": "Dash-dot",
+          "center": "Center",
+          "hidden": "Hidden"
+        }
       },
       "history": {
         "title": "Document history",
@@ -562,6 +590,28 @@
         "downloadMemory": "Download memory",
         "notes": "Notes",
         "modalTitle": "Calculation memory — {element}"
+      },
+      "blocks": {
+        "title": "Block library",
+        "subtitle": "Reusable symbols shared by this project. Insert places a reference; explode turns it back into loose elements.",
+        "search": "Search blocks…",
+        "empty": "No blocks yet. Select elements and create one above.",
+        "items": "{count, plural, one {# item} other {# items}}",
+        "insert": "Insert",
+        "armed": "Click canvas to place",
+        "createTitle": "New block",
+        "createHint": "{count} elements selected — they become the block contents.",
+        "createPlaceholder": "Block name",
+        "createButton": "Create",
+        "rename": "Rename",
+        "delete": "Delete",
+        "export": "Export JSON",
+        "import": "Import blocks (.json)",
+        "invalidFile": "Invalid block file",
+        "importError": "Unable to import blocks",
+        "saveError": "Unable to save block",
+        "deleteError": "Unable to delete block (it may be in use)",
+        "deleteInUse": "This block is in use — explode or delete its references first."
       },
       "catalog": {
         "title": "Materials & sections",
@@ -684,7 +734,8 @@
         "undo": "Undo",
         "redo": "Redo",
         "save": "Save now",
-        "delete": "Delete selection"
+        "delete": "Delete selection",
+        "explode": "Explode block reference"
       },
       "view": {
         "fit": "Zoom to fit",
@@ -702,6 +753,7 @@
       },
       "section": {
         "layers": "Open layers",
+        "blocks": "Open block library",
         "history": "Open history",
         "settings": "Open settings",
         "calculations": "Open calculations",

@@ -3,7 +3,7 @@ import type { DeviceSession, User } from '@/types/auth';
 import type { Folder } from '@/types/folder';
 import type { InvitePreview, ProjectShare, Team, TeamDetail, TeamInviteCreated, TeamMember, TeamRole } from '@/types/team';
 import type { ElementLoad, LoadCase } from '@/types/structural-load';
-import type { CatalogPresets, DesignSettings, DocumentState, ElementType, HistoryResponse, Material, Project, ProjectElement, Section, SectionShape, MaterialCategory } from '@/types/project';
+import type { BlockCreatePayload, BlockDefinition, CatalogPresets, DesignSettings, DocumentState, ElementType, HistoryResponse, Material, Project, ProjectElement, Section, SectionShape, MaterialCategory } from '@/types/project';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
@@ -111,6 +111,12 @@ export const api = {
   updateSection: (projectId: string, sectionId: string, payload: { name?: string; shape?: SectionShape; material_id?: string | null; dimensions?: Record<string, unknown>; properties?: Record<string, unknown> }) =>
     request<Section>(`/api/projects/${projectId}/sections/${sectionId}`, { method: 'PUT', body: JSON.stringify(payload) }, true),
   deleteSection: (projectId: string, sectionId: string) => request<void>(`/api/projects/${projectId}/sections/${sectionId}`, { method: 'DELETE' }, true),
+  blocks: (projectId: string) => request<BlockDefinition[]>(`/api/projects/${projectId}/blocks`),
+  createBlock: (projectId: string, payload: BlockCreatePayload) =>
+    request<BlockDefinition>(`/api/projects/${projectId}/blocks`, { method: 'POST', body: JSON.stringify(payload) }, true),
+  updateBlock: (projectId: string, blockId: string, payload: { name?: string; description?: string; base_x?: number; base_y?: number; items?: BlockCreatePayload['items'] }) =>
+    request<BlockDefinition>(`/api/projects/${projectId}/blocks/${blockId}`, { method: 'PUT', body: JSON.stringify(payload) }, true),
+  deleteBlock: (projectId: string, blockId: string) => request<void>(`/api/projects/${projectId}/blocks/${blockId}`, { method: 'DELETE' }, true),
 };
 
 export type DocumentPayload = { name?: string; design_settings?: DesignSettings; elements: ElementPayload[] };

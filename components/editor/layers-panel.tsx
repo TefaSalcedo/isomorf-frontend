@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check, Eye, EyeOff, Layers3, Lock, Plus, Trash2, Unlock } from 'lucide-react';
 import type { PlanLayer, ProjectElement } from '@/types/project';
-import { LAYER_PALETTE, countElementsByLayer } from '@/lib/editor/layers';
+import { LAYER_PALETTE, LINETYPES, LINEWEIGHT_OPTIONS, countElementsByLayer } from '@/lib/editor/layers';
+import type { Linetype } from '@/types/project';
 
 type LayersPanelProps = {
   layers: PlanLayer[];
@@ -152,6 +153,38 @@ export function LayersPanel({ layers, activeLayerId, elements, selectionCount, a
                   </span>
                 )}
               </div>
+              {!readOnly && (
+                <div className="mt-2 grid grid-cols-1 gap-1.5">
+                  <label className="flex w-full min-w-0 items-center gap-1.5" title={t('linetype')}>
+                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{t('linetype')}</span>
+                    <select
+                      value={layer.linetype ?? ''}
+                      onChange={(event) => actions.updateLayer(layer.id, { linetype: (event.target.value || null) as Linetype | null })}
+                      aria-label={t('linetype')}
+                      className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-900 px-1 py-1 text-[11px] text-slate-200 outline-none focus:border-cyan-600"
+                    >
+                      <option value="">{t('linetypes.solid')}</option>
+                      {LINETYPES.filter((type) => type !== 'solid').map((type) => (
+                        <option key={type} value={type}>{t(`linetypes.${type}`)}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex w-full min-w-0 items-center gap-1.5" title={t('lineweight')}>
+                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{t('lineweight')}</span>
+                    <select
+                      value={layer.lineweight == null ? '' : String(layer.lineweight)}
+                      onChange={(event) => actions.updateLayer(layer.id, { lineweight: event.target.value === '' ? null : Number(event.target.value) })}
+                      aria-label={t('lineweight')}
+                      className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-900 px-1 py-1 text-[11px] text-slate-200 outline-none focus:border-cyan-600"
+                    >
+                      <option value="">{t('styleDefault')}</option>
+                      {LINEWEIGHT_OPTIONS.map((weight) => (
+                        <option key={weight} value={weight}>{weight} mm</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              )}
               {selectionCount > 0 && !readOnly && (
                 <button
                   type="button"
