@@ -1107,7 +1107,8 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
                 const rect = rectOf(table);
                 const cellWidth = rect.w / Math.max(1, table.properties.cols);
                 const cellHeight = rect.h / Math.max(1, table.properties.rows);
-                const tableFontSize = paperToWorld(table.properties.text_height, annotationScale);
+                const tableFontSize = Math.min(paperToWorld(table.properties.text_height, annotationScale), cellHeight * 0.7);
+                const tableTextPadding = tableFontSize * 0.25;
                 const center = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
                 return (
                   <Group
@@ -1133,14 +1134,20 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
                             fill={row === 0 && table.properties.header ? 'rgba(148, 163, 184, 0.18)' : 'transparent'}
                             stroke={stroke}
                             strokeWidth={1 / zoom}
+                            onDblClick={(event) => { event.cancelBubble = true; openAnnotationEditor(table, { row, col }); }}
+                            onDblTap={(event) => { event.cancelBubble = true; openAnnotationEditor(table, { row, col }); }}
                           />
                           <Text
-                            x={rect.x + col * cellWidth + tableFontSize * 0.25}
-                            y={rect.y + row * cellHeight + (cellHeight - tableFontSize) / 2}
+                            x={rect.x + col * cellWidth + tableTextPadding}
+                            y={rect.y + row * cellHeight}
                             text={table.properties.cells[row]?.[col] ?? ''}
-                            width={Math.max(0, cellWidth - tableFontSize * 0.5)}
+                            width={Math.max(0, cellWidth - tableTextPadding * 2)}
+                            height={cellHeight}
                             fontSize={tableFontSize}
                             fontStyle={row === 0 && table.properties.header ? 'bold' : 'normal'}
+                            verticalAlign="middle"
+                            wrap="none"
+                            ellipsis
                             fill={stroke}
                             onDblClick={(event) => { event.cancelBubble = true; openAnnotationEditor(table, { row, col }); }}
                             onDblTap={(event) => { event.cancelBubble = true; openAnnotationEditor(table, { row, col }); }}

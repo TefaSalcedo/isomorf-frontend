@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DimensionElement, TableElement } from '@/types/project';
 import { DEFAULT_DIM_STYLES, dimensionGeometry, elementArea, elementPerimeter, ensureDimStyles, formatDimension, linearOrientation, measureDimension, normalizeTextAngle, paperToWorld, resizeTable, resolveDimStyle } from './annotations';
-import { createCircle, createRectangle } from './elements';
+import { createCircle, createEllipse, createRectangle } from './elements';
 import { mirrorElement, rotateElement, scaleElement } from './edit-ops';
 
 const baseDimension = (kind: DimensionElement['properties']['kind'], overrides: Partial<DimensionElement> = {}): DimensionElement => ({
@@ -103,6 +103,35 @@ describe('annotation dimensions', () => {
     expect(geometry.text.value).toBe('5.00');
   });
 
+  it('offsets radial and diameter labels perpendicular to their line geometry', () => {
+    const radial = baseDimension('radial', {
+      x1: 0,
+      y1: 0,
+      x2: 100,
+      y2: 0,
+      properties: { kind: 'radial', radius: 100, dim_point: { x: 150, y: 0 } },
+    });
+    const diameter = baseDimension('diameter', {
+      x1: 0,
+      y1: 0,
+      x2: 100,
+      y2: 0,
+      properties: { kind: 'diameter', radius: 100, dim_point: { x: 150, y: 0 } },
+    });
+    const radialGeometry = dimensionGeometry(radial, DEFAULT_DIM_STYLES[0], 50);
+    const diameterGeometry = dimensionGeometry(diameter, DEFAULT_DIM_STYLES[0], 50);
+    const expectedOffset = paperToWorld(DEFAULT_DIM_STYLES[0].text_height * 0.6, 50);
+
+    expect(radialGeometry.text.point.x).toBeCloseTo(150);
+    expect(radialGeometry.text.point.y).toBeCloseTo(expectedOffset);
+    expect(diameterGeometry.text.point.x).toBeCloseTo(0);
+    expect(diameterGeometry.text.point.y).toBeCloseTo(expectedOffset);
+    expect(radialGeometry.text.angle).toBeGreaterThan(-Math.PI / 2);
+    expect(radialGeometry.text.angle).toBeLessThanOrEqual(Math.PI / 2);
+    expect(diameterGeometry.text.angle).toBeGreaterThan(-Math.PI / 2);
+    expect(diameterGeometry.text.angle).toBeLessThanOrEqual(Math.PI / 2);
+  });
+
   it('updates annotation point geometry and radius through transforms', () => {
     const radial = baseDimension('radial', {
       x1: 10,
@@ -135,9 +164,12 @@ describe('annotation dimensions', () => {
 describe('annotation measurements and tables', () => {
   it('returns area and perimeter for supported closed shapes', () => {
     const circle = createCircle('circle', 'project-1', { x: 0, y: 0 }, 100);
+    const ellipse = createEllipse('ellipse', 'project-1', { x: 0, y: 0 }, { x: 600, y: 400 });
     const rectangle = createRectangle('rectangle', 'project-1', { x: 0, y: 0 }, { x: 300, y: 200 });
     expect(elementArea(circle)).toBeCloseTo(Math.PI * 10_000);
     expect(elementPerimeter(circle)).toBeCloseTo(200 * Math.PI);
+    expect(elementArea(ellipse)).toBeCloseTo(Math.PI * 60_000);
+    expect(elementPerimeter(ellipse)).toBeCloseTo(1_586.56, 1);
     expect(elementArea(rectangle)).toBe(60_000);
     expect(elementPerimeter(rectangle)).toBe(1_000);
   });

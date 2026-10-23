@@ -224,18 +224,24 @@ export function dimensionGeometry(element: DimensionElement, style: DimStyle, sc
   const radius = props.radius ?? distance(p1, p2);
   const direction = unit(subtract(dimPoint, p1));
   const rim = add(p1, multiply(direction, radius));
+  const textOffset = paperToWorld(style.text_height * 0.6, scale);
   if (props.kind === 'radial') {
     geometry.lines.push({ start: p1, end: rim }, { start: rim, end: dimPoint });
     arrow(geometry, rim, p1, style, scale);
-    geometry.text.point = dimPoint;
     geometry.text.angle = normalizeTextAngle(Math.atan2(dimPoint.y - rim.y, dimPoint.x - rim.x));
+    const normal = { x: -Math.sin(geometry.text.angle), y: Math.cos(geometry.text.angle) };
+    geometry.text.point = add(dimPoint, multiply(normal, textOffset));
   } else {
     const opposite = add(p1, multiply(direction, -radius));
     geometry.lines.push({ start: opposite, end: rim });
     arrow(geometry, opposite, rim, style, scale);
     arrow(geometry, rim, opposite, style, scale);
-    geometry.text.point = { x: (opposite.x + rim.x) / 2, y: (opposite.y + rim.y) / 2 - arrowSize - paperToWorld(style.text_height, scale) };
     geometry.text.angle = normalizeTextAngle(Math.atan2(direction.y, direction.x));
+    const normal = { x: -Math.sin(geometry.text.angle), y: Math.cos(geometry.text.angle) };
+    geometry.text.point = add(
+      { x: (opposite.x + rim.x) / 2, y: (opposite.y + rim.y) / 2 },
+      multiply(normal, textOffset),
+    );
   }
   return geometry;
 }
@@ -262,8 +268,7 @@ export function elementArea(element: ProjectElement): number | null {
   if (element.element_type === 'ellipse') {
     const a = Math.abs(element.x2 - element.x1) / 2;
     const b = Math.abs(element.y2 - element.y1) / 2;
-    const h = ((a - b) ** 2) / ((a + b) ** 2);
-    return Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)));
+    return Math.PI * a * b;
   }
   if (element.element_type === 'rectangle' || element.element_type === 'hatch' || element.element_type === 'slab') {
     return Math.abs(element.x2 - element.x1) * Math.abs(element.y2 - element.y1);

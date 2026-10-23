@@ -540,10 +540,16 @@ function makeElementFromDraft(draft: DraftState, projectId: string, close = fals
         properties: { text: '', dim_style_id: null, layer_id: null },
       };
     }
-    const width = paperToWorld(25, annotationScale);
-    const height = paperToWorld(8, annotationScale);
+    const dragWidth = Math.abs(end.x - start.x);
+    const dragHeight = Math.abs(end.y - start.y);
+    const isDragRectangle = dragWidth >= 5 && dragHeight >= 5;
+    const cellHeight = paperToWorld(2.5 * 2.4, annotationScale);
+    const width = isDragRectangle ? dragWidth : cellHeight * 4 * 3;
+    const height = isDragRectangle ? dragHeight : cellHeight * 3;
+    const x1 = isDragRectangle ? Math.min(start.x, end.x) : point.x;
+    const y1 = isDragRectangle ? Math.min(start.y, end.y) : point.y;
     return {
-      id, project_id: projectId, element_type: 'table', x1: point.x, y1: point.y, x2: point.x + width, y2: point.y + height,
+      id, project_id: projectId, element_type: 'table', x1, y1, x2: x1 + width, y2: y1 + height,
       length: width, rotation: 0, material_id: null, section_id: null, created_at: now, updated_at: now,
       properties: { rows: 3, cols: 3, cells: [['', '', ''], ['', '', ''], ['', '', '']], header: true, text_height: 2.5, layer_id: null },
     };
