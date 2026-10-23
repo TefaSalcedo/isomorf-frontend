@@ -13,7 +13,8 @@ import {
 import { drawModeOf, rectSize } from '@/lib/editor/elements';
 import { cmToMeters, metersToCm } from '@/lib/editor/geometry';
 import { LINETYPES, LINEWEIGHT_OPTIONS } from '@/lib/editor/layers';
-import type { LayeredProperties, Linetype, PlanLayer, ProjectElement } from '@/types/project';
+import { activeDimStyle, elementArea, elementPerimeter, formatDimension, resizeTable } from '@/lib/editor/annotations';
+import type { DimStyle, DimensionElement, LayeredProperties, Linetype, PlanLayer, ProjectElement, TableElement } from '@/types/project';
 
 type UpdateFn = (id: string, changes: Partial<ProjectElement>) => void;
 type UpdateManyFn = (ids: string[], changes: Partial<ProjectElement>) => void;
@@ -26,6 +27,9 @@ export function PropertiesPanel({
   onUpdateMany,
   onExplode,
   readOnly,
+  annotationScale,
+  dimStyles,
+  activeDimStyleId,
 }: {
   elements: ProjectElement[];
   layers: PlanLayer[];
@@ -34,6 +38,9 @@ export function PropertiesPanel({
   onUpdateMany: UpdateManyFn;
   onExplode?: () => void;
   readOnly?: boolean;
+  annotationScale: number;
+  dimStyles: DimStyle[];
+  activeDimStyleId?: string | null;
 }) {
   const t = useTranslations('editor.panels.properties');
   const tt = useTranslations('editor.tools');
@@ -60,7 +67,7 @@ export function PropertiesPanel({
     );
   }
 
-  return <SingleInspector element={elements[0]} layers={layers} catalog={catalog} onUpdate={onUpdate} onExplode={onExplode} readOnly={readOnly} />;
+  return <SingleInspector element={elements[0]} layers={layers} catalog={catalog} onUpdate={onUpdate} onExplode={onExplode} readOnly={readOnly} annotationScale={annotationScale} dimStyles={dimStyles} activeDimStyleId={activeDimStyleId} />;
 }
 
 function SingleInspector({
@@ -70,6 +77,9 @@ function SingleInspector({
   onUpdate,
   onExplode,
   readOnly,
+  annotationScale,
+  dimStyles,
+  activeDimStyleId,
 }: {
   element: ProjectElement;
   layers: PlanLayer[];
@@ -77,6 +87,9 @@ function SingleInspector({
   onUpdate: UpdateFn;
   onExplode?: () => void;
   readOnly?: boolean;
+  annotationScale: number;
+  dimStyles: DimStyle[];
+  activeDimStyleId?: string | null;
 }) {
   const t = useTranslations('editor.panels.properties');
   const tt = useTranslations('editor.tools');
@@ -85,6 +98,14 @@ function SingleInspector({
 
   const setProp = (patch: Record<string, unknown>) =>
     onUpdate(el.id, { properties: patch } as Partial<ProjectElement>);
+  const elementDimStyleId = p.dim_style_id as string | null | undefined;
+  const dimStyle = activeDimStyle(
+    dimStyles,
+    dimStyles.some((style) => style.id === elementDimStyleId) ? elementDimStyleId : activeDimStyleId,
+  );
+  const dimStyleValue = dimStyles.some((style) => style.id === elementDimStyleId) ? elementDimStyleId! : dimStyle.id;
+  const area = elementArea(el);
+  const perimeter = elementPerimeter(el);
 
   return (
     <div className="h-full overflow-y-auto p-4">
@@ -94,6 +115,56 @@ function SingleInspector({
         <Section title={t('sections.identity')} defaultOpen>
           <TextInput label={t('tag')} value={(p.tag as string) ?? ''} onChange={(v) => setProp({ tag: v })} />
         </Section>
+
+        {area !== null && perimeter !== null && (
+          <Section title={t('sections.measurement')}>
+            <p className="text-xs text-slate-300">{t('area')}: {(area / 10000).toFixed(2)} m²</p>
+            <p className="text-xs text-slate-300">{t('perimeter')}: {(perimeter / 100).toFixed(2)} m</p>
+          </Section>
+        )}
+
+        {(el.element_type === 'dimension' || el.element_type === 'leader' || el.element_type === 'text' || el.element_type === 'table') && (
+          <Section title={t('sections.annotation')} defaultOpen>
+            {el.element_type === 'dimension' && (
+              <>
+                <p className="text-xs text-slate-400">{t(`dimKinds.${el.properties.kind}`)}</p>
+                <output data-testid="dimension-value" className="block text-sm font-medium text-slate-100">{formatDimension(el as DimensionElement, dimStyle)}</output>
+                <SelectInput label={t('dimensionStyle')} value={dimStyleValue} options={dimStyles.map((style) => ({ value: style.id, label: style.name }))} onChange={(value) => setProp({ dim_style_id: value })} />
+                <TextInput label={t('textOverride')} value={el.properties.text_override ?? ''} onChange={(value) => setProp({ text_override: value })} />
+              </>
+            )}
+            {el.element_type === 'leader' && (
+              <>
+                <TextInput label={t('leaderText')} value={el.properties.text} onChange={(text) => setProp({ text })} />
+                <SelectInput label={t('dimensionStyle')} value={dimStyleValue} options={dimStyles.map((style) => ({ value: style.id, label: style.name }))} onChange={(value) => setProp({ dim_style_id: value })} />
+              </>
+            )}
+            {el.element_type === 'text' && (
+              <>
+                <TextAreaInput label={t('text')} value={el.properties.text} onChange={(text) => setProp({ text })} />
+                <NumberInput label={t('textHeight')} value={el.properties.height} onChange={(height) => setProp({ height })} />
+                <div className="flex gap-3 text-xs text-slate-300">
+                  {(['bold', 'italic', 'underline'] as const).map((key) => <label key={key} className="flex items-center gap-1"><input type="checkbox" checked={Boolean(el.properties[key])} onChange={(event) => setProp({ [key]: event.target.checked })} />{t(key)}</label>)}
+                </div>
+                <SelectInput label={t('align')} value={el.properties.align ?? 'left'} options={['left', 'center', 'right'].map((value) => ({ value, label: t(value) }))} onChange={(align) => setProp({ align })} />
+                <NumberInput label={t('rotation')} value={(el.rotation * 180) / Math.PI} onChange={(value) => onUpdate(el.id, { rotation: (value * Math.PI) / 180 })} />
+              </>
+            )}
+            {el.element_type === 'table' && (
+              <>
+                <NumberInput label={t('rows')} value={el.properties.rows} onChange={(rows) => {
+                  const resized = resizeTable(el as TableElement, Math.max(1, Math.round(rows)), el.properties.cols);
+                  onUpdate(el.id, { x2: resized.x2, y2: resized.y2, properties: resized.properties });
+                }} step={1} />
+                <NumberInput label={t('columns')} value={el.properties.cols} onChange={(cols) => {
+                  const resized = resizeTable(el as TableElement, el.properties.rows, Math.max(1, Math.round(cols)));
+                  onUpdate(el.id, { x2: resized.x2, y2: resized.y2, properties: resized.properties });
+                }} step={1} />
+                <label className="flex items-center gap-2 text-xs text-slate-300"><input type="checkbox" checked={el.properties.header} onChange={(event) => setProp({ header: event.target.checked })} />{t('header')}</label>
+              </>
+            )}
+          </Section>
+        )}
 
         <Section title={t('sections.position')} defaultOpen>
           {mode === 'point' ? (
@@ -686,6 +757,15 @@ function TextInput({ label, value, onChange }: { label: string; value: string; o
     <label className="block text-sm text-slate-300">
       <span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>
       <input type="text" value={value} onChange={(e) => onChange(e.target.value)} className={inputClass} />
+    </label>
+  );
+}
+
+function TextAreaInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block text-sm text-slate-300">
+      <span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>
+      <textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)} className={`${inputClass} min-h-20 resize-y`} />
     </label>
   );
 }

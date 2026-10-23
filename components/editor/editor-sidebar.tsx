@@ -54,6 +54,7 @@ import {
   Boxes,
 } from 'lucide-react';
 import type { EditorState, Tool, ActiveSection } from '@/hooks/use-editor-state';
+import type { DimKind } from '@/types/project';
 import type { EditOp } from '@/lib/editor/edit-ops';
 import type { LoadType } from '@/types/structural-load';
 import type { EditorView } from '@/lib/editor/commands';
@@ -72,7 +73,7 @@ const SECTIONS: { id: ActiveSection; icon: typeof Home }[] = [
   { id: 'settings', icon: Settings },
 ];
 
-type ToolEntry = { id: Tool; icon: typeof MousePointer2 };
+type ToolEntry = { id: Tool; icon: typeof MousePointer2; dimKind?: DimKind };
 
 const TOOL_GROUPS: { id: string; tools: ToolEntry[] }[] = [
   {
@@ -125,6 +126,19 @@ const TOOL_GROUPS: { id: string; tools: ToolEntry[] }[] = [
       { id: 'hatch', icon: Hash },
     ],
   },
+  {
+    id: 'annotate',
+    tools: [
+      { id: 'dimension', dimKind: 'linear', icon: Minus },
+      { id: 'dimension', dimKind: 'aligned', icon: MoveUpRight },
+      { id: 'dimension', dimKind: 'angular', icon: Orbit },
+      { id: 'dimension', dimKind: 'radial', icon: Radius },
+      { id: 'dimension', dimKind: 'diameter', icon: Circle },
+      { id: 'leader', icon: ArrowRightToLine },
+      { id: 'text', icon: Pencil },
+      { id: 'table', icon: Grid3x3 },
+    ],
+  },
 ];
 
 /** Week 9 modify suite. Keys double as the AutoCAD-style aliases shown in
@@ -165,7 +179,7 @@ export function EditorSidebar({
   onOpenPalette,
 }: {
   state: EditorState;
-  actions: { setSection: (section: ActiveSection) => void; setTool: (tool: Tool) => void; armEdit: (op: EditOp) => void };
+  actions: { setSection: (section: ActiveSection) => void; setTool: (tool: Tool) => void; armEdit: (op: EditOp) => void; armDimension: (kind: DimKind) => void };
   view: EditorView;
   onOpenLoads: () => void;
   compact?: boolean;
@@ -216,7 +230,7 @@ export function EditorSidebar({
   );
 }
 
-function TwoDSidebar({ state, tool, actions: rawActions, activeSection, readOnly, onOpenPalette }: { state: EditorState; tool: Tool; actions: { setTool: (tool: Tool) => void; armEdit: (op: EditOp) => void; onClose?: () => void }; activeSection: ActiveSection; readOnly?: boolean; onOpenPalette?: () => void }) {
+function TwoDSidebar({ state, tool, actions: rawActions, activeSection, readOnly, onOpenPalette }: { state: EditorState; tool: Tool; actions: { setTool: (tool: Tool) => void; armEdit: (op: EditOp) => void; armDimension: (kind: DimKind) => void; onClose?: () => void }; activeSection: ActiveSection; readOnly?: boolean; onOpenPalette?: () => void }) {
   const t = useTranslations('editor.sidebar');
   const tt = useTranslations('editor.tools');
   const te = useTranslations('editor.edit');
@@ -227,6 +241,10 @@ function TwoDSidebar({ state, tool, actions: rawActions, activeSection, readOnly
     },
     armEdit: (op: EditOp) => {
       rawActions.armEdit(op);
+      rawActions.onClose?.();
+    },
+    armDimension: (kind: DimKind) => {
+      rawActions.armDimension(kind);
       rawActions.onClose?.();
     },
   };
@@ -250,8 +268,8 @@ function TwoDSidebar({ state, tool, actions: rawActions, activeSection, readOnly
       {TOOL_GROUPS.map((group) => (
         <SidebarSection key={group.id} title={t(`toolGroups.${group.id}`)}>
           <div className="grid grid-cols-3 gap-1.5">
-            {group.tools.map(({ id, icon: Icon }) => (
-              <ToolButton key={id} icon={Icon} label={tt(id)} active={tool === id} disabled={readOnly && id !== 'select'} onClick={() => actions.setTool(id)} />
+            {group.tools.map(({ id, icon: Icon, dimKind }) => (
+              <ToolButton key={`${id}-${dimKind ?? ''}`} icon={Icon} label={dimKind ? tt(`dimKinds.${dimKind}`) : tt(id)} active={tool === id && (!dimKind || state.dimKind === dimKind)} disabled={readOnly && id !== 'select'} onClick={() => dimKind ? actions.armDimension(dimKind) : actions.setTool(id)} />
             ))}
           </div>
         </SidebarSection>

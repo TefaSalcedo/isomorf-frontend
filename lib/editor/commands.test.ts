@@ -5,6 +5,7 @@ import type { EditorCommandContext } from './commands';
 function makeContext(): EditorCommandContext {
   return {
     setTool: vi.fn(),
+    armDimension: vi.fn(),
     setSection: vi.fn(),
     setView: vi.fn(),
     undo: vi.fn(),
@@ -35,11 +36,13 @@ describe('buildEditorCommands', () => {
     expect(ctx.fit).toHaveBeenCalledOnce();
     commands.find((command) => command.id === 'section.layers')?.run();
     expect(ctx.setSection).toHaveBeenCalledWith('layers');
+    commands.find((command) => command.id === 'tool.dimension.radial')?.run();
+    expect(ctx.armDimension).toHaveBeenCalledWith('radial');
   });
 
   it('marks mutating commands as requiresEdit', () => {
     const commands = buildEditorCommands(makeContext());
-    for (const id of ['tool.wall', 'tool.beam', 'action.undo', 'action.redo', 'action.save', 'action.delete']) {
+    for (const id of ['tool.wall', 'tool.beam', 'tool.dimension.linear', 'tool.leader', 'tool.text', 'tool.table', 'action.undo', 'action.redo', 'action.save', 'action.delete']) {
       expect(commands.find((command) => command.id === id)?.requiresEdit).toBe(true);
     }
     for (const id of ['tool.select', 'view.3d', 'view.fit', 'doc.export']) {
@@ -104,8 +107,36 @@ describe('matchCommands', () => {
     expect(matchCommands(commands, 'escalera', label).map((command) => command.id)).toContain('tool.stair');
     expect(matchCommands(commands, 'riostra', label).map((command) => command.id)).toContain('tool.grade_beam');
     expect(matchCommands(commands, 'pilote', label).map((command) => command.id)).toContain('tool.pile');
-    expect(matchCommands(commands, 'tabla', label).map((command) => command.id)).toContain('view.table');
+    expect(matchCommands(commands, 'tabla', label).map((command) => command.id)).toContain('tool.table');
+    expect(matchCommands(commands, 'elements', label).map((command) => command.id)).toContain('view.table');
     expect(matchCommands(commands, 'catalogo', label).map((command) => command.id)).toContain('section.catalog');
+  });
+
+  it('matches annotation aliases with unique names for the element table view', () => {
+    for (const alias of ['dli', 'dimlinear', 'cota', 'acotar']) {
+      expect(matchCommands(commands, alias, label).map((command) => command.id)).toContain('tool.dimension.linear');
+    }
+    for (const alias of ['dal', 'dimaligned', 'cota alineada']) {
+      expect(matchCommands(commands, alias, label).map((command) => command.id)).toContain('tool.dimension.aligned');
+    }
+    for (const alias of ['dan', 'dimangular', 'cota angular']) {
+      expect(matchCommands(commands, alias, label).map((command) => command.id)).toContain('tool.dimension.angular');
+    }
+    for (const alias of ['dra', 'dimradius', 'radio']) {
+      expect(matchCommands(commands, alias, label).map((command) => command.id)).toContain('tool.dimension.radial');
+    }
+    for (const alias of ['ddi', 'dimdiameter', 'diametro', 'diámetro']) {
+      expect(matchCommands(commands, alias, label).map((command) => command.id)).toContain('tool.dimension.diameter');
+    }
+    for (const alias of ['le', 'mleader', 'leader', 'directriz']) {
+      expect(matchCommands(commands, alias, label).map((command) => command.id)).toContain('tool.leader');
+    }
+    for (const alias of ['t', 'mtext', 'text', 'texto']) {
+      expect(matchCommands(commands, alias, label).map((command) => command.id)).toContain('tool.text');
+    }
+    for (const alias of ['tb', 'table', 'tabla']) {
+      expect(matchCommands(commands, alias, label).map((command) => command.id)).toContain('tool.table');
+    }
   });
 
   it('matches bilingual block and explode aliases', () => {

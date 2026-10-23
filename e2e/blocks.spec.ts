@@ -77,7 +77,7 @@ test.describe('block library', () => {
     await expect(page.getByText('Click canvas to place')).toBeVisible();
     await clickWorld(900, 500);
     await page.keyboard.press('Escape');
-    await arm('table');
+    await arm('elements');
     await expect(rows()).toHaveCount(3);
     await expect(page.getByText('Block', { exact: true }).first()).toBeVisible();
 
@@ -85,7 +85,7 @@ test.describe('block library', () => {
     await arm('2d');
     await clickWorld(920, 510);
     await arm('explode');
-    await arm('table');
+    await arm('elements');
     await expect(rows()).toHaveCount(4);
 
     // Persistence: elements (and the library) survive save + reload.
@@ -93,7 +93,7 @@ test.describe('block library', () => {
     await expect(page.getByText(/Saved/)).toBeVisible({ timeout: 15_000 });
     await page.reload();
     await expect(page.locator('.konvajs-content canvas').first()).toBeVisible();
-    await arm('table');
+    await arm('elements');
     await expect(rows()).toHaveCount(4);
 
     // The block definition itself survived: it still lists in the panel.

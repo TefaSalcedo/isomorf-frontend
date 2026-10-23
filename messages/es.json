@@ -284,6 +284,7 @@
         "floors": "Losas y circulación",
         "envelope": "Cerramiento",
         "draw": "Dibujo",
+        "annotate": "Anotación",
         "modify": "Modificar"
       }
     },
@@ -322,7 +323,17 @@
       "ellipse": "Elipse",
       "rectangle": "Rectángulo",
       "hatch": "Hachurado",
-      "block_ref": "Bloque"
+      "block_ref": "Bloque",
+      "dimension": "Cota",
+      "leader": "Directriz",
+      "table": "Tabla",
+      "dimKinds": {
+        "linear": "Lineal",
+        "aligned": "Alineada",
+        "angular": "Angular",
+        "radial": "Radial",
+        "diameter": "Diámetro"
+      }
     },
     "loadTypes": {
       "dead": "Muerta",
@@ -413,6 +424,30 @@
         "openingHint": "Un hueco es un vacío en el área de la losa. Cambia su tamaño arrastrando las esquinas.",
         "bulkTypeHint": "Selecciona elementos del mismo tipo para editar dimensiones compartidas.",
         "radius": "Radio (m)",
+        "dimensionStyle": "Estilo de cota",
+        "textOverride": "Texto personalizado",
+        "dimKinds": {
+          "linear": "Lineal",
+          "aligned": "Alineada",
+          "angular": "Angular",
+          "radial": "Radial",
+          "diameter": "Diámetro"
+        },
+        "leaderText": "Texto de directriz",
+        "text": "Texto",
+        "textHeight": "Altura de texto (mm)",
+        "bold": "Negrita",
+        "italic": "Cursiva",
+        "underline": "Subrayado",
+        "align": "Alineación",
+        "left": "Izquierda",
+        "center": "Centro",
+        "right": "Derecha",
+        "rows": "Filas",
+        "columns": "Columnas",
+        "header": "Fila de encabezado",
+        "area": "Área",
+        "perimeter": "Perímetro",
         "hatchPattern": "Patrón de hachurado",
         "hatchAngle": "Ángulo del hachurado (°)",
         "hatchPatterns": {
@@ -439,6 +474,8 @@
         "explode": "Explotar bloque en elementos",
         "sections": {
           "identity": "Identidad",
+          "annotation": "Anotación",
+          "measurement": "Medición",
           "position": "Posición",
           "geometry": "Geometría",
           "material": "Material y sección",
@@ -513,6 +550,25 @@
       },
       "settings": {
         "title": "Configuración del proyecto",
+        "annotationTitle": "Anotación",
+        "annotationScale": "Escala de anotación",
+        "styleName": "Nombre del estilo",
+        "arrowStyle": "Estilo de flecha",
+        "arrowStyles": {
+          "arrow": "Flecha",
+          "tick": "Marca",
+          "dot": "Punto"
+        },
+        "textHeight": "Altura de texto (mm)",
+        "arrowSize": "Tamaño de flecha (mm)",
+        "extensionOffset": "Separación de extensión (mm)",
+        "extensionExtend": "Prolongación de extensión (mm)",
+        "decimals": "Decimales",
+        "dimensionUnit": "Unidad de cota",
+        "angleDecimals": "Decimales angulares",
+        "duplicateStyle": "Duplicar estilo",
+        "deleteStyle": "Eliminar estilo",
+        "newStyleName": "Estilo nuevo",
         "displayUnit": "Unidad de visualización",
         "meters": "Metros (m)",
         "feet": "Pies (ft)",
@@ -668,6 +724,7 @@
       "projectName": "Sin nombre"
     },
     "canvas": {
+      "annotationEditor": "Texto de anotación",
       "label2d": "Lienzo de dibujo 2D",
       "help2d": "Lienzo de dibujo. Haz clic en dos puntos para colocar un elemento. Pulsa Escape para cancelar. Escribe un número mientras dibujas para definir una longitud exacta.",
       "status": "{elements} elementos, {selected} seleccionados",
@@ -728,7 +785,17 @@
         "circle": "Dibujar círculo",
         "ellipse": "Dibujar elipse",
         "rectangle": "Dibujar rectángulo",
-        "hatch": "Dibujar hachurado"
+        "hatch": "Dibujar hachurado",
+        "dimension": {
+          "linear": "Cota lineal",
+          "aligned": "Cota alineada",
+          "angular": "Cota angular",
+          "radial": "Cota radial",
+          "diameter": "Cota de diámetro"
+        },
+        "leader": "Directriz",
+        "text": "Texto",
+        "table": "Tabla"
       },
       "action": {
         "undo": "Deshacer",

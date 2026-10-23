@@ -1,6 +1,6 @@
 import { useReducer, useCallback, useMemo } from 'react';
 import type { Point } from '@/lib/editor/geometry';
-import type { ArcElement, BlockDefinition, BlockRefElement, ElementType, PlanLayer, Project, ProjectElement, WallElement } from '@/types/project';
+import type { ArcElement, BlockDefinition, BlockRefElement, DimKind, ElementType, PlanLayer, Project, ProjectElement, WallElement } from '@/types/project';
 import {
   createArc,
   createBeam,
@@ -62,6 +62,7 @@ import { createLayer, defaultLayerFor, ensureLayers, isElementLocked } from '@/l
 import { blockById, createBlockRef, explodeBlockRef } from '@/lib/editor/blocks';
 import { useLocale } from '@/lib/i18n/locale-context';
 import type { Locale } from '@/lib/i18n/messages';
+import { linearOrientation, paperToWorld } from '@/lib/editor/annotations';
 
 export type Tool = 'select' | ElementType;
 
@@ -79,6 +80,7 @@ export type ActiveSection =
 
 export type DraftState = {
   tool: Tool;
+  dimKind: DimKind;
   start: Point;
   startInput: Point;
   columnAnchorId: string | null;
@@ -91,6 +93,8 @@ export type DraftState = {
   host: ProjectElement | null;
   joinAt: 'start' | 'end' | null;
   polar: boolean;
+  dimensionTarget?: ProjectElement;
+  dimensionTargetPoint?: Point;
 };
 
 /** Interactive edit session (roadmap week 9): a small state machine on top
@@ -120,6 +124,9 @@ export type EditorState = {
    *  armed for single-click insertion. */
   blocks: BlockDefinition[];
   armedBlockId: string | null;
+  dimKind: DimKind;
+  annotationEditingId: string | null;
+  annotationEditingNew: boolean;
   /** Owning project id, kept so elements can be created before any exist. */
   projectId: string;
   revision: number;
@@ -147,10 +154,10 @@ export type EditorAction =
   | { type: 'zoomOut' }
   | { type: 'pan'; delta: Point }
   | { type: 'fit' }
-  | { type: 'beginDraft'; point: Point }
+  | { type: 'beginDraft'; point: Point; dimensionTarget?: ProjectElement }
   | { type: 'updateDraft'; point: Point; exact?: boolean }
   | { type: 'extendDraft' }
-  | { type: 'commitDraft'; close?: boolean }
+  | { type: 'commitDraft'; close?: boolean; annotationScale?: number }
   | { type: 'cancelDraft' }
   | { type: 'armEdit'; op: EditOp }
   | { type: 'editCursor'; point: Point }
@@ -173,6 +180,9 @@ export type EditorAction =
   | { type: 'assignSelectionToLayer'; id: string }
   | { type: 'setBlocks'; blocks: BlockDefinition[] }
   | { type: 'armBlock'; blockId: string }
+  | { type: 'armDimension'; kind: DimKind }
+  | { type: 'setAnnotationEditing'; id: string | null }
+  | { type: 'cancelAnnotationEditing' }
   | { type: 'explodeSelection' }
   | { type: 'markClean' }
   | { type: 'setError'; error: string }
@@ -400,6 +410,10 @@ function editableSelection(state: EditorState): string[] {
     .map((el) => el.id);
 }
 
+function isAnnotationEditExcluded(element: ProjectElement): boolean {
+  return element.element_type === 'dimension' || element.element_type === 'leader' || element.element_type === 'text' || element.element_type === 'table';
+}
+
 function newEditSession(op: EditOp): EditSession {
   return {
     op,
@@ -439,7 +453,7 @@ function dedupePoints(points: Point[]): Point[] {
   return points.filter((p, i) => i === 0 || !pointsEqual(p, points[i - 1]));
 }
 
-function makeElementFromDraft(draft: DraftState, projectId: string, close = false, armedBlock?: BlockDefinition | null): ProjectElement | null {
+function makeElementFromDraft(draft: DraftState, projectId: string, close = false, armedBlock?: BlockDefinition | null, annotationScale = 50): ProjectElement | null {
   const id = crypto.randomUUID();
   let start = draft.start;
   let end = draft.end;
@@ -448,6 +462,91 @@ function makeElementFromDraft(draft: DraftState, projectId: string, close = fals
   // definition's bounds, not from a dragged corner pair.
   if (draft.tool === 'block_ref') {
     return armedBlock ? createBlockRef(id, projectId, armedBlock, end) : null;
+  }
+  if (draft.tool === 'dimension') {
+    const kind = draft.dimKind;
+    let p1 = draft.vertices[0] ?? start;
+    let p2 = draft.vertices[1] ?? end;
+    const dimPoint = end;
+    let vertex: Point | undefined;
+    let radius: number | undefined;
+    if (kind === 'angular') {
+      if (draft.vertices.length < 3) return null;
+      vertex = draft.vertices[0];
+      p1 = draft.vertices[1];
+      p2 = draft.vertices[2];
+    } else if (kind === 'radial' || kind === 'diameter') {
+      const target = draft.dimensionTarget;
+      const targetPoint = draft.dimensionTargetPoint;
+      if (!target || !targetPoint) return null;
+      if (target.element_type !== 'circle' && target.element_type !== 'arc') return null;
+      const targetProperties = target.properties as { cx?: number; cy?: number; radius?: number };
+      const center = target.element_type === 'circle'
+        ? { x: target.x1, y: target.y1 }
+        : { x: targetProperties.cx ?? target.x1, y: targetProperties.cy ?? target.y1 };
+      if (!center) return null;
+      radius = targetProperties.radius;
+      if (radius === undefined) return null;
+      const direction = { x: targetPoint.x - center.x, y: targetPoint.y - center.y };
+      const length = Math.hypot(direction.x, direction.y) || 1;
+      p1 = center;
+      p2 = { x: center.x + (direction.x / length) * radius, y: center.y + (direction.y / length) * radius };
+    } else if (draft.vertices.length < 2) {
+      return null;
+    }
+    const now = new Date().toISOString();
+    const properties = {
+      kind,
+      dim_point: dimPoint,
+      ...(vertex ? { vertex } : {}),
+      ...(kind === 'linear' ? { orientation: linearOrientation(p1, p2, dimPoint) } : {}),
+      ...(radius !== undefined ? { radius } : {}),
+      dim_style_id: null,
+      text_override: '',
+      layer_id: null,
+    };
+    return {
+      id,
+      project_id: projectId,
+      element_type: 'dimension',
+      x1: p1.x,
+      y1: p1.y,
+      x2: p2.x,
+      y2: p2.y,
+      length: Math.max(1, distance(p1, p2)),
+      rotation: 0,
+      material_id: null,
+      section_id: null,
+      created_at: now,
+      updated_at: now,
+      properties,
+    };
+  }
+  if (draft.tool === 'text' || draft.tool === 'leader' || draft.tool === 'table') {
+    const now = new Date().toISOString();
+    const point = draft.tool === 'text' ? end : start;
+    if (draft.tool === 'text') {
+      return {
+        id, project_id: projectId, element_type: 'text', x1: point.x, y1: point.y, x2: point.x + 1, y2: point.y,
+        length: 1, rotation: 0, material_id: null, section_id: null, created_at: now, updated_at: now,
+        properties: { text: '', height: 2.5, bold: false, italic: false, underline: false, align: 'left', layer_id: null },
+      };
+    }
+    if (draft.tool === 'leader') {
+      return {
+        id, project_id: projectId, element_type: 'leader', x1: start.x, y1: start.y, x2: end.x, y2: end.y,
+        length: Math.max(1, distance(start, end)), rotation: Math.atan2(end.y - start.y, end.x - start.x),
+        material_id: null, section_id: null, created_at: now, updated_at: now,
+        properties: { text: '', dim_style_id: null, layer_id: null },
+      };
+    }
+    const width = paperToWorld(25, annotationScale);
+    const height = paperToWorld(8, annotationScale);
+    return {
+      id, project_id: projectId, element_type: 'table', x1: point.x, y1: point.y, x2: point.x + width, y2: point.y + height,
+      length: width, rotation: 0, material_id: null, section_id: null, created_at: now, updated_at: now,
+      properties: { rows: 3, cols: 3, cells: [['', '', ''], ['', '', ''], ['', '', '']], header: true, text_height: 2.5, layer_id: null },
+    };
   }
   if (draft.tool === 'wall' && draft.host && draft.joinAt) {
     const hostStart = { x: draft.host.x1, y: draft.host.y1 };
@@ -543,6 +642,7 @@ const MUTATING_ACTIONS: ReadonlySet<EditorAction['type']> = new Set([
   'removeLayer',
   'assignSelectionToLayer',
   'explodeSelection',
+  'cancelAnnotationEditing',
 ]);
 
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
@@ -560,6 +660,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         selectedIds: [],
         draft: null,
         edit: null,
+        annotationEditingId: null,
+        annotationEditingNew: false,
         dirty: false,
         readOnly: action.project.access_role === 'viewer',
         revision: action.project.current_revision ?? 0,
@@ -569,7 +671,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     }
     case 'setTool':
       if (state.readOnly && action.tool !== 'select') return state;
-      return { ...state, tool: action.tool, draft: null, edit: null };
+      return { ...state, tool: action.tool, draft: null, edit: null, annotationEditingId: null, annotationEditingNew: false };
     case 'setSection':
       return { ...state, activeSection: action.section };
     case 'select': {
@@ -631,6 +733,25 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       if (state.readOnly || !blockById(state.blocks, action.blockId)) return state;
       return { ...state, tool: 'block_ref', armedBlockId: action.blockId, draft: null, edit: null };
     }
+    case 'armDimension':
+      if (state.readOnly) return state;
+      return { ...state, tool: 'dimension', dimKind: action.kind, draft: null, edit: null };
+    case 'setAnnotationEditing':
+      if (state.readOnly) return state;
+      return { ...state, annotationEditingId: action.id, annotationEditingNew: false };
+    case 'cancelAnnotationEditing': {
+      const id = state.annotationEditingId;
+      if (!id) return state;
+      const elements = state.annotationEditingNew ? state.elements.filter((element) => element.id !== id) : state.elements;
+      return {
+        ...state,
+        elements,
+        selectedIds: state.annotationEditingNew ? state.selectedIds.filter((selectedId) => selectedId !== id) : state.selectedIds,
+        annotationEditingId: null,
+        annotationEditingNew: false,
+        dirty: state.dirty || state.annotationEditingNew,
+      };
+    }
     case 'explodeSelection': {
       const selected = new Set(state.selectedIds);
       const refs = state.elements.filter((el): el is BlockRefElement =>
@@ -678,17 +799,24 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       if (state.tool === 'select') return state;
       const columnAnchor = state.tool === 'wall' ? findColumnContainingPoint(action.point, state.elements) : null;
       const wallStart = columnAnchor ? snapWallStart(action.point, action.point, state.elements) : null;
-      const snap = wallStart ?? (state.snapEnabled
+      const dimensionTarget = action.dimensionTarget;
+      const targetCenter = dimensionTarget?.element_type === 'circle'
+        ? { x: dimensionTarget.x1, y: dimensionTarget.y1 }
+        : dimensionTarget?.element_type === 'arc'
+          ? { x: dimensionTarget.properties.cx, y: dimensionTarget.properties.cy }
+          : null;
+      const snap = wallStart ?? (dimensionTarget ? null : state.snapEnabled
         ? (state.tool === 'column'
             ? snapForColumn(action.point, state.elements, state.viewport.zoom, WORLD_PER_PIXEL)
             : applySnap(action.point, state.elements, state.viewport.zoom, state.tool))
         : null);
-      const start = snap ? snap.point : action.point;
+      const start = targetCenter ?? (snap ? snap.point : action.point);
       const isStartT = snap?.target.type === 'midpoint';
       return {
         ...state,
         draft: {
           tool: state.tool,
+          dimKind: state.dimKind,
           start,
           startInput: action.point,
           columnAnchorId: columnAnchor?.id ?? null,
@@ -698,6 +826,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
           host: isStartT && snap ? state.elements.find((el) => 'elementId' in snap.target && el.id === snap.target.elementId) ?? null : null,
           joinAt: isStartT ? 'start' : null,
           polar: false,
+          ...(dimensionTarget ? { dimensionTarget, dimensionTargetPoint: action.point } : {}),
         },
       };
     }
@@ -773,7 +902,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       if (!state.draft) return state;
       const { draft } = state;
       const mode = draft.tool === 'select' ? null : drawModeOf(draft.tool);
-      if (mode !== 'poly' && mode !== 'arc') return state;
+      if (mode !== 'poly' && mode !== 'arc' && mode !== 'dim') return state;
       const point = draft.end;
       if (pointsEqual(point, draft.vertices[draft.vertices.length - 1])) return state;
       return {
@@ -791,7 +920,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       if (!state.draft) return state;
       const projectId = state.projectId || state.elements[0]?.project_id || '';
       const armedBlock = state.draft.tool === 'block_ref' ? blockById(state.blocks, state.armedBlockId) ?? null : null;
-      const created = makeElementFromDraft(state.draft, projectId, action.close, armedBlock);
+      const created = makeElementFromDraft(state.draft, projectId, action.close, armedBlock, action.annotationScale);
       if (!created) return { ...state, draft: null };
       if (created.element_type === 'wall') {
         const elementsWithCreated = state.elements.concat(created);
@@ -810,6 +939,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         selectedIds: [placed.id],
         draft: null,
         tool: stayArmed ? 'block_ref' : 'select',
+        annotationEditingId: placed.element_type === 'text' || placed.element_type === 'leader' ? placed.id : null,
+        annotationEditingNew: placed.element_type === 'text' || placed.element_type === 'leader',
         dirty: true,
       };
     }
@@ -862,7 +993,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         }
         case 'base': {
           if (edit.op === 'offset' || edit.op === 'fillet') {
-            if (!clicked || (edit.op === 'fillet' && drawModeOf(clicked.element_type) !== 'line')) {
+            if (!clicked || isAnnotationEditExcluded(clicked) || (edit.op === 'fillet' && drawModeOf(clicked.element_type) !== 'line')) {
               return { ...state, edit: touched };
             }
             return { ...state, edit: { ...touched, pickedId: clicked.id, phase: 'target' } };
@@ -875,7 +1006,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         }
         case 'target': {
           if (edit.op === 'fillet') {
-            if (!clicked || clicked.id === edit.pickedId || drawModeOf(clicked.element_type) !== 'line') {
+            if (!clicked || isAnnotationEditExcluded(clicked) || clicked.id === edit.pickedId || drawModeOf(clicked.element_type) !== 'line') {
               return { ...state, edit: touched };
             }
             const first = state.elements.find((el) => el.id === edit.pickedId);
@@ -905,8 +1036,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
           return { ...committed, edit: null };
         }
         case 'apply': {
-          if (!clicked || edit.ids.includes(clicked.id)) return { ...state, edit: touched };
-          const partners = state.elements.filter((el) => edit.ids.includes(el.id));
+          if (!clicked || isAnnotationEditExcluded(clicked) || edit.ids.includes(clicked.id)) return { ...state, edit: touched };
+          const partners = state.elements.filter((el) => edit.ids.includes(el.id) && !isAnnotationEditExcluded(el));
           const result = edit.op === 'trim' ? bestTrim(clicked, partners, point) : bestExtend(clicked, partners, point);
           if (!result) return { ...state, edit: touched };
           return { ...state, elements: replaceInArray(state.elements, clicked.id, result), dirty: true, edit: touched };
@@ -919,7 +1050,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       const edit = state.edit;
       if (!edit || edit.phase !== 'pick') return state;
       const allowed = new Set(
-        state.elements.filter((el) => !isElementLocked(el, state.layers)).map((el) => el.id),
+        state.elements.filter((el) => !isElementLocked(el, state.layers) && !isAnnotationEditExcluded(el)).map((el) => el.id),
       );
       const ids = [...edit.ids];
       for (const id of action.ids) {
@@ -1105,6 +1236,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         layers,
         activeLayerId: activeLayerStillExists ? state.activeLayerId : layers[0].id,
         selectedIds: [],
+        annotationEditingId: null,
+        annotationEditingNew: false,
         draft: null,
         edit: null,
         revision: action.revision,
@@ -1149,6 +1282,9 @@ const initialState: EditorState = {
   activeLayerId: ensureLayers(undefined)[0].id,
   blocks: [],
   armedBlockId: null,
+  dimKind: 'linear',
+  annotationEditingId: null,
+  annotationEditingNew: false,
   projectId: '',
   revision: 0,
   headRevision: 0,
@@ -1188,10 +1324,10 @@ export function useEditorState(project: Project) {
       zoomOut: () => dispatch({ type: 'zoomOut' }),
       pan: (delta: Point) => dispatch({ type: 'pan', delta }),
       fit: () => dispatch({ type: 'fit' }),
-      beginDraft: (point: Point) => dispatch({ type: 'beginDraft', point }),
+      beginDraft: (point: Point, dimensionTarget?: ProjectElement) => dispatch({ type: 'beginDraft', point, dimensionTarget }),
       updateDraft: (point: Point, exact?: boolean) => dispatch({ type: 'updateDraft', point, exact }),
       extendDraft: () => dispatch({ type: 'extendDraft' }),
-      commitDraft: (close?: boolean) => dispatch({ type: 'commitDraft', close }),
+      commitDraft: (close?: boolean, annotationScale?: number) => dispatch({ type: 'commitDraft', close, annotationScale }),
       cancelDraft: () => dispatch({ type: 'cancelDraft' }),
       armEdit: (op: EditOp) => dispatch({ type: 'armEdit', op }),
       editCursor: (point: Point) => dispatch({ type: 'editCursor', point }),
@@ -1216,6 +1352,9 @@ export function useEditorState(project: Project) {
       assignSelectionToLayer: (id: string) => dispatch({ type: 'assignSelectionToLayer', id }),
       setBlocks: (blocks: BlockDefinition[]) => dispatch({ type: 'setBlocks', blocks }),
       armBlock: (blockId: string) => dispatch({ type: 'armBlock', blockId }),
+      armDimension: (kind: DimKind) => dispatch({ type: 'armDimension', kind }),
+      setAnnotationEditing: (id: string | null) => dispatch({ type: 'setAnnotationEditing', id }),
+      cancelAnnotationEditing: () => dispatch({ type: 'cancelAnnotationEditing' }),
       explodeSelection: () => dispatch({ type: 'explodeSelection' }),
       markClean: () => dispatch({ type: 'markClean' }),
       setError: (error: string) => dispatch({ type: 'setError', error }),

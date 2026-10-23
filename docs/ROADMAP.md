@@ -173,6 +173,7 @@
 - Cotas lineales/alineadas/angulares/radiales, leaders, estilos de cota (DIM-style)
 - Tablas básicas, campos de texto con formato
 - **Criterio:** plano acotado legible a escala 1:50
+- ✅ Completada: cotas, leaders, textos y tablas con estilos de anotación persistidos y edición en el lienzo.
 
 ---
 
@@ -357,7 +358,7 @@ Funciones que los productos de referencia tienen y ISOMORF aún no. Cada fila in
 | Edición: move, copy, rotate, mirror, array, offset, trim, extend, fillet, scale | ✅ Hecho (semana 9) | Semana 9 |
 | Selección window/crossing + grips | ✅ Hecho (semana 9) | Semana 9 |
 | Capas completas (visibilidad, bloqueo, color, tipo de línea, grosor) + bloques/símbolos | ✅ Hecho (semana 10) | Semana 10 |
-| Cotas profesionales (alineadas, angulares, radiales), leaders, estilos DIM, tablas | 📋 Planeado | Semana 11 |
+| Cotas profesionales (alineadas, angulares, radiales), leaders, estilos DIM, tablas | ✅ Hecho | Semana 11 |
 | **Línea de comandos** (command line con autocompletado y alias) | 🔴 Brecha | Bloque A (inicia como command palette) + Semana 8 |
 | **Ortho / polar tracking** (modos ORTHO/POLAR con ángulos incrementales) | 🔴 Brecha | Bloque A + Semana 8 |
 | **Snap adicionales**: tangent, nearest, apparent intersection, node | 🔴 Brecha | Semana 8-9 |
@@ -366,7 +367,7 @@ Funciones que los productos de referencia tienen y ISOMORF aún no. Cada fila in
 | **Linetypes personalizados + plot styles (CTB/STB)** | 🔴 Brecha | Semana 10 / 22 |
 | **Markup / redline / revisión con nubes** | 🔴 Brecha | Semana 7 (comentarios) o 22 (láminas) |
 | **Restricciones paramétricas** (geométricas y dimensionales) | 🔴 Brecha | Post-MVP |
-| **Medición** (distancia, área, ID de punto, listado de propiedades) | 🔴 Brecha | Semana 11 |
+| **Medición** (distancia, área, ID de punto, listado de propiedades) | 🟡 Parcial (área/perímetro) | Semana 11 |
 | **Purge / audit del documento** (limpiar capas/bloques sin uso) | 🔴 Brecha | Semana 24 (endurecimiento) |
 | **Layout/paperspace con viewports** | 📋 Planeado | Semana 22 |
 | Import/export DXF, PDF vectorial | 📋 Planeado | Semana 23 |

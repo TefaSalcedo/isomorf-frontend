@@ -84,7 +84,7 @@ test.describe('cad edit tools', () => {
     await armEdit('move');
     await type('0,0');
     await type('@1,1');
-    await arm('table');
+    await arm('elements');
     expect((await columnValues('Y1')).sort((a, b) => a - b)).toEqual([2, 4]);
 
     // COPY both −0.5m on x: four line rows total.
@@ -94,7 +94,7 @@ test.describe('cad edit tools', () => {
     await type('0,0');
     await type('@-0.5,0');
     await page.keyboard.press('Escape');
-    await arm('table');
+    await arm('elements');
     await expect(rows()).toHaveCount(4);
 
     // ROTATE 90° about (2, 2.5): every row reports ≈90 in the Rot column.
@@ -103,7 +103,7 @@ test.describe('cad edit tools', () => {
     await armEdit('rotate');
     await type('2,2.5');
     await type('90');
-    await arm('table');
+    await arm('elements');
     const rotations = await columnValues('Rot (°)');
     expect(rotations.every((value) => Math.abs(Math.abs(value) - 90) < 0.2)).toBe(true);
 
@@ -114,7 +114,7 @@ test.describe('cad edit tools', () => {
     await type('2x2');
     await type('0,0');
     await type('@2,0.5');
-    await arm('table');
+    await arm('elements');
     await expect(rows()).toHaveCount(16);
 
     // POLAR ARRAY of 3 items over 180°: 2 clones each → 48 rows.
@@ -124,7 +124,7 @@ test.describe('cad edit tools', () => {
     await type('3<180');
     await type('3,2.5');
     await type('@1,0');
-    await arm('table');
+    await arm('elements');
     await expect(rows()).toHaveCount(48);
 
     // MIRROR across the horizontal axis at y=4m — transforms in place.
@@ -133,7 +133,7 @@ test.describe('cad edit tools', () => {
     await armEdit('mirror');
     await type('0,4');
     await type('@1,0');
-    await arm('table');
+    await arm('elements');
     await expect(rows()).toHaveCount(48);
 
     // SCALE ×0.5 about the origin — count unchanged.
@@ -142,7 +142,7 @@ test.describe('cad edit tools', () => {
     await armEdit('scale');
     await type('0,0');
     await type('0.5');
-    await arm('table');
+    await arm('elements');
     await expect(rows()).toHaveCount(48);
 
     // Persistence: the session result survives save + reload.
@@ -150,7 +150,7 @@ test.describe('cad edit tools', () => {
     await expect(page.getByText(/Saved/)).toBeVisible({ timeout: 15_000 });
     await page.reload();
     await expect(page.locator('.konvajs-content canvas').first()).toBeVisible();
-    await arm('table');
+    await arm('elements');
     await expect(rows()).toHaveCount(48);
   });
 
@@ -168,7 +168,7 @@ test.describe('cad edit tools', () => {
     await type('0.4');
     await clickWorld(750, 130);
     await page.keyboard.press('Escape');
-    await arm('table');
+    await arm('elements');
     expect((await columnValues('Y1')).some((v) => Math.abs(v - 1.2) < 0.01)).toBe(true);
 
     // TRIM: vertical cutter at x=7m crossing a horizontal line at y=3m.
@@ -187,7 +187,7 @@ test.describe('cad edit tools', () => {
     await page.keyboard.press('Enter');
     await clickWorld(830, 300);
     await page.keyboard.press('Escape');
-    await arm('table');
+    await arm('elements');
     expect((await columnValues('X2')).some((v) => Math.abs(v - 7) < 0.01)).toBe(true);
 
     // EXTEND: pre-selecting the boundary first, then the picked end of the
@@ -204,7 +204,7 @@ test.describe('cad edit tools', () => {
     await armEdit('extend');
     await clickWorld(850, 430);
     await page.keyboard.press('Escape');
-    await arm('table');
+    await arm('elements');
     expect((await columnValues('X2')).some((v) => Math.abs(v - 9.2) < 0.01)).toBe(true);
 
     // FILLET r=0.3m between perpendicular lines meeting at (7.8, 5)m.
@@ -221,7 +221,7 @@ test.describe('cad edit tools', () => {
     await clickWorld(720, 500);
     await clickWorld(780, 530);
     await page.keyboard.press('Escape');
-    await arm('table');
+    await arm('elements');
     await expect(page.getByText('Arc', { exact: true }).first()).toBeVisible();
   });
 });

@@ -20,13 +20,17 @@ export type ElementType =
   | 'ellipse'
   | 'rectangle'
   | 'hatch'
-  | 'block_ref';
+  | 'block_ref'
+  | 'dimension'
+  | 'leader'
+  | 'text'
+  | 'table';
 
 /** How an element is drawn on the plan: two-point line, single click point,
  *  corner-to-corner rectangle (x1,y1 = min corner, x2,y2 = max corner),
  *  multi-click vertex chain (polyline), three-point arc, or center+radius
  *  (circle). */
-export type DrawMode = 'line' | 'point' | 'rect' | 'poly' | 'arc' | 'center';
+export type DrawMode = 'line' | 'point' | 'rect' | 'poly' | 'arc' | 'center' | 'dim';
 
 export type MaterialConstants = {
   compressive_strength?: number;
@@ -59,6 +63,76 @@ export type DesignSettings = {
   building_code?: string;
   material?: MaterialConstants;
   layers?: PlanLayer[];
+  annotation_scale?: number;
+  dim_styles?: DimStyle[];
+  active_dim_style_id?: string | null;
+};
+
+export type DimStyle = {
+  id: string;
+  name: string;
+  text_height: number;
+  arrow: 'arrow' | 'tick' | 'dot';
+  arrow_size: number;
+  ext_offset: number;
+  ext_extend: number;
+  decimals: number;
+  unit: 'm' | 'cm' | 'mm';
+  angle_decimals: number;
+};
+
+export type DimKind = 'linear' | 'aligned' | 'angular' | 'radial' | 'diameter';
+
+export type DimensionProperties = LayeredProperties & TaggedProperties & {
+  kind: DimKind;
+  dim_point: PlanPoint;
+  vertex?: PlanPoint;
+  orientation?: 'horizontal' | 'vertical';
+  radius?: number;
+  dim_style_id?: string | null;
+  text_override?: string;
+};
+
+export type DimensionElement = BaseElement & {
+  element_type: 'dimension';
+  properties: DimensionProperties;
+};
+
+export type LeaderProperties = LayeredProperties & TaggedProperties & {
+  text: string;
+  dim_style_id?: string | null;
+};
+
+export type LeaderElement = BaseElement & {
+  element_type: 'leader';
+  properties: LeaderProperties;
+};
+
+export type TextProperties = LayeredProperties & TaggedProperties & {
+  text: string;
+  height: number;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  align?: 'left' | 'center' | 'right';
+};
+
+export type TextElement = BaseElement & {
+  element_type: 'text';
+  properties: TextProperties;
+};
+
+export type TableProperties = LayeredProperties & TaggedProperties & {
+  rows: number;
+  cols: number;
+  cells: string[][];
+  header: boolean;
+  text_height: number;
+};
+
+export type TableElement = BaseElement & {
+  element_type: 'table';
+  properties: TableProperties;
 };
 
 export type BaseElement = {
@@ -482,7 +556,11 @@ export type ProjectElement =
   | EllipseElement
   | RectangleElement
   | HatchElement
-  | BlockRefElement;
+  | BlockRefElement
+  | DimensionElement
+  | LeaderElement
+  | TextElement
+  | TableElement;
 
 export type MaterialCategory = 'concrete' | 'steel' | 'masonry' | 'timber' | 'aluminum' | 'generic';
 
