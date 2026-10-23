@@ -132,11 +132,13 @@ test.describe('dimensions and annotations', () => {
     await expect(annotationEditor).toHaveValue('Item');
   });
 
-  test('captures Spanish annotation screenshots on a fresh project', async ({ page }) => {
+  test('captures Spanish annotation screenshots on a fresh project', async ({ page }, testInfo) => {
     test.setTimeout(240_000);
     await newProject(page, 'es');
     const { arm, typePoint } = helpers(page);
     const fit = () => page.getByRole('button', { name: 'Ajustar', exact: true }).click();
+    const screenshotPath = (filename: string) =>
+      process.env.CI ? testInfo.outputPath(filename) : `/home/ubuntu/week11/${filename}`;
 
     for (const [start, end] of [
       ['2,2', '7,2'],
@@ -170,7 +172,7 @@ test.describe('dimensions and annotations', () => {
     await typePoint('6,4.8');
     await expect(page.getByTestId('dimension-value')).toHaveText('R0.70');
     await fit();
-    await page.screenshot({ path: '/home/ubuntu/week11/shot-dimensions.png' });
+    await page.screenshot({ path: screenshotPath('shot-dimensions.png') });
 
     await arm('t');
     await typePoint('2,7.5');
@@ -190,7 +192,7 @@ test.describe('dimensions and annotations', () => {
     await annotationEditor.fill('Eje A');
     await annotationEditor.press('Enter');
     await fit();
-    await page.screenshot({ path: '/home/ubuntu/week11/shot-text-leader.png' });
+    await page.screenshot({ path: screenshotPath('shot-text-leader.png') });
 
     const canvas = page.locator('.konvajs-content');
     const bounds = await canvas.boundingBox();
@@ -221,13 +223,13 @@ test.describe('dimensions and annotations', () => {
     await editCell(2, 1, '1');
     await editCell(2, 2, 'ud');
     await fit();
-    await page.screenshot({ path: '/home/ubuntu/week11/shot-table.png' });
+    await page.screenshot({ path: screenshotPath('shot-table.png') });
 
     await page.getByRole('button', { name: 'Configuración' }).first().click();
     const annotationSection = page.getByText('Anotación', { exact: true }).last();
     await annotationSection.evaluate((element) => element.scrollIntoView({ block: 'start' }));
     await expect(page.getByLabel('Escala de anotación')).toHaveValue('50');
     await expect(page.getByText('ISO-25', { exact: true })).toBeVisible();
-    await page.screenshot({ path: '/home/ubuntu/week11/shot-annotation-settings.png' });
+    await page.screenshot({ path: screenshotPath('shot-annotation-settings.png') });
   });
 });
