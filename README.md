@@ -16,7 +16,7 @@
 
 ## What is ISOMORF?
 
-ISOMORF (*Structural Integration Workspace*) is a technical environment for turning structural concepts into precise, editable geometry — think AutoCAD + SAP2000 in the browser. Draw a floor plan with CAD-grade precision, inspect the model in 3D, attach loads and member designs, and rely on a server-versioned document where undo/redo survives a reload.
+ISOMORF (*Structural Integration Workspace*) is a technical environment for turning structural concepts into precise, editable geometry — think AutoCAD + SAP2000 in the browser, with Canva-level ease of use. Draw a floor plan with CAD-grade precision, inspect the model in 3D, attach loads and member designs, and rely on a server-versioned document where undo/redo survives a reload. Long-term goal: tell the AI assistant what to build in plain language, validate feasibility before detailed modeling, and learn how every calculation works step by step — see the [roadmap](docs/ROADMAP.md).
 
 This repository is the web frontend. The API lives at **[TefaSalcedo/isomorf-backend](https://github.com/TefaSalcedo/isomorf-backend)**.
 
@@ -94,7 +94,7 @@ CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs lint, typecheck
 
 ## Roadmap
 
-The product plan — 24 weeks across CAD tooling, collaboration, parametric elements, structural analysis (NSR-10) and deliverables — lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+The product plan — 24 weeks across CAD tooling, collaboration, parametric elements, structural analysis (NSR-10) and deliverables, plus an upcoming AI assistant / feasibility / teaching phase — lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## License
 
