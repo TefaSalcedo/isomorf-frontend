@@ -406,9 +406,9 @@ export type HatchElement = BaseElement & {
 
 /* ------------------------------------------------------------------ */
 /* Reusable blocks (roadmap week 10). A ``block_ref`` is a single        */
-/* element that renders a stored ``BlockDefinition``: ``x1,y1`` is the   */
-/* insertion point and ``x2,y2`` the bbox max corner, so the existing    */
-/* rect-mode transforms (move/rotate/scale/mirror/array) work unchanged. */
+/* element that renders a stored ``BlockDefinition``. Its unrotated     */
+/* bbox spans ``x1,y1`` to ``x2,y2``, with ``x1,y1`` as the insertion    */
+/* anchor; rect-mode transforms apply rotation around the bbox center.   */
 /* ------------------------------------------------------------------ */
 
 export type BlockRefProperties = LayeredProperties & TaggedProperties & {
@@ -416,6 +416,8 @@ export type BlockRefProperties = LayeredProperties & TaggedProperties & {
   block_id: string;
   /** Denormalized display name kept so the UI survives a stale library. */
   block_name?: string;
+  /** Whether the instantiated contents are reflected across the local x-axis. */
+  mirrored?: boolean;
 };
 
 export type BlockRefElement = BaseElement & {

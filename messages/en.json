@@ -610,7 +610,8 @@
         "invalidFile": "Invalid block file",
         "importError": "Unable to import blocks",
         "saveError": "Unable to save block",
-        "deleteError": "Unable to delete block (it may be in use)"
+        "deleteError": "Unable to delete block (it may be in use)",
+        "deleteInUse": "This block is in use — explode or delete its references first."
       },
       "catalog": {
         "title": "Materials & sections",

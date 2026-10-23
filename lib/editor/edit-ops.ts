@@ -415,6 +415,9 @@ export function mirrorElement(el: ProjectElement, a: Point, b: Point): ProjectEl
     const w = Math.abs(el.x2 - el.x1);
     const h = Math.abs(el.y2 - el.y1);
     if (mode === 'rect') {
+      if (el.element_type === 'block_ref') {
+        next.properties = { ...next.properties, mirrored: !el.properties.mirrored } as typeof next.properties;
+      }
       return retime(rebuildRect(next, center, w, h, mirrored));
     }
     next.rotation = mirrored;

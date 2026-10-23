@@ -610,7 +610,8 @@
         "invalidFile": "Archivo de bloques no válido",
         "importError": "No se pudieron importar los bloques",
         "saveError": "No se pudo guardar el bloque",
-        "deleteError": "No se pudo eliminar el bloque (puede estar en uso)"
+        "deleteError": "No se pudo eliminar el bloque (puede estar en uso)",
+        "deleteInUse": "Este bloque está en uso: explota o elimina sus referencias primero."
       },
       "catalog": {
         "title": "Materiales y secciones",

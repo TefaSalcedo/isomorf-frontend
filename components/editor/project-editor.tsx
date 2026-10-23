@@ -385,7 +385,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     rightPanel = (
       <BlocksPanel
         blocks={state.blocks}
-        armedBlockId={state.armedBlockId}
+        armedBlockId={state.tool === 'block_ref' ? state.armedBlockId : null}
         selectionCount={state.selectedIds.length}
         readOnly={readOnly}
         actions={{ armBlock: actions.armBlock, ...blockActions }}

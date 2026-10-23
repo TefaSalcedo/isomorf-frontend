@@ -6,8 +6,8 @@ import type {
   ProjectElement,
 } from '@/types/project';
 import { drawModeOf } from '@/lib/editor/elements';
-import { mapElementPoints } from '@/lib/editor/edit-ops';
-import { add, normalizeAngle, rotate, sub, type Point } from '@/lib/editor/geometry';
+import { mapElementPoints, mirrorElement, rotateElement } from '@/lib/editor/edit-ops';
+import { add, normalizeAngle, sub, type Point } from '@/lib/editor/geometry';
 
 /* ------------------------------------------------------------------ */
 /* Reusable blocks (roadmap week 10)                                    */
@@ -15,12 +15,13 @@ import { add, normalizeAngle, rotate, sub, type Point } from '@/lib/editor/geome
 /* A ``BlockDefinition`` stores element snapshots in world coordinates   */
 /* plus a base point. A ``block_ref`` element instantiates it:           */
 /*                                                                     */
-/*   world = insert + R(ref.rotation) * S(scale) * (item - base)         */
+/*   placed = insert + S(item - base)                                     */
+/*   world = R_c(theta)(M_c(placed)) when mirrored, else R_c(theta)(placed) */
 /*                                                                     */
 /* where the scale is derived from the ref's bbox vs the definition's    */
 /* bounds — dragging a ref's corner grips stretches the block, like a    */
-/* non-uniform AutoCAD INSERT. Rotation spins the whole instance around  */
-/* the insertion point.                                                 */
+/* non-uniform AutoCAD INSERT. Mirror and rotation use the ref's bbox    */
+/* center, matching the rect-mode edit operations.                       */
 /* ------------------------------------------------------------------ */
 
 /** Plan-space size properties that scale with a uniformly scaled instance
@@ -171,6 +172,7 @@ function uniformScale(sx: number, sy: number): number | null {
 export function instantiateBlock(def: BlockDefinition, ref: BlockRefElement): ProjectElement[] {
   const bounds = blockBounds(def);
   const insert = { x: ref.x1, y: ref.y1 };
+  const center = { x: (ref.x1 + ref.x2) / 2, y: (ref.y1 + ref.y2) / 2 };
   const sx = bounds.w > 1e-9 ? Math.abs(ref.x2 - ref.x1) / bounds.w : 1;
   const sy = bounds.h > 1e-9 ? Math.abs(ref.y2 - ref.y1) / bounds.h : 1;
   const theta = ref.rotation;
@@ -179,15 +181,20 @@ export function instantiateBlock(def: BlockDefinition, ref: BlockRefElement): Pr
 
   return def.items.map((item, index) => {
     const source = itemAsElement(item, ref.project_id);
-    const ghost = mapElementPoints(source, (p) => {
+    let ghost = mapElementPoints(source, (p) => {
       const rel = sub(p, base);
       const scaled = { x: rel.x * sx, y: rel.y * sy };
-      return add(insert, theta ? rotate(scaled, theta) : scaled);
+      return add(insert, scaled);
     });
-    ghost.id = `${ref.id}:${index}`;
     const mode = drawModeOf(item.element_type);
-    if (theta && (mode === 'rect' || mode === 'point')) {
-      ghost.rotation = normalizeAngle(ghost.rotation + theta);
+    if (ref.properties.mirrored) {
+      ghost = mirrorElement(ghost, center, { x: center.x + 1, y: center.y });
+    }
+    if (theta) {
+      ghost = rotateElement(ghost, center, theta);
+      if (mode === 'point' && item.element_type !== 'column') {
+        ghost.rotation = normalizeAngle(ghost.rotation + theta);
+      }
     }
     if (s !== null) {
       const props = { ...(ghost.properties as Record<string, unknown>) };
@@ -196,6 +203,7 @@ export function instantiateBlock(def: BlockDefinition, ref: BlockRefElement): Pr
       }
       ghost.properties = props as typeof ghost.properties;
     }
+    ghost.id = `${ref.id}:${index}`;
     return ghost;
   });
 }

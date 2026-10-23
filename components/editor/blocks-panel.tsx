@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Boxes, Check, Download, FileUp, MousePointerClick, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ApiError } from '@/lib/api-client';
 import type { BlockCreatePayload, BlockDefinition } from '@/types/project';
 
 type BlocksPanelProps = {
@@ -35,13 +36,19 @@ export function BlocksPanel({ blocks, armedBlockId, selectionCount, readOnly, ac
     return block.name.toLowerCase().includes(q) || (block.description ?? '').toLowerCase().includes(q);
   });
 
-  async function run(action: () => Promise<void>, fallback: string) {
+  async function run(action: () => Promise<void>, fallback: string, conflict409?: string) {
     setBusy(true);
     setError('');
     try {
       await action();
     } catch (err) {
-      setError(err instanceof Error ? err.message : fallback);
+      setError(
+        conflict409 && err instanceof ApiError && err.status === 409
+          ? conflict409
+          : err instanceof Error
+            ? err.message
+            : fallback,
+      );
     } finally {
       setBusy(false);
     }
@@ -169,7 +176,7 @@ export function BlocksPanel({ blocks, armedBlockId, selectionCount, readOnly, ac
                   <>
                     <IconButton label={t('rename')} icon={Pencil} onClick={() => { setRenamingId(block.id); setDraftName(block.name); }} />
                     <IconButton label={t('export')} icon={Download} onClick={() => exportBlock(block)} />
-                    <IconButton label={t('delete')} icon={Trash2} danger disabled={busy} onClick={() => void run(() => actions.remove(block.id), t('deleteError'))} />
+                    <IconButton label={t('delete')} icon={Trash2} danger disabled={busy} onClick={() => void run(() => actions.remove(block.id), t('deleteError'), t('deleteInUse'))} />
                   </>
                 )}
                 {readOnly && <IconButton label={t('export')} icon={Download} onClick={() => exportBlock(block)} />}

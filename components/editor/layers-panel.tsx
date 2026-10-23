@@ -154,8 +154,8 @@ export function LayersPanel({ layers, activeLayerId, elements, selectionCount, a
                 )}
               </div>
               {!readOnly && (
-                <div className="mt-2 grid grid-cols-2 gap-1.5">
-                  <label className="flex items-center gap-1.5" title={t('linetype')}>
+                <div className="mt-2 grid grid-cols-1 gap-1.5">
+                  <label className="flex w-full min-w-0 items-center gap-1.5" title={t('linetype')}>
                     <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{t('linetype')}</span>
                     <select
                       value={layer.linetype ?? ''}
@@ -169,7 +169,7 @@ export function LayersPanel({ layers, activeLayerId, elements, selectionCount, a
                       ))}
                     </select>
                   </label>
-                  <label className="flex items-center gap-1.5" title={t('lineweight')}>
+                  <label className="flex w-full min-w-0 items-center gap-1.5" title={t('lineweight')}>
                     <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{t('lineweight')}</span>
                     <select
                       value={layer.lineweight == null ? '' : String(layer.lineweight)}
