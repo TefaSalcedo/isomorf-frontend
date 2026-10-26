@@ -333,13 +333,11 @@ export function Model3DPreview({
   blocks = [],
   selectedIds = [],
   onSelectElement,
-  annotationScale = 50,
 }: {
   elements: ProjectElement[];
   blocks?: BlockDefinition[];
   selectedIds?: string[];
   onSelectElement?: (id: string) => void;
-  annotationScale?: number;
 }) {
   const t = useTranslations('editor.canvas');
   // Block refs expand into their items so the 3D scene shows real geometry;
@@ -352,7 +350,7 @@ export function Model3DPreview({
       if (el.element_type === 'block_ref') {
         const def = blockById(blocks, (el.properties as { block_id?: string }).block_id);
         if (def) {
-          for (const ghost of instantiateBlock(def, el as BlockRefElement, annotationScale)) {
+          for (const ghost of instantiateBlock(def, el as BlockRefElement)) {
             ghostParent.set(ghost.id, el.id);
             expanded.push(ghost);
           }
@@ -367,7 +365,7 @@ export function Model3DPreview({
       ),
       ghostParent,
     };
-  }, [elements, blocks, annotationScale]);
+  }, [elements, blocks]);
   const effectiveSelected = useMemo(() => {
     const ids = new Set(selectedIds);
     for (const [ghostId, parentId] of ghostParent) {

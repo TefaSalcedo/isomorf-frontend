@@ -4,6 +4,7 @@ import { createLine, createRectangle, createWall, drawModeOf } from './elements'
 import { mirrorElement, rotateElement } from './edit-ops';
 import { rectCorners, rotate, type Point } from './geometry';
 import {
+  annotationHitBounds,
   blockBounds,
   blockById,
   createBlockFromSelection,
@@ -167,28 +168,73 @@ describe('blockBounds', () => {
     expect(blockBounds(def)).toEqual({ x: 0, y: 0, w: 70, h: 30 });
   });
 
-  it('uses annotation scale, alignment, and rotation for text bounds', () => {
+  it('keeps instantiated line and text geometry independent of annotation scale', () => {
+    const line = createLine('baseline', PROJECT, { x: 0, y: 0 }, { x: 100, y: 0 });
     const text = annotationElement(
+      'label',
       'text',
-      'text',
-      { x: 100, y: 100 },
-      { x: 100, y: 100 },
-      { text: 'ABCD', height: 2.5, align: 'center' },
-      Math.PI / 2,
+      { x: 20, y: 10 },
+      { x: 20, y: 10 },
+      { text: 'ABCDEFGHIJKLMNOPQRST', height: 2.5, align: 'left' },
     );
-    const payload = createBlockFromSelection('text-block', [text], '', 100)!;
-    const def = { base_x: 0, base_y: 0, items: payload.items };
-    const boundsAt100 = blockBounds(def, 100);
-    const boundsAt50 = blockBounds(def);
+    const payload = createBlockFromSelection('line-text', [line, text])!;
+    const def: BlockDefinition = {
+      id: 'blk-line-text',
+      project_id: PROJECT,
+      created_at: '',
+      updated_at: '',
+      ...payload,
+      description: payload.description ?? '',
+    };
+    const ref = createBlockRef('ref-line-text', PROJECT, def, { x: 200, y: 300 });
+    const ghostsAt50 = instantiateBlock(def, ref);
+    const hitBoundsAt50 = annotationHitBounds(ghostsAt50, 50)!;
+    const ghostsAt100 = instantiateBlock(def, ref);
+    const hitBoundsAt100 = annotationHitBounds(ghostsAt100, 100)!;
 
-    expect(boundsAt100.x).toBeCloseTo(75);
-    expect(boundsAt100.y).toBeCloseTo(50);
-    expect(boundsAt100.w).toBeCloseTo(25);
-    expect(boundsAt100.h).toBeCloseTo(100);
-    expect(boundsAt50.x).toBeCloseTo(87.5);
-    expect(boundsAt50.y).toBeCloseTo(75);
-    expect(boundsAt50.w).toBeCloseTo(12.5);
-    expect(boundsAt50.h).toBeCloseTo(50);
+    expect(ghostsAt100).toEqual(ghostsAt50);
+    expect(hitBoundsAt100.maxX).toBeGreaterThan(hitBoundsAt50.maxX);
+  });
+
+  it('covers a 20-character text at 1:50 with annotation hit bounds', () => {
+    const text = annotationElement(
+      'long-label',
+      'text',
+      { x: 10, y: 20 },
+      { x: 10, y: 20 },
+      { text: 'ABCDEFGHIJKLMNOPQRST', height: 2.5, align: 'left' },
+    );
+
+    expect(annotationHitBounds([text], 50)).toEqual({
+      minX: 10,
+      minY: 20,
+      maxX: 260,
+      maxY: 32.5,
+    });
+  });
+
+  it('includes dimension and leader points in annotation hit bounds', () => {
+    const dimension = annotationElement(
+      'dimension',
+      'dimension',
+      { x: 0, y: 0 },
+      { x: 20, y: 0 },
+      { kind: 'angular', dim_point: { x: 80, y: 50 }, vertex: { x: -30, y: -10 } },
+    );
+    const leader = annotationElement(
+      'leader',
+      'leader',
+      { x: 40, y: -20 },
+      { x: 100, y: 30 },
+      { text: 'Note' },
+    );
+
+    expect(annotationHitBounds([dimension, leader], 50)).toEqual({
+      minX: -30,
+      minY: -20,
+      maxX: 100,
+      maxY: 50,
+    });
   });
 });
 

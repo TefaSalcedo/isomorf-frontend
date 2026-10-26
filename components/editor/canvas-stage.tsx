@@ -6,7 +6,7 @@ import { Stage, Layer, Line, Circle, Rect, Ellipse, Text, Label, Tag, Group } fr
 import type Konva from 'konva';
 import type { EditorState } from '@/hooks/use-editor-state';
 import type { Point } from '@/lib/editor/geometry';
-import { ccwSweep, distance, lineIntersection, sampleArcPoints, toRadians } from '@/lib/editor/geometry';
+import { ccwSweep, distance, lineIntersection, rotate, sampleArcPoints, toRadians } from '@/lib/editor/geometry';
 import { cmToDisplay, displayToCm, formatAngle, formatDisplayValue } from '@/lib/editor/units';
 import type { ArcElement, CircleElement, DimKind, DimStyle, DrawMode, DimensionElement, LeaderElement, PlanPoint, ProjectElement, TableElement, TextElement } from '@/types/project';
 import type { DisplayUnit } from '@/lib/editor/units';
@@ -21,7 +21,7 @@ import {
 } from '@/lib/editor/elements';
 import { snapForWall, snapPixelsForZoom, snapToNearest } from '@/lib/editor/snapping';
 import { isElementLocked, isElementVisible, layerOf, resolveLineStyle } from '@/lib/editor/layers';
-import { blockById, createBlockRef, instantiateBlock } from '@/lib/editor/blocks';
+import { annotationHitBounds, blockById, createBlockRef, instantiateBlock } from '@/lib/editor/blocks';
 import type { PlanLayer } from '@/types/project';
 import {
   applyGrip,
@@ -932,9 +932,9 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
     if (!draft || draft.tool !== 'block_ref') return null;
     const def = blockById(state.blocks, state.armedBlockId);
     if (!def) return null;
-    const previewRef = createBlockRef('block-preview', state.elements[0]?.project_id ?? '', def, draft.end, annotationScale);
-    return instantiateBlock(def, previewRef, annotationScale);
-  }, [state.draft, state.blocks, state.armedBlockId, state.elements, annotationScale]);
+    const previewRef = createBlockRef('block-preview', state.elements[0]?.project_id ?? '', def, draft.end);
+    return instantiateBlock(def, previewRef);
+  }, [state.draft, state.blocks, state.armedBlockId, state.elements]);
 
   const dimensionDraftPreview = useMemo(() => {
     const draft = state.draft;
@@ -1329,10 +1329,31 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
 
               if (el.element_type === 'block_ref') {
                 const def = blockById(state.blocks, (el.properties as { block_id?: string }).block_id);
-                const ghosts = def ? instantiateBlock(def, el, annotationScale) : [];
+                const ghosts = def ? instantiateBlock(def, el) : [];
                 const r = rectOf(el);
                 const cx = r.x + r.w / 2;
                 const cy = r.y + r.h / 2;
+                const annotations = annotationHitBounds(ghosts, annotationScale);
+                let hitHalfWidth = r.w / 2;
+                let hitHalfHeight = r.h / 2;
+                if (annotations) {
+                  const corners = [
+                    { x: annotations.minX, y: annotations.minY },
+                    { x: annotations.maxX, y: annotations.minY },
+                    { x: annotations.maxX, y: annotations.maxY },
+                    { x: annotations.minX, y: annotations.maxY },
+                  ];
+                  for (const point of corners) {
+                    const relative = { x: point.x - cx, y: point.y - cy };
+                    for (const angle of [-el.rotation, el.rotation]) {
+                      const local = rotate(relative, angle);
+                      hitHalfWidth = Math.max(hitHalfWidth, Math.abs(local.x));
+                      hitHalfHeight = Math.max(hitHalfHeight, Math.abs(local.y));
+                    }
+                  }
+                }
+                const hitWidth = hitHalfWidth * 2;
+                const hitHeight = hitHalfHeight * 2;
                 const name = (el.properties as { block_name?: string }).block_name ?? def?.name ?? '';
                 return (
                   <Fragment key={el.id}>
@@ -1368,10 +1389,10 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
                     <Rect
                       x={cx}
                       y={cy}
-                      width={r.w}
-                      height={r.h}
-                      offsetX={r.w / 2}
-                      offsetY={r.h / 2}
+                      width={hitWidth}
+                      height={hitHeight}
+                      offsetX={hitWidth / 2}
+                      offsetY={hitHeight / 2}
                       rotation={(el.rotation * 180) / Math.PI}
                       fill="transparent"
                       opacity={ghostDim}

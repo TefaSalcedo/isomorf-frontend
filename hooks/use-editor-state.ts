@@ -183,7 +183,7 @@ export type EditorAction =
   | { type: 'armDimension'; kind: DimKind }
   | { type: 'setAnnotationEditing'; id: string | null }
   | { type: 'cancelAnnotationEditing' }
-  | { type: 'explodeSelection'; annotationScale?: number }
+  | { type: 'explodeSelection' }
   | { type: 'markClean' }
   | { type: 'setError'; error: string }
   | { type: 'clearError' };
@@ -461,7 +461,7 @@ function makeElementFromDraft(draft: DraftState, projectId: string, close = fals
   // A block ref inserts at the click — the rect-mode bbox comes from the
   // definition's bounds, not from a dragged corner pair.
   if (draft.tool === 'block_ref') {
-    return armedBlock ? createBlockRef(id, projectId, armedBlock, end, annotationScale) : null;
+    return armedBlock ? createBlockRef(id, projectId, armedBlock, end) : null;
   }
   if (draft.tool === 'dimension') {
     const kind = draft.dimKind;
@@ -767,7 +767,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       const expanded = new Map<string, ProjectElement[]>();
       for (const ref of refs) {
         const def = blockById(state.blocks, ref.properties.block_id);
-        const items = explodeBlockRef(ref, def, action.annotationScale);
+        const items = explodeBlockRef(ref, def);
         if (items.length) expanded.set(ref.id, items);
       }
       if (!expanded.size) return state;
@@ -1361,7 +1361,7 @@ export function useEditorState(project: Project) {
       armDimension: (kind: DimKind) => dispatch({ type: 'armDimension', kind }),
       setAnnotationEditing: (id: string | null) => dispatch({ type: 'setAnnotationEditing', id }),
       cancelAnnotationEditing: () => dispatch({ type: 'cancelAnnotationEditing' }),
-      explodeSelection: (annotationScale = 50) => dispatch({ type: 'explodeSelection', annotationScale }),
+      explodeSelection: () => dispatch({ type: 'explodeSelection' }),
       markClean: () => dispatch({ type: 'markClean' }),
       setError: (error: string) => dispatch({ type: 'setError', error }),
       clearError: () => dispatch({ type: 'clearError' }),

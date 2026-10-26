@@ -34,7 +34,7 @@ export function blockById(blocks: BlockDefinition[], id: string | undefined | nu
   return blocks.find((block) => block.id === id);
 }
 
-type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
+export type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
 
 function boundsOf(points: Point[]): Bounds {
   const xs = points.map((point) => point.x);
@@ -42,52 +42,59 @@ function boundsOf(points: Point[]): Bounds {
   return { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) };
 }
 
-function elementBounds(
-  el: { x1: number; y1: number; x2: number; y2: number; rotation?: number; element_type: string; properties: Record<string, unknown> },
-  annotationScale = 50,
-): Bounds {
+function dimensionBounds(el: { x1: number; y1: number; x2: number; y2: number; properties: Record<string, unknown> }): Bounds {
   const start = { x: el.x1, y: el.y1 };
   const end = { x: el.x2, y: el.y2 };
-  if (el.element_type === 'dimension') {
-    const points = [start, end];
-    const dimPoint = el.properties.dim_point as Point | undefined;
-    const vertex = el.properties.vertex as Point | undefined;
-    if (dimPoint) points.push(dimPoint);
-    if (vertex) points.push(vertex);
-    const kind = el.properties.kind;
-    if (kind === 'radial' || kind === 'diameter') {
-      const radius = (el.properties.radius as number | undefined) ?? Math.hypot(end.x - start.x, end.y - start.y);
-      points.push(
-        { x: start.x - radius, y: start.y - radius },
-        { x: start.x + radius, y: start.y + radius },
-      );
-    }
-    return boundsOf(points);
+  const points = [start, end];
+  const dimPoint = el.properties.dim_point as Point | undefined;
+  const vertex = el.properties.vertex as Point | undefined;
+  if (dimPoint) points.push(dimPoint);
+  if (vertex) points.push(vertex);
+  const kind = el.properties.kind;
+  if (kind === 'radial' || kind === 'diameter') {
+    const radius = (el.properties.radius as number | undefined) ?? Math.hypot(end.x - start.x, end.y - start.y);
+    points.push(
+      { x: start.x - radius, y: start.y - radius },
+      { x: start.x + radius, y: start.y + radius },
+    );
   }
-  if (el.element_type === 'leader') {
-    const points = [start, end];
-    const extraPoints = el.properties.points as Point[] | undefined;
-    if (extraPoints) points.push(...extraPoints);
-    return boundsOf(points);
-  }
-  if (el.element_type === 'text') {
-    const fontSize = paperToWorld((el.properties.height as number) ?? 2.5, annotationScale);
-    const text = String(el.properties.text ?? '');
-    const width = Math.max(fontSize * 2, text.length * fontSize);
-    const align = el.properties.align;
-    const offsetX = align === 'center' ? width / 2 : align === 'right' ? width : 0;
-    const angle = el.rotation ?? 0;
-    const corners = [
-      { x: -offsetX, y: 0 },
-      { x: width - offsetX, y: 0 },
-      { x: width - offsetX, y: fontSize },
-      { x: -offsetX, y: fontSize },
-    ].map((point) => {
-      const rotated = rotate(point, angle);
-      return { x: start.x + rotated.x, y: start.y + rotated.y };
-    });
-    return boundsOf(corners);
-  }
+  return boundsOf(points);
+}
+
+function leaderBounds(el: { x1: number; y1: number; x2: number; y2: number; properties: Record<string, unknown> }): Bounds {
+  const points = [{ x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 }];
+  const extraPoints = el.properties.points as Point[] | undefined;
+  if (extraPoints) points.push(...extraPoints);
+  return boundsOf(points);
+}
+
+function textBounds(
+  el: { x1: number; y1: number; rotation?: number; properties: Record<string, unknown> },
+  annotationScale: number,
+): Bounds {
+  const fontSize = paperToWorld((el.properties.height as number) ?? 2.5, annotationScale);
+  const text = String(el.properties.text ?? '');
+  const width = Math.max(fontSize * 2, text.length * fontSize);
+  const align = el.properties.align;
+  const offsetX = align === 'center' ? width / 2 : align === 'right' ? width : 0;
+  const angle = el.rotation ?? 0;
+  const corners = [
+    { x: -offsetX, y: 0 },
+    { x: width - offsetX, y: 0 },
+    { x: width - offsetX, y: fontSize },
+    { x: -offsetX, y: fontSize },
+  ].map((point) => {
+    const rotated = rotate(point, angle);
+    return { x: el.x1 + rotated.x, y: el.y1 + rotated.y };
+  });
+  return boundsOf(corners);
+}
+
+function elementBounds(
+  el: { x1: number; y1: number; x2: number; y2: number; element_type: string; properties: Record<string, unknown> },
+): Bounds {
+  if (el.element_type === 'dimension') return dimensionBounds(el);
+  if (el.element_type === 'leader') return leaderBounds(el);
   const mode = drawModeOf(el.element_type as ProjectElement['element_type']);
   if (mode === 'point') {
     // Point elements render centered on x1,y1 with a size in properties.
@@ -127,20 +134,33 @@ function elementBounds(
   };
 }
 
+export function annotationHitBounds(ghosts: ProjectElement[], annotationScale: number): Bounds | null {
+  const bounds: Bounds[] = [];
+  for (const ghost of ghosts) {
+    if (ghost.element_type === 'text') bounds.push(textBounds(ghost, annotationScale));
+    else if (ghost.element_type === 'dimension') bounds.push(dimensionBounds(ghost));
+    else if (ghost.element_type === 'leader') bounds.push(leaderBounds(ghost));
+  }
+  if (!bounds.length) return null;
+  return {
+    minX: Math.min(...bounds.map((bound) => bound.minX)),
+    minY: Math.min(...bounds.map((bound) => bound.minY)),
+    maxX: Math.max(...bounds.map((bound) => bound.maxX)),
+    maxY: Math.max(...bounds.map((bound) => bound.maxY)),
+  };
+}
+
 /** Union bbox of all stored items, relative to the block's base point —
  *  i.e. the footprint an instance at scale 1 / rotation 0 occupies around
  *  its insertion point. */
-export function blockBounds(
-  def: Pick<BlockDefinition, 'base_x' | 'base_y' | 'items'>,
-  annotationScale = 50,
-): { x: number; y: number; w: number; h: number } {
+export function blockBounds(def: Pick<BlockDefinition, 'base_x' | 'base_y' | 'items'>): { x: number; y: number; w: number; h: number } {
   if (!def.items.length) return { x: 0, y: 0, w: 0, h: 0 };
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
   for (const item of def.items) {
-    const b = elementBounds(item, annotationScale);
+    const b = elementBounds(item);
     minX = Math.min(minX, b.minX);
     minY = Math.min(minY, b.minY);
     maxX = Math.max(maxX, b.maxX);
@@ -175,14 +195,13 @@ export function createBlockFromSelection(
   name: string,
   elements: ProjectElement[],
   description = '',
-  annotationScale = 50,
 ): BlockCreatePayload | null {
   const usable = elements.filter((el) => el.element_type !== 'block_ref');
   if (!usable.length) return null;
   let minX = Infinity;
   let minY = Infinity;
   for (const el of usable) {
-    const b = elementBounds(el, annotationScale);
+    const b = elementBounds(el);
     minX = Math.min(minX, b.minX);
     minY = Math.min(minY, b.minY);
   }
@@ -227,8 +246,8 @@ function uniformScale(sx: number, sy: number): number | null {
 /** Produce the world-space ghost elements an instance renders. Ghost ids
  *  are ``ref.id:<index>`` so a ref stays one selectable object while each
  *  ghost keeps a stable React key. */
-export function instantiateBlock(def: BlockDefinition, ref: BlockRefElement, annotationScale = 50): ProjectElement[] {
-  const bounds = blockBounds(def, annotationScale);
+export function instantiateBlock(def: BlockDefinition, ref: BlockRefElement): ProjectElement[] {
+  const bounds = blockBounds(def);
   const insert = { x: ref.x1, y: ref.y1 };
   const center = { x: (ref.x1 + ref.x2) / 2, y: (ref.y1 + ref.y2) / 2 };
   const sx = bounds.w > 1e-9 ? Math.abs(ref.x2 - ref.x1) / bounds.w : 1;
@@ -269,10 +288,10 @@ export function instantiateBlock(def: BlockDefinition, ref: BlockRefElement, ann
 /** Convert a reference back into real elements: fresh ids, the item's own
  *  layer preserved, and the ref's layer as the fallback for layerless
  *  items. Returns ``[]`` for missing or empty definitions. */
-export function explodeBlockRef(ref: BlockRefElement, def: BlockDefinition | undefined, annotationScale = 50): ProjectElement[] {
+export function explodeBlockRef(ref: BlockRefElement, def: BlockDefinition | undefined): ProjectElement[] {
   if (!def || !def.items.length) return [];
   const refLayer = (ref.properties as { layer_id?: string | null }).layer_id ?? null;
-  return instantiateBlock(def, ref, annotationScale).map((ghost) => {
+  return instantiateBlock(def, ref).map((ghost) => {
     const { project_id } = ref;
     const props = { ...(ghost.properties as Record<string, unknown>) };
     if (props.layer_id == null) props.layer_id = refLayer;
@@ -293,10 +312,9 @@ export function createBlockRef(
   projectId: string,
   def: BlockDefinition,
   insert: Point,
-  annotationScale = 50,
 ): BlockRefElement {
   const now = new Date().toISOString();
-  const bounds = blockBounds(def, annotationScale);
+  const bounds = blockBounds(def);
   return {
     id,
     project_id: projectId,
