@@ -932,9 +932,9 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
     if (!draft || draft.tool !== 'block_ref') return null;
     const def = blockById(state.blocks, state.armedBlockId);
     if (!def) return null;
-    const previewRef = createBlockRef('block-preview', state.elements[0]?.project_id ?? '', def, draft.end);
-    return instantiateBlock(def, previewRef);
-  }, [state.draft, state.blocks, state.armedBlockId, state.elements]);
+    const previewRef = createBlockRef('block-preview', state.elements[0]?.project_id ?? '', def, draft.end, annotationScale);
+    return instantiateBlock(def, previewRef, annotationScale);
+  }, [state.draft, state.blocks, state.armedBlockId, state.elements, annotationScale]);
 
   const dimensionDraftPreview = useMemo(() => {
     const draft = state.draft;
@@ -1329,7 +1329,7 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
 
               if (el.element_type === 'block_ref') {
                 const def = blockById(state.blocks, (el.properties as { block_id?: string }).block_id);
-                const ghosts = def ? instantiateBlock(def, el) : [];
+                const ghosts = def ? instantiateBlock(def, el, annotationScale) : [];
                 const r = rectOf(el);
                 const cx = r.x + r.w / 2;
                 const cy = r.y + r.h / 2;

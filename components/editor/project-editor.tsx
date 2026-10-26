@@ -252,7 +252,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     createFromSelection: async (name: string, description?: string) => {
       const current = stateRef.current;
       const selected = current.elements.filter((el) => current.selectedIds.includes(el.id));
-      const payload = createBlockFromSelection(name, selected, description);
+      const payload = createBlockFromSelection(name, selected, description, designSettingsRef.current.annotation_scale ?? 50);
       if (!payload) return;
       const created = await api.createBlock(initialProject.id, payload);
       actions.setBlocks([...stateRef.current.blocks, created]);
@@ -372,7 +372,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
     exportPng: handleExport,
     print: handlePrint,
     armEdit: actions.armEdit,
-    explodeSelection: actions.explodeSelection,
+    explodeSelection: () => actions.explodeSelection(designSettings.annotation_scale ?? 50),
   });
   const visibleCommands = readOnly ? commands.filter((command) => !command.requiresEdit) : commands;
 
@@ -440,7 +440,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
         catalog={catalog}
         onUpdate={actions.updateElement}
         onUpdateMany={actions.updateMany}
-        onExplode={actions.explodeSelection}
+        onExplode={() => actions.explodeSelection(designSettings.annotation_scale ?? 50)}
         readOnly={readOnly}
         annotationScale={designSettings.annotation_scale ?? 50}
         dimStyles={ensureDimStyles(designSettings.dim_styles)}
@@ -454,6 +454,7 @@ export function ProjectEditor({ initialProject }: { initialProject: Project }) {
       elements={state.elements}
       blocks={state.blocks}
       selectedIds={state.selectedIds}
+      annotationScale={designSettings.annotation_scale ?? 50}
       onSelectElement={(id) => {
         actions.select(id, false);
         if (compact) setMobilePanel('inspector');

@@ -22,6 +22,23 @@ function sampleBlock(): BlockDefinition {
   return { id: 'blk-1', project_id: PROJECT, created_at: '', updated_at: '', ...payload, description: payload.description ?? '' };
 }
 
+function annotationElement(
+  id: string,
+  elementType: string,
+  start: Point,
+  end: Point,
+  properties: Record<string, unknown>,
+  rotation = 0,
+): ProjectElement {
+  const line = createLine(id, PROJECT, start, end);
+  return {
+    ...line,
+    element_type: elementType,
+    rotation,
+    properties: { ...line.properties, ...properties },
+  } as unknown as ProjectElement;
+}
+
 function asymmetricBlock(): BlockDefinition {
   const payload = createBlockFromSelection('asymmetric', [
     createLine('horizontal', PROJECT, { x: 0, y: 0 }, { x: 300, y: 0 }),
@@ -105,6 +122,74 @@ describe('blockBounds', () => {
     // Items span x 100..180, y 50..90; base is the min corner (100, 50).
     expect(bounds).toEqual({ x: 0, y: 0, w: 80, h: 40 });
   });
+
+  it('includes dimension points and vertices', () => {
+    const dimension = annotationElement(
+      'dimension',
+      'dimension',
+      { x: 0, y: 0 },
+      { x: 20, y: 0 },
+      { kind: 'angular', dim_point: { x: 80, y: 50 }, vertex: { x: -30, y: -10 } },
+    );
+    const payload = createBlockFromSelection('dimension-block', [dimension])!;
+    const def = { base_x: payload.base_x, base_y: payload.base_y, items: payload.items };
+
+    expect(blockBounds(def)).toEqual({ x: 0, y: 0, w: 110, h: 60 });
+  });
+
+  it.each(['radial', 'diameter'])('includes the circle extent for %s dimensions', (kind) => {
+    const dimension = annotationElement(
+      `${kind}-dimension`,
+      'dimension',
+      { x: 10, y: 20 },
+      { x: 30, y: 20 },
+      { kind, dim_point: { x: 10, y: 20 }, radius: 50 },
+    );
+    const payload = createBlockFromSelection(`${kind}-block`, [dimension])!;
+    const def = { base_x: payload.base_x, base_y: payload.base_y, items: payload.items };
+
+    expect(payload.base_x).toBe(-40);
+    expect(payload.base_y).toBe(-30);
+    expect(blockBounds(def)).toEqual({ x: 0, y: 0, w: 100, h: 100 });
+  });
+
+  it('includes both leader line endpoints', () => {
+    const leader = annotationElement(
+      'leader',
+      'leader',
+      { x: 20, y: 10 },
+      { x: -50, y: 40 },
+      { text: 'Note' },
+    );
+    const payload = createBlockFromSelection('leader-block', [leader])!;
+    const def = { base_x: payload.base_x, base_y: payload.base_y, items: payload.items };
+
+    expect(blockBounds(def)).toEqual({ x: 0, y: 0, w: 70, h: 30 });
+  });
+
+  it('uses annotation scale, alignment, and rotation for text bounds', () => {
+    const text = annotationElement(
+      'text',
+      'text',
+      { x: 100, y: 100 },
+      { x: 100, y: 100 },
+      { text: 'ABCD', height: 2.5, align: 'center' },
+      Math.PI / 2,
+    );
+    const payload = createBlockFromSelection('text-block', [text], '', 100)!;
+    const def = { base_x: 0, base_y: 0, items: payload.items };
+    const boundsAt100 = blockBounds(def, 100);
+    const boundsAt50 = blockBounds(def);
+
+    expect(boundsAt100.x).toBeCloseTo(75);
+    expect(boundsAt100.y).toBeCloseTo(50);
+    expect(boundsAt100.w).toBeCloseTo(25);
+    expect(boundsAt100.h).toBeCloseTo(100);
+    expect(boundsAt50.x).toBeCloseTo(87.5);
+    expect(boundsAt50.y).toBeCloseTo(75);
+    expect(boundsAt50.w).toBeCloseTo(12.5);
+    expect(boundsAt50.h).toBeCloseTo(50);
+  });
 });
 
 describe('createBlockRef / instantiateBlock', () => {
@@ -157,12 +242,13 @@ describe('createBlockRef / instantiateBlock', () => {
       description: payload.description ?? '',
     };
     const ref = createBlockRef('ref-text', PROJECT, def, { x: 100, y: 100 });
-    ref.rotation = Math.PI / 2;
-
-    const instantiated = instantiateBlock(def, ref).find((element) => element.element_type === 'text')!;
-    const exploded = explodeBlockRef(ref, def).find((element) => element.element_type === 'text')!;
-    expect(instantiated.rotation).toBeCloseTo(Math.PI / 2);
-    expect(exploded.rotation).toBeCloseTo(Math.PI / 2);
+    for (const rotation of [Math.PI / 2, Math.PI]) {
+      ref.rotation = rotation;
+      const instantiated = instantiateBlock(def, ref).find((element) => element.element_type === 'text')!;
+      const exploded = explodeBlockRef(ref, def).find((element) => element.element_type === 'text')!;
+      expect(instantiated.rotation).toBeCloseTo(rotation);
+      expect(exploded.rotation).toBeCloseTo(rotation);
+    }
   });
 
   it('stretches items when the ref bbox is resized', () => {
