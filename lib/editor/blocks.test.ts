@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { BlockDefinition, BlockRefElement, ProjectElement } from '@/types/project';
+import type { BlockDefinition, BlockRefElement, ProjectElement, TextElement } from '@/types/project';
 import { createLine, createRectangle, createWall, drawModeOf } from './elements';
 import { mirrorElement, rotateElement } from './edit-ops';
 import { rectCorners, rotate, type Point } from './geometry';
@@ -137,6 +137,32 @@ describe('createBlockRef / instantiateBlock', () => {
     expect(line.y1).toBeCloseTo(480);
     expect(line.x2).toBeCloseTo(560);
     expect(line.y2).toBeCloseTo(560);
+  });
+
+  it('rotates block text only once when the reference is rotated', () => {
+    const line = createLine('baseline', PROJECT, { x: 0, y: 0 }, { x: 100, y: 100 });
+    const text = {
+      ...createLine('label', PROJECT, { x: 20, y: 20 }, { x: 20, y: 20 }),
+      element_type: 'text' as const,
+      length: 1,
+      properties: { text: 'Label', height: 2.5, align: 'left' as const },
+    } as unknown as TextElement;
+    const payload = createBlockFromSelection('text-block', [line, text])!;
+    const def: BlockDefinition = {
+      id: 'blk-text',
+      project_id: PROJECT,
+      created_at: '',
+      updated_at: '',
+      ...payload,
+      description: payload.description ?? '',
+    };
+    const ref = createBlockRef('ref-text', PROJECT, def, { x: 100, y: 100 });
+    ref.rotation = Math.PI / 2;
+
+    const instantiated = instantiateBlock(def, ref).find((element) => element.element_type === 'text')!;
+    const exploded = explodeBlockRef(ref, def).find((element) => element.element_type === 'text')!;
+    expect(instantiated.rotation).toBeCloseTo(Math.PI / 2);
+    expect(exploded.rotation).toBeCloseTo(Math.PI / 2);
   });
 
   it('stretches items when the ref bbox is resized', () => {

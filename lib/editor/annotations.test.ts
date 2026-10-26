@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DimensionElement, TableElement } from '@/types/project';
-import { DEFAULT_DIM_STYLES, dimensionGeometry, elementArea, elementPerimeter, ensureDimStyles, formatDimension, linearOrientation, measureDimension, normalizeTextAngle, paperToWorld, resizeTable, resolveDimStyle } from './annotations';
+import { clampPrecision, DEFAULT_DIM_STYLES, dimensionGeometry, elementArea, elementPerimeter, ensureDimStyles, formatDimension, linearOrientation, measureDimension, normalizeTextAngle, paperToWorld, resizeTable, resolveDimStyle } from './annotations';
 import { createCircle, createEllipse, createRectangle } from './elements';
 import { mirrorElement, rotateElement, scaleElement } from './edit-ops';
 
@@ -135,6 +135,74 @@ describe('annotation dimensions', () => {
     expect(geometry.arrows[0].size).toBeCloseTo(12.5);
     expect(geometry.text.point.y).toBeCloseTo(207.5);
     expect(geometry.text.value).toBe('5.00');
+  });
+
+  it('projects both linear endpoints onto the selected horizontal or vertical dimension line', () => {
+    const horizontal = dimensionGeometry(
+      baseDimension('linear', {
+        x1: 500,
+        y1: 100,
+        x2: 800,
+        y2: 300,
+        properties: { kind: 'linear', orientation: 'horizontal', dim_point: { x: 650, y: 50 } },
+      }),
+      DEFAULT_DIM_STYLES[0],
+      50,
+    );
+    const vertical = dimensionGeometry(
+      baseDimension('linear', {
+        x1: 500,
+        y1: 100,
+        x2: 800,
+        y2: 300,
+        properties: { kind: 'linear', orientation: 'vertical', dim_point: { x: 300, y: 200 } },
+      }),
+      DEFAULT_DIM_STYLES[0],
+      50,
+    );
+
+    expect(horizontal.lines[2].start).toEqual({ x: 500, y: 50 });
+    expect(horizontal.lines[2].end).toEqual({ x: 800, y: 50 });
+    expect(horizontal.text.value).toBe('3.00');
+    expect(vertical.lines[2].start.x).toBeCloseTo(300);
+    expect(vertical.lines[2].end.x).toBeCloseTo(300);
+    expect(vertical.text.value).toBe('2.00');
+  });
+
+  it('uses only the normal projection for aligned dimension offsets', () => {
+    const geometry = dimensionGeometry(
+      baseDimension('aligned', {
+        x1: 0,
+        y1: 0,
+        x2: 100,
+        y2: 0,
+        properties: { kind: 'aligned', dim_point: { x: 150, y: 10 } },
+      }),
+      DEFAULT_DIM_STYLES[0],
+      50,
+    );
+    expect(geometry.lines[2].start.y).toBeCloseTo(10);
+    expect(geometry.lines[2].end.y).toBeCloseTo(10);
+  });
+
+  it('clamps negative and fractional dimension precision to safe integers', () => {
+    const linear = baseDimension('linear', {
+      x2: 123.456,
+      y2: 0,
+      properties: { kind: 'linear', dim_point: { x: 50, y: 100 } },
+    });
+    const angular = baseDimension('angular', {
+      x1: 100,
+      y1: 0,
+      x2: 0,
+      y2: 100,
+      properties: { kind: 'angular', vertex: { x: 0, y: 0 }, dim_point: { x: 50, y: 50 } },
+    });
+    expect(clampPrecision(-1, 6)).toBe(0);
+    expect(clampPrecision(2.7, 6)).toBe(2);
+    expect(formatDimension(linear, { ...DEFAULT_DIM_STYLES[0], decimals: -1 })).toBe('1');
+    expect(formatDimension(linear, { ...DEFAULT_DIM_STYLES[0], decimals: 2.7 })).toBe('1.23');
+    expect(formatDimension(angular, { ...DEFAULT_DIM_STYLES[0], angle_decimals: 2.7 })).toBe('90.00°');
   });
 
   it('offsets radial and diameter labels perpendicular to their line geometry', () => {

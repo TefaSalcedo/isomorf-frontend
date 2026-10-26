@@ -192,7 +192,7 @@ export function instantiateBlock(def: BlockDefinition, ref: BlockRefElement): Pr
     }
     if (theta) {
       ghost = rotateElement(ghost, center, theta);
-      if (mode === 'point' && item.element_type !== 'column') {
+      if (mode === 'point' && item.element_type !== 'column' && item.element_type !== 'text') {
         ghost.rotation = normalizeAngle(ghost.rotation + theta);
       }
     }

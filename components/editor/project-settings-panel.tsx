@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import type { DesignSettings, DimStyle } from '@/types/project';
+import { clampPrecision } from '@/lib/editor/annotations';
 
 export function ProjectSettingsPanel({
   settings,
@@ -115,9 +116,9 @@ export function ProjectSettingsPanel({
               <NumberField label={t('arrowSize')} value={activeStyle.arrow_size} onChange={(arrow_size) => updateStyle({ arrow_size: arrow_size ?? 2.5 })} />
               <NumberField label={t('extensionOffset')} value={activeStyle.ext_offset} onChange={(ext_offset) => updateStyle({ ext_offset: ext_offset ?? 1.25 })} />
               <NumberField label={t('extensionExtend')} value={activeStyle.ext_extend} onChange={(ext_extend) => updateStyle({ ext_extend: ext_extend ?? 1.25 })} />
-              <NumberField label={t('decimals')} value={activeStyle.decimals} onChange={(decimals) => updateStyle({ decimals: decimals ?? 2 })} />
+              <NumberField label={t('decimals')} value={activeStyle.decimals} onChange={(decimals) => updateStyle({ decimals: clampPrecision(decimals ?? 2, 6) })} />
               <SelectField label={t('dimensionUnit')} value={activeStyle.unit} options={['m', 'cm', 'mm'].map((value) => ({ value, label: value }))} onChange={(unit) => updateStyle({ unit: unit as DimStyle['unit'] })} />
-              <NumberField label={t('angleDecimals')} value={activeStyle.angle_decimals} onChange={(angle_decimals) => updateStyle({ angle_decimals: angle_decimals ?? 0 })} />
+              <NumberField label={t('angleDecimals')} value={activeStyle.angle_decimals} onChange={(angle_decimals) => updateStyle({ angle_decimals: clampPrecision(angle_decimals ?? 0, 4) })} />
             </div>
           )}
           {!readOnly && (

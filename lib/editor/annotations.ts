@@ -88,13 +88,17 @@ export function measureDimension(element: DimensionElement): number {
   }
 }
 
+export function clampPrecision(value: number, max: number): number {
+  return Number.isFinite(value) ? Math.max(0, Math.min(max, Math.trunc(value))) : 0;
+}
+
 function measuredText(value: number, style: DimStyle, kind: DimensionElement['properties']['kind']): string {
   if (kind === 'angular') {
     const degrees = (value * 180) / Math.PI;
-    return `${degrees.toFixed(style.angle_decimals)}°`;
+    return `${degrees.toFixed(clampPrecision(style.angle_decimals, 4))}°`;
   }
   const converted = style.unit === 'm' ? value / 100 : style.unit === 'mm' ? value * 10 : value;
-  const formatted = converted.toFixed(style.decimals);
+  const formatted = converted.toFixed(clampPrecision(style.decimals, 6));
   if (kind === 'radial') return `R${formatted}`;
   if (kind === 'diameter') return `Ø${formatted}`;
   return formatted;
@@ -125,6 +129,10 @@ function add(a: { x: number; y: number }, b: { x: number; y: number }) {
 
 function subtract(a: { x: number; y: number }, b: { x: number; y: number }) {
   return { x: a.x - b.x, y: a.y - b.y };
+}
+
+function dot(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return a.x * b.x + a.y * b.y;
 }
 
 function multiply(p: { x: number; y: number }, scalar: number) {
@@ -185,7 +193,7 @@ export function dimensionGeometry(element: DimensionElement, style: DimStyle, sc
     const normal = { x: -direction.y, y: direction.x };
     const midpoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
     const sign = (dimPoint.x - midpoint.x) * normal.x + (dimPoint.y - midpoint.y) * normal.y >= 0 ? 1 : -1;
-    const displacement = multiply(normal, distance(midpoint, dimPoint) * sign);
+    const displacement = multiply(normal, dot(subtract(dimPoint, midpoint), normal));
     const q1 = add(p1, displacement);
     const q2 = add(p2, displacement);
     geometry.lines.push(

@@ -132,4 +132,33 @@ test.describe('dimensions and annotations', () => {
     await expect(annotationEditor).toHaveValue('Item');
   });
 
+  test('commits and autosaves an active text edit when switching views', async ({ page }) => {
+    test.setTimeout(90_000);
+    await newProject(page);
+    const { arm, typePoint } = helpers(page);
+
+    await arm('t');
+    await typePoint('6,1');
+    const annotationEditor = page.getByTestId('annotation-editor');
+    await expect(annotationEditor).toBeFocused();
+    await annotationEditor.fill('View switch keeps this text');
+
+    const view3d = page.getByRole('button', { name: '3D', exact: true });
+    await view3d.click();
+    await expect(view3d).toHaveAttribute('aria-pressed', 'true');
+    await expect(annotationEditor).toBeHidden();
+    const view2d = page.getByRole('button', { name: '2D', exact: true });
+    await view2d.click();
+    await expect(view2d).toHaveAttribute('aria-pressed', 'true');
+
+    await expect(page.getByText(/Saved/)).toBeVisible({ timeout: 15_000 });
+    await page.reload();
+    await page.getByRole('button', { name: 'Home' }).click();
+    await arm('elements');
+    const row = page.locator('tbody tr').filter({ hasText: 'Text' });
+    await expect(row).toHaveCount(1);
+    await row.locator('td').nth(2).click();
+    await expect(page.getByRole('textbox', { name: 'Text' })).toHaveValue('View switch keeps this text');
+  });
+
 });

@@ -957,6 +957,9 @@ export function applyGrip(el: ProjectElement, grip: Grip, point: Point): Project
     } else if (grip.kind === 'end') {
       next.x2 = point.x;
       next.y2 = point.y;
+      if (el.properties.kind === 'radial' || el.properties.kind === 'diameter') {
+        next.properties = { ...el.properties, radius: distance(segStart(el), point) };
+      }
     } else if (grip.kind === 'dim-point') {
       next.properties = { ...el.properties, dim_point: point };
       return retime(next);

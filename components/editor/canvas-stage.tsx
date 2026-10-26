@@ -8,7 +8,7 @@ import type { EditorState } from '@/hooks/use-editor-state';
 import type { Point } from '@/lib/editor/geometry';
 import { ccwSweep, distance, lineIntersection, sampleArcPoints, toRadians } from '@/lib/editor/geometry';
 import { cmToDisplay, displayToCm, formatAngle, formatDisplayValue } from '@/lib/editor/units';
-import type { ArcElement, CircleElement, DimKind, DimStyle, DrawMode, DimensionElement, PlanPoint, ProjectElement, TableElement } from '@/types/project';
+import type { ArcElement, CircleElement, DimKind, DimStyle, DrawMode, DimensionElement, LeaderElement, PlanPoint, ProjectElement, TableElement, TextElement } from '@/types/project';
 import type { DisplayUnit } from '@/lib/editor/units';
 import { parsePointInput, resolvePoint } from '@/lib/editor/coords';
 import { hatchSegments } from '@/lib/editor/hatch';
@@ -280,6 +280,8 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
   const [annotationText, setAnnotationText] = useState('');
   const [annotationAnchor, setAnnotationAnchor] = useState<Point | null>(null);
   const annotationInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const annotationTextRef = useRef('');
+  const finishAnnotationEditorRef = useRef<() => void>(() => {});
   const annotationEditingElement = state.elements.find((element) => element.id === state.annotationEditingId);
   const annotationEditorAnchor = annotationAnchor ?? (
     state.annotationEditingNew && (annotationEditingElement?.element_type === 'text' || annotationEditingElement?.element_type === 'leader')
@@ -298,6 +300,12 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
     stateRef.current = state;
   });
 
+  useLayoutEffect(() => {
+    if (state.annotationEditingId && state.annotationEditingNew) {
+      annotationTextRef.current = annotationInputRef.current?.value ?? '';
+    }
+  }, [state.annotationEditingId, state.annotationEditingNew]);
+
   useEffect(() => {
     if (!state.annotationEditingId || !state.annotationEditingNew) return;
     const element = state.elements.find((candidate) => candidate.id === state.annotationEditingId);
@@ -310,12 +318,14 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
     if (element.element_type === 'text' || element.element_type === 'leader') {
       setEditingCell(null);
       setAnnotationText(element.properties.text);
+      annotationTextRef.current = element.properties.text;
       setAnnotationAnchor(element.element_type === 'leader' ? { x: element.x2, y: element.y2 } : { x: element.x1, y: element.y1 });
     } else if (element.element_type === 'table' && cell) {
       const cellWidth = Math.abs(element.x2 - element.x1) / element.properties.cols;
       const cellHeight = Math.abs(element.y2 - element.y1) / element.properties.rows;
       setEditingCell({ id: element.id, ...cell });
       setAnnotationText(element.properties.cells[cell.row]?.[cell.col] ?? '');
+      annotationTextRef.current = element.properties.cells[cell.row]?.[cell.col] ?? '';
       setAnnotationAnchor({ x: element.x1 + cell.col * cellWidth, y: element.y1 + cell.row * cellHeight });
     } else {
       return;
@@ -328,7 +338,8 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
   function finishAnnotationEditor(cancel = false) {
     const id = state.annotationEditingId;
     if (!id) return;
-    const editedText = annotationInputRef.current?.value ?? annotationText;
+    const editedText = annotationInputRef.current?.value ?? annotationTextRef.current;
+    annotationTextRef.current = editedText;
     const element = state.elements.find((candidate) => candidate.id === id);
     if (cancel) {
       actions.cancelAnnotationEditing();
@@ -352,6 +363,12 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
     setEditingCell(null);
     setAnnotationAnchor(null);
   }
+
+  useLayoutEffect(() => {
+    finishAnnotationEditorRef.current = () => finishAnnotationEditor();
+  });
+
+  useEffect(() => () => finishAnnotationEditorRef.current(), []);
 
   /** Drop any half-typed numeric text — a click consumes or abandons it. */
   const clearLengthBuffer = () => {
@@ -1059,87 +1076,39 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
     };
               const draggable = !state.edit && state.tool === 'select' && selected && !locked && !state.readOnly;
 
-              if (el.element_type === 'dimension') {
-                const style = resolveDimStyle(dimStyles, el.properties.dim_style_id, activeDimStyleId);
-                const geometry = dimensionGeometry(el, style, annotationScale);
-                const arcLines = geometry.arcs.flatMap((arc) => {
-                  const points = sampleArcPoints(arc.center.x, arc.center.y, arc.radius, arc.startAngle, arc.endAngle, false);
-                  return points.slice(1).map((point, index) => [points[index].x, points[index].y, point.x, point.y]);
-                });
+              if (el.element_type === 'dimension' || el.element_type === 'leader') {
                 return (
                   <Group key={el.id} opacity={(locked ? 0.45 : 1) * ghostDim} {...interactive}>
-                    {geometry.lines.map((line, index) => (
-                      <Line key={`dim-line-${index}`} points={[line.start.x, line.start.y, line.end.x, line.end.y]} stroke={stroke} strokeWidth={1.4 / zoom} hitStrokeWidth={12 / zoom} />
-                    ))}
-                    {arcLines.map((points, index) => (
-                      <Line key={`dim-arc-${index}`} points={points} stroke={stroke} strokeWidth={1.4 / zoom} hitStrokeWidth={12 / zoom} />
-                    ))}
-                    {geometry.arrows.map((arrow, index) => (
-                      <AnnotationArrow key={`dim-arrow-${index}`} arrow={arrow} color={stroke} zoom={zoom} />
-                    ))}
-                    <Text
-                      x={geometry.text.point.x}
-                      y={geometry.text.point.y}
-                      text={geometry.text.value}
-                      fontSize={paperToWorld(style.text_height, annotationScale)}
-                      fill={stroke}
-                      rotation={(geometry.text.angle * 180) / Math.PI}
-                      offsetX={geometry.text.value.length * paperToWorld(style.text_height, annotationScale) * 0.25}
-                      offsetY={paperToWorld(style.text_height, annotationScale) / 2}
+                    <AnnotationContent
+                      element={el}
+                      dimStyles={dimStyles}
+                      activeDimStyleId={activeDimStyleId}
+                      annotationScale={annotationScale}
+                      zoom={zoom}
+                      stroke={stroke}
                     />
                   </Group>
                 );
               }
 
-              if (el.element_type === 'leader') {
-                const style = resolveDimStyle(dimStyles, el.properties.dim_style_id, activeDimStyleId);
-                const geometry = leaderGeometry(el, style, annotationScale)!;
+              if (el.element_type === 'text') {
                 return (
                   <Group key={el.id} opacity={(locked ? 0.45 : 1) * ghostDim} {...interactive}>
-                    {geometry.lines.map((line, index) => (
-                      <Line key={`leader-line-${index}`} points={[line.start.x, line.start.y, line.end.x, line.end.y]} stroke={stroke} strokeWidth={1.5 / zoom} hitStrokeWidth={12 / zoom} />
-                    ))}
-                    {geometry.arrows.map((arrow, index) => (
-                      <AnnotationArrow key={`leader-arrow-${index}`} arrow={arrow} color={stroke} zoom={zoom} />
-                    ))}
-                    {el.properties.text && (
-                      <Text x={geometry.text.point.x} y={geometry.text.point.y - paperToWorld(style.text_height, annotationScale) / 2} text={geometry.text.value} fontSize={paperToWorld(style.text_height, annotationScale)} fill={stroke} />
-                    )}
+                    <AnnotationContent
+                      element={el}
+                      dimStyles={dimStyles}
+                      activeDimStyleId={activeDimStyleId}
+                      annotationScale={annotationScale}
+                      zoom={zoom}
+                      stroke={stroke}
+                    />
                   </Group>
-                );
-              }
-
-              if (el.element_type === 'text') {
-                const fontSize = paperToWorld(el.properties.height, annotationScale);
-                const textWidth = Math.max(fontSize * 2, el.properties.text.length * fontSize);
-                return (
-                  <Text
-                    key={el.id}
-                    x={el.x1}
-                    y={el.y1}
-                    text={el.properties.text || ' '}
-                    width={textWidth}
-                    fontSize={fontSize}
-                    fontStyle={`${el.properties.bold ? 'bold' : ''}${el.properties.italic ? ' italic' : ''}`.trim()}
-                    textDecoration={el.properties.underline ? 'underline' : undefined}
-                    align={el.properties.align ?? 'left'}
-                    offsetX={el.properties.align === 'center' ? textWidth / 2 : el.properties.align === 'right' ? textWidth : 0}
-                    rotation={(el.rotation * 180) / Math.PI}
-                    fill={stroke}
-                    opacity={(locked ? 0.45 : 1) * ghostDim}
-                    hitStrokeWidth={12 / zoom}
-                    {...interactive}
-                  />
                 );
               }
 
               if (el.element_type === 'table') {
                 const table = el as TableElement;
                 const rect = rectOf(table);
-                const cellWidth = rect.w / Math.max(1, table.properties.cols);
-                const cellHeight = rect.h / Math.max(1, table.properties.rows);
-                const tableFontSize = Math.min(paperToWorld(table.properties.text_height, annotationScale), cellHeight * 0.7);
-                const tableTextPadding = tableFontSize * 0.25;
                 const center = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
                 return (
                   <Group
@@ -1154,38 +1123,15 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
                     onDragEnd={(e) => handleElementDragEnd(e, el, center)}
                     {...interactive}
                   >
-                    {Array.from({ length: table.properties.rows }, (_, row) =>
-                      Array.from({ length: table.properties.cols }, (_, col) => (
-                        <Fragment key={`cell-${row}-${col}`}>
-                          <Rect
-                            x={rect.x + col * cellWidth}
-                            y={rect.y + row * cellHeight}
-                            width={cellWidth}
-                            height={cellHeight}
-                            fill={row === 0 && table.properties.header ? 'rgba(148, 163, 184, 0.18)' : 'transparent'}
-                            stroke={stroke}
-                            strokeWidth={1 / zoom}
-                            onDblClick={(event) => { event.cancelBubble = true; openAnnotationEditor(table, { row, col }); }}
-                            onDblTap={(event) => { event.cancelBubble = true; openAnnotationEditor(table, { row, col }); }}
-                          />
-                          <Text
-                            x={rect.x + col * cellWidth + tableTextPadding}
-                            y={rect.y + row * cellHeight}
-                            text={table.properties.cells[row]?.[col] ?? ''}
-                            width={Math.max(0, cellWidth - tableTextPadding * 2)}
-                            height={cellHeight}
-                            fontSize={tableFontSize}
-                            fontStyle={row === 0 && table.properties.header ? 'bold' : 'normal'}
-                            verticalAlign="middle"
-                            wrap="none"
-                            ellipsis
-                            fill={stroke}
-                            onDblClick={(event) => { event.cancelBubble = true; openAnnotationEditor(table, { row, col }); }}
-                            onDblTap={(event) => { event.cancelBubble = true; openAnnotationEditor(table, { row, col }); }}
-                          />
-                        </Fragment>
-                      )),
-                    )}
+                    <AnnotationContent
+                      element={table}
+                      dimStyles={dimStyles}
+                      activeDimStyleId={activeDimStyleId}
+                      annotationScale={annotationScale}
+                      zoom={zoom}
+                      stroke={stroke}
+                      onOpenTableCell={(row, col) => openAnnotationEditor(table, { row, col })}
+                    />
                   </Group>
                 );
               }
@@ -1394,7 +1340,15 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
                         single object — the transparent hit rect below owns
                         the pointer interaction. */}
                     {ghosts.map((ghost) => (
-                      <GhostItem key={ghost.id} element={ghost} layers={state.layers} />
+                      <GhostItem
+                        key={ghost.id}
+                        element={ghost}
+                        layers={state.layers}
+                        dimStyles={dimStyles}
+                        activeDimStyleId={activeDimStyleId}
+                        annotationScale={annotationScale}
+                        zoom={zoom}
+                      />
                     ))}
                     <Rect
                       x={cx}
@@ -1733,7 +1687,15 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
             {blockInsertPreview && (
               <>
                 {blockInsertPreview.map((ghost) => (
-                  <GhostItem key={ghost.id} element={ghost} layers={state.layers} />
+                  <GhostItem
+                    key={ghost.id}
+                    element={ghost}
+                    layers={state.layers}
+                    dimStyles={dimStyles}
+                    activeDimStyleId={activeDimStyleId}
+                    annotationScale={annotationScale}
+                    zoom={zoom}
+                  />
                 ))}
                 {state.draft && (
                   <Circle x={state.draft.end.x} y={state.draft.end.y} radius={5 / zoom} fill={COLORS.select} listening={false} />
@@ -1902,7 +1864,10 @@ export function CanvasStage({ state, displayUnit, annotationScale, dimStyles, ac
           data-testid="annotation-editor"
           aria-label={t('annotationEditor')}
           defaultValue={state.annotationEditingNew ? '' : annotationText}
-          onChange={(event) => setAnnotationText(event.target.value)}
+          onChange={(event) => {
+            annotationTextRef.current = event.target.value;
+            setAnnotationText(event.target.value);
+          }}
           onKeyDown={(event) => {
             event.stopPropagation();
             if (event.key === 'Escape') {
@@ -1950,12 +1915,209 @@ function AnnotationArrow({
   return <Line points={[arrow.tip.x, arrow.tip.y, back.x + px, back.y + py, back.x - px, back.y - py]} closed fill={color} stroke={color} strokeWidth={1 / zoom} listening={false} />;
 }
 
+type AnnotationElement = DimensionElement | LeaderElement | TextElement | TableElement;
+
+function AnnotationContent({
+  element,
+  dimStyles,
+  activeDimStyleId,
+  annotationScale,
+  zoom,
+  stroke,
+  listening = true,
+  onOpenTableCell,
+}: {
+  element: AnnotationElement;
+  dimStyles: DimStyle[];
+  activeDimStyleId?: string | null;
+  annotationScale: number;
+  zoom: number;
+  stroke: string;
+  listening?: boolean;
+  onOpenTableCell?: (row: number, col: number) => void;
+}) {
+  if (element.element_type === 'dimension') {
+    const style = resolveDimStyle(dimStyles, element.properties.dim_style_id, activeDimStyleId);
+    const geometry = dimensionGeometry(element, style, annotationScale);
+    const arcLines = geometry.arcs.flatMap((arc) => {
+      const points = sampleArcPoints(arc.center.x, arc.center.y, arc.radius, arc.startAngle, arc.endAngle, false);
+      return points.slice(1).map((point, index) => [points[index].x, points[index].y, point.x, point.y]);
+    });
+    return (
+      <>
+        {geometry.lines.map((line, index) => (
+          <Line key={`dim-line-${index}`} points={[line.start.x, line.start.y, line.end.x, line.end.y]} stroke={stroke} strokeWidth={1.4 / zoom} hitStrokeWidth={12 / zoom} listening={listening} />
+        ))}
+        {arcLines.map((points, index) => (
+          <Line key={`dim-arc-${index}`} points={points} stroke={stroke} strokeWidth={1.4 / zoom} hitStrokeWidth={12 / zoom} listening={listening} />
+        ))}
+        {geometry.arrows.map((arrow, index) => (
+          <AnnotationArrow key={`dim-arrow-${index}`} arrow={arrow} color={stroke} zoom={zoom} />
+        ))}
+        <Text
+          x={geometry.text.point.x}
+          y={geometry.text.point.y}
+          text={geometry.text.value}
+          fontSize={paperToWorld(style.text_height, annotationScale)}
+          fill={stroke}
+          rotation={(geometry.text.angle * 180) / Math.PI}
+          offsetX={geometry.text.value.length * paperToWorld(style.text_height, annotationScale) * 0.25}
+          offsetY={paperToWorld(style.text_height, annotationScale) / 2}
+          listening={listening}
+        />
+      </>
+    );
+  }
+
+  if (element.element_type === 'leader') {
+    const style = resolveDimStyle(dimStyles, element.properties.dim_style_id, activeDimStyleId);
+    const geometry = leaderGeometry(element, style, annotationScale);
+    if (!geometry) return null;
+    return (
+      <>
+        {geometry.lines.map((line, index) => (
+          <Line key={`leader-line-${index}`} points={[line.start.x, line.start.y, line.end.x, line.end.y]} stroke={stroke} strokeWidth={1.5 / zoom} hitStrokeWidth={12 / zoom} listening={listening} />
+        ))}
+        {geometry.arrows.map((arrow, index) => (
+          <AnnotationArrow key={`leader-arrow-${index}`} arrow={arrow} color={stroke} zoom={zoom} />
+        ))}
+        {element.properties.text && (
+          <Text
+            x={geometry.text.point.x}
+            y={geometry.text.point.y - paperToWorld(style.text_height, annotationScale) / 2}
+            text={geometry.text.value}
+            fontSize={paperToWorld(style.text_height, annotationScale)}
+            fill={stroke}
+            listening={listening}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (element.element_type === 'text') {
+    const fontSize = paperToWorld(element.properties.height, annotationScale);
+    const textWidth = Math.max(fontSize * 2, element.properties.text.length * fontSize);
+    return (
+      <Text
+        x={element.x1}
+        y={element.y1}
+        text={element.properties.text || ' '}
+        width={textWidth}
+        fontSize={fontSize}
+        fontStyle={`${element.properties.bold ? 'bold' : ''}${element.properties.italic ? ' italic' : ''}`.trim()}
+        textDecoration={element.properties.underline ? 'underline' : undefined}
+        align={element.properties.align ?? 'left'}
+        offsetX={element.properties.align === 'center' ? textWidth / 2 : element.properties.align === 'right' ? textWidth : 0}
+        rotation={(element.rotation * 180) / Math.PI}
+        fill={stroke}
+        hitStrokeWidth={12 / zoom}
+        listening={listening}
+      />
+    );
+  }
+
+  const rect = rectOf(element);
+  const cellWidth = rect.w / Math.max(1, element.properties.cols);
+  const cellHeight = rect.h / Math.max(1, element.properties.rows);
+  const tableFontSize = Math.min(paperToWorld(element.properties.text_height, annotationScale), cellHeight * 0.7);
+  const tableTextPadding = tableFontSize * 0.25;
+  return (
+    <>
+      {Array.from({ length: element.properties.rows }, (_, row) =>
+        Array.from({ length: element.properties.cols }, (_, col) => {
+          const openCell = (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+            event.cancelBubble = true;
+            onOpenTableCell?.(row, col);
+          };
+          return (
+            <Fragment key={`cell-${row}-${col}`}>
+              <Rect
+                x={rect.x + col * cellWidth}
+                y={rect.y + row * cellHeight}
+                width={cellWidth}
+                height={cellHeight}
+                fill={row === 0 && element.properties.header ? 'rgba(148, 163, 184, 0.18)' : 'transparent'}
+                stroke={stroke}
+                strokeWidth={1 / zoom}
+                listening={listening}
+                onDblClick={openCell}
+                onDblTap={openCell}
+              />
+              <Text
+                x={rect.x + col * cellWidth + tableTextPadding}
+                y={rect.y + row * cellHeight}
+                text={element.properties.cells[row]?.[col] ?? ''}
+                width={Math.max(0, cellWidth - tableTextPadding * 2)}
+                height={cellHeight}
+                fontSize={tableFontSize}
+                fontStyle={row === 0 && element.properties.header ? 'bold' : 'normal'}
+                verticalAlign="middle"
+                wrap="none"
+                ellipsis
+                fill={stroke}
+                listening={listening}
+                onDblClick={openCell}
+                onDblTap={openCell}
+              />
+            </Fragment>
+          );
+        }),
+      )}
+    </>
+  );
+}
+
 /** Renders one ghost element of a block instance — a simplified outline
  *  per draw mode, non-listening, colored by the item's own layer. */
-function GhostItem({ element, layers }: { element: ProjectElement; layers: PlanLayer[] }) {
+function GhostItem({
+  element,
+  layers,
+  dimStyles,
+  activeDimStyleId,
+  annotationScale,
+  zoom,
+}: {
+  element: ProjectElement;
+  layers: PlanLayer[];
+  dimStyles: DimStyle[];
+  activeDimStyleId?: string | null;
+  annotationScale: number;
+  zoom: number;
+}) {
   const stroke = colorFor(element, false, false, layers);
   const resolved = resolveLineStyle(element, layers);
   const mode = drawMode(element);
+
+  if (element.element_type === 'dimension' || element.element_type === 'leader' || element.element_type === 'text' || element.element_type === 'table') {
+    const content = (
+      <AnnotationContent
+        element={element}
+        dimStyles={dimStyles}
+        activeDimStyleId={activeDimStyleId}
+        annotationScale={annotationScale}
+        zoom={zoom}
+        stroke={stroke}
+        listening={false}
+      />
+    );
+    if (element.element_type !== 'table') return content;
+
+    const rect = rectOf(element);
+    const center = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
+    return (
+      <Group
+        x={center.x}
+        y={center.y}
+        offsetX={center.x}
+        offsetY={center.y}
+        rotation={(element.rotation * 180) / Math.PI}
+        listening={false}
+      >
+        {content}
+      </Group>
+    );
+  }
 
   if (mode === 'point') {
     const props = element.properties as { width?: number; depth?: number; diameter?: number; shape?: string };
