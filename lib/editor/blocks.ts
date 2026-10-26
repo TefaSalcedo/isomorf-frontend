@@ -6,8 +6,9 @@ import type {
   ProjectElement,
 } from '@/types/project';
 import { drawModeOf } from '@/lib/editor/elements';
+import { paperToWorld } from '@/lib/editor/annotations';
 import { mapElementPoints, mirrorElement, rotateElement } from '@/lib/editor/edit-ops';
-import { add, normalizeAngle, sub, type Point } from '@/lib/editor/geometry';
+import { add, normalizeAngle, rotate, sub, type Point } from '@/lib/editor/geometry';
 
 /* ------------------------------------------------------------------ */
 /* Reusable blocks (roadmap week 10)                                    */
@@ -33,7 +34,67 @@ export function blockById(blocks: BlockDefinition[], id: string | undefined | nu
   return blocks.find((block) => block.id === id);
 }
 
-function elementBounds(el: { x1: number; y1: number; x2: number; y2: number; element_type: string; properties: Record<string, unknown> }): { minX: number; minY: number; maxX: number; maxY: number } {
+export type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
+
+function boundsOf(points: Point[]): Bounds {
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  return { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) };
+}
+
+function dimensionBounds(el: { x1: number; y1: number; x2: number; y2: number; properties: Record<string, unknown> }): Bounds {
+  const start = { x: el.x1, y: el.y1 };
+  const end = { x: el.x2, y: el.y2 };
+  const points = [start, end];
+  const dimPoint = el.properties.dim_point as Point | undefined;
+  const vertex = el.properties.vertex as Point | undefined;
+  if (dimPoint) points.push(dimPoint);
+  if (vertex) points.push(vertex);
+  const kind = el.properties.kind;
+  if (kind === 'radial' || kind === 'diameter') {
+    const radius = (el.properties.radius as number | undefined) ?? Math.hypot(end.x - start.x, end.y - start.y);
+    points.push(
+      { x: start.x - radius, y: start.y - radius },
+      { x: start.x + radius, y: start.y + radius },
+    );
+  }
+  return boundsOf(points);
+}
+
+function leaderBounds(el: { x1: number; y1: number; x2: number; y2: number; properties: Record<string, unknown> }): Bounds {
+  const points = [{ x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 }];
+  const extraPoints = el.properties.points as Point[] | undefined;
+  if (extraPoints) points.push(...extraPoints);
+  return boundsOf(points);
+}
+
+function textBounds(
+  el: { x1: number; y1: number; rotation?: number; properties: Record<string, unknown> },
+  annotationScale: number,
+): Bounds {
+  const fontSize = paperToWorld((el.properties.height as number) ?? 2.5, annotationScale);
+  const text = String(el.properties.text ?? '');
+  const width = Math.max(fontSize * 2, text.length * fontSize);
+  const align = el.properties.align;
+  const offsetX = align === 'center' ? width / 2 : align === 'right' ? width : 0;
+  const angle = el.rotation ?? 0;
+  const corners = [
+    { x: -offsetX, y: 0 },
+    { x: width - offsetX, y: 0 },
+    { x: width - offsetX, y: fontSize },
+    { x: -offsetX, y: fontSize },
+  ].map((point) => {
+    const rotated = rotate(point, angle);
+    return { x: el.x1 + rotated.x, y: el.y1 + rotated.y };
+  });
+  return boundsOf(corners);
+}
+
+function elementBounds(
+  el: { x1: number; y1: number; x2: number; y2: number; element_type: string; properties: Record<string, unknown> },
+): Bounds {
+  if (el.element_type === 'dimension') return dimensionBounds(el);
+  if (el.element_type === 'leader') return leaderBounds(el);
   const mode = drawModeOf(el.element_type as ProjectElement['element_type']);
   if (mode === 'point') {
     // Point elements render centered on x1,y1 with a size in properties.
@@ -70,6 +131,22 @@ function elementBounds(el: { x1: number; y1: number; x2: number; y2: number; ele
     minY: Math.min(el.y1, el.y2),
     maxX: Math.max(el.x1, el.x2),
     maxY: Math.max(el.y1, el.y2),
+  };
+}
+
+export function annotationHitBounds(ghosts: ProjectElement[], annotationScale: number): Bounds | null {
+  const bounds: Bounds[] = [];
+  for (const ghost of ghosts) {
+    if (ghost.element_type === 'text') bounds.push(textBounds(ghost, annotationScale));
+    else if (ghost.element_type === 'dimension') bounds.push(dimensionBounds(ghost));
+    else if (ghost.element_type === 'leader') bounds.push(leaderBounds(ghost));
+  }
+  if (!bounds.length) return null;
+  return {
+    minX: Math.min(...bounds.map((bound) => bound.minX)),
+    minY: Math.min(...bounds.map((bound) => bound.minY)),
+    maxX: Math.max(...bounds.map((bound) => bound.maxX)),
+    maxY: Math.max(...bounds.map((bound) => bound.maxY)),
   };
 }
 
@@ -192,7 +269,7 @@ export function instantiateBlock(def: BlockDefinition, ref: BlockRefElement): Pr
     }
     if (theta) {
       ghost = rotateElement(ghost, center, theta);
-      if (mode === 'point' && item.element_type !== 'column') {
+      if (mode === 'point' && item.element_type !== 'column' && item.element_type !== 'text') {
         ghost.rotation = normalizeAngle(ghost.rotation + theta);
       }
     }

@@ -108,9 +108,10 @@ export function findClosedLoops(elements: ProjectElement[]): Cycle[] | null {
 }
 
 export function calculateSelectionSummary(elements: ProjectElement[]): SelectionSummary {
-  const walls = elements.filter((el) => el.element_type === 'wall') as WallElement[];
-  const totalLength = elements.reduce((sum, el) => sum + cmToMeters(el.length), 0);
-  const volume = elements.reduce((sum, el) => {
+  const structuralElements = elements.filter((el) => !['dimension', 'leader', 'text', 'table'].includes(el.element_type));
+  const walls = structuralElements.filter((el) => el.element_type === 'wall') as WallElement[];
+  const totalLength = structuralElements.reduce((sum, el) => sum + cmToMeters(el.length), 0);
+  const volume = structuralElements.reduce((sum, el) => {
     if (el.element_type === 'wall') {
       const props = el.properties;
       return sum + cmToMeters(el.length) * (props.height ?? 2.5) * (props.thickness ?? 0.15);

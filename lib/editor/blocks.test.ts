@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { BlockDefinition, BlockRefElement, ProjectElement } from '@/types/project';
+import type { BlockDefinition, BlockRefElement, ProjectElement, TextElement } from '@/types/project';
 import { createLine, createRectangle, createWall, drawModeOf } from './elements';
 import { mirrorElement, rotateElement } from './edit-ops';
 import { rectCorners, rotate, type Point } from './geometry';
 import {
+  annotationHitBounds,
   blockBounds,
   blockById,
   createBlockFromSelection,
@@ -20,6 +21,23 @@ function sampleBlock(): BlockDefinition {
     createRectangle('r1', PROJECT, { x: 100, y: 50 }, { x: 120, y: 90 }),
   ])!;
   return { id: 'blk-1', project_id: PROJECT, created_at: '', updated_at: '', ...payload, description: payload.description ?? '' };
+}
+
+function annotationElement(
+  id: string,
+  elementType: string,
+  start: Point,
+  end: Point,
+  properties: Record<string, unknown>,
+  rotation = 0,
+): ProjectElement {
+  const line = createLine(id, PROJECT, start, end);
+  return {
+    ...line,
+    element_type: elementType,
+    rotation,
+    properties: { ...line.properties, ...properties },
+  } as unknown as ProjectElement;
 }
 
 function asymmetricBlock(): BlockDefinition {
@@ -105,6 +123,119 @@ describe('blockBounds', () => {
     // Items span x 100..180, y 50..90; base is the min corner (100, 50).
     expect(bounds).toEqual({ x: 0, y: 0, w: 80, h: 40 });
   });
+
+  it('includes dimension points and vertices', () => {
+    const dimension = annotationElement(
+      'dimension',
+      'dimension',
+      { x: 0, y: 0 },
+      { x: 20, y: 0 },
+      { kind: 'angular', dim_point: { x: 80, y: 50 }, vertex: { x: -30, y: -10 } },
+    );
+    const payload = createBlockFromSelection('dimension-block', [dimension])!;
+    const def = { base_x: payload.base_x, base_y: payload.base_y, items: payload.items };
+
+    expect(blockBounds(def)).toEqual({ x: 0, y: 0, w: 110, h: 60 });
+  });
+
+  it.each(['radial', 'diameter'])('includes the circle extent for %s dimensions', (kind) => {
+    const dimension = annotationElement(
+      `${kind}-dimension`,
+      'dimension',
+      { x: 10, y: 20 },
+      { x: 30, y: 20 },
+      { kind, dim_point: { x: 10, y: 20 }, radius: 50 },
+    );
+    const payload = createBlockFromSelection(`${kind}-block`, [dimension])!;
+    const def = { base_x: payload.base_x, base_y: payload.base_y, items: payload.items };
+
+    expect(payload.base_x).toBe(-40);
+    expect(payload.base_y).toBe(-30);
+    expect(blockBounds(def)).toEqual({ x: 0, y: 0, w: 100, h: 100 });
+  });
+
+  it('includes both leader line endpoints', () => {
+    const leader = annotationElement(
+      'leader',
+      'leader',
+      { x: 20, y: 10 },
+      { x: -50, y: 40 },
+      { text: 'Note' },
+    );
+    const payload = createBlockFromSelection('leader-block', [leader])!;
+    const def = { base_x: payload.base_x, base_y: payload.base_y, items: payload.items };
+
+    expect(blockBounds(def)).toEqual({ x: 0, y: 0, w: 70, h: 30 });
+  });
+
+  it('keeps instantiated line and text geometry independent of annotation scale', () => {
+    const line = createLine('baseline', PROJECT, { x: 0, y: 0 }, { x: 100, y: 0 });
+    const text = annotationElement(
+      'label',
+      'text',
+      { x: 20, y: 10 },
+      { x: 20, y: 10 },
+      { text: 'ABCDEFGHIJKLMNOPQRST', height: 2.5, align: 'left' },
+    );
+    const payload = createBlockFromSelection('line-text', [line, text])!;
+    const def: BlockDefinition = {
+      id: 'blk-line-text',
+      project_id: PROJECT,
+      created_at: '',
+      updated_at: '',
+      ...payload,
+      description: payload.description ?? '',
+    };
+    const ref = createBlockRef('ref-line-text', PROJECT, def, { x: 200, y: 300 });
+    const ghostsAt50 = instantiateBlock(def, ref);
+    const hitBoundsAt50 = annotationHitBounds(ghostsAt50, 50)!;
+    const ghostsAt100 = instantiateBlock(def, ref);
+    const hitBoundsAt100 = annotationHitBounds(ghostsAt100, 100)!;
+
+    expect(ghostsAt100).toEqual(ghostsAt50);
+    expect(hitBoundsAt100.maxX).toBeGreaterThan(hitBoundsAt50.maxX);
+  });
+
+  it('covers a 20-character text at 1:50 with annotation hit bounds', () => {
+    const text = annotationElement(
+      'long-label',
+      'text',
+      { x: 10, y: 20 },
+      { x: 10, y: 20 },
+      { text: 'ABCDEFGHIJKLMNOPQRST', height: 2.5, align: 'left' },
+    );
+
+    expect(annotationHitBounds([text], 50)).toEqual({
+      minX: 10,
+      minY: 20,
+      maxX: 260,
+      maxY: 32.5,
+    });
+  });
+
+  it('includes dimension and leader points in annotation hit bounds', () => {
+    const dimension = annotationElement(
+      'dimension',
+      'dimension',
+      { x: 0, y: 0 },
+      { x: 20, y: 0 },
+      { kind: 'angular', dim_point: { x: 80, y: 50 }, vertex: { x: -30, y: -10 } },
+    );
+    const leader = annotationElement(
+      'leader',
+      'leader',
+      { x: 40, y: -20 },
+      { x: 100, y: 30 },
+      { text: 'Note' },
+    );
+
+    expect(annotationHitBounds([dimension, leader], 50)).toEqual({
+      minX: -30,
+      minY: -20,
+      maxX: 100,
+      maxY: 50,
+    });
+  });
 });
 
 describe('createBlockRef / instantiateBlock', () => {
@@ -137,6 +268,33 @@ describe('createBlockRef / instantiateBlock', () => {
     expect(line.y1).toBeCloseTo(480);
     expect(line.x2).toBeCloseTo(560);
     expect(line.y2).toBeCloseTo(560);
+  });
+
+  it('rotates block text only once when the reference is rotated', () => {
+    const line = createLine('baseline', PROJECT, { x: 0, y: 0 }, { x: 100, y: 100 });
+    const text = {
+      ...createLine('label', PROJECT, { x: 20, y: 20 }, { x: 20, y: 20 }),
+      element_type: 'text' as const,
+      length: 1,
+      properties: { text: 'Label', height: 2.5, align: 'left' as const },
+    } as unknown as TextElement;
+    const payload = createBlockFromSelection('text-block', [line, text])!;
+    const def: BlockDefinition = {
+      id: 'blk-text',
+      project_id: PROJECT,
+      created_at: '',
+      updated_at: '',
+      ...payload,
+      description: payload.description ?? '',
+    };
+    const ref = createBlockRef('ref-text', PROJECT, def, { x: 100, y: 100 });
+    for (const rotation of [Math.PI / 2, Math.PI]) {
+      ref.rotation = rotation;
+      const instantiated = instantiateBlock(def, ref).find((element) => element.element_type === 'text')!;
+      const exploded = explodeBlockRef(ref, def).find((element) => element.element_type === 'text')!;
+      expect(instantiated.rotation).toBeCloseTo(rotation);
+      expect(exploded.rotation).toBeCloseTo(rotation);
+    }
   });
 
   it('stretches items when the ref bbox is resized', () => {

@@ -49,6 +49,9 @@ function isRectType(type: ElementType): boolean {
 }
 
 function anchorPointsFor(element: ProjectElement): SnapCandidate[] {
+  if (element.element_type === 'dimension' || element.element_type === 'leader' || element.element_type === 'text' || element.element_type === 'table') {
+    return [];
+  }
   // For circles ``x1,y1`` is the center and ``x2,y2`` a point on the rim —
   // reporting them as start/end would shadow the richer center/quadrant
   // anchors below. Polylines list every vertex instead of two endpoints.

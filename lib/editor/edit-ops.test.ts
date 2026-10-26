@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ArcElement, CircleElement, ColumnElement, LineElement, PolylineElement, RectangleElement } from '@/types/project';
+import type { ArcElement, CircleElement, ColumnElement, DimensionElement, LineElement, PolylineElement, RectangleElement } from '@/types/project';
 import {
   createArc,
   createCircle,
@@ -394,6 +394,20 @@ describe('filletLines', () => {
 });
 
 describe('gripsFor / applyGrip', () => {
+  it('updates the radius when the end grip of a radial dimension moves', () => {
+    const radial = {
+      ...createLine('radial', P, { x: 10, y: 20 }, { x: 110, y: 20 }),
+      element_type: 'dimension' as const,
+      properties: { kind: 'radial' as const, radius: 100, dim_point: { x: 110, y: 20 } },
+    } as unknown as DimensionElement;
+    const endGrip = gripsFor(radial).find((grip) => grip.kind === 'end')!;
+    const moved = applyGrip(radial, endGrip, { x: 40, y: 60 }) as DimensionElement;
+
+    expect(moved.x2).toBe(40);
+    expect(moved.y2).toBe(60);
+    expect(moved.properties.radius).toBeCloseTo(Math.hypot(30, 40));
+  });
+
   it('a line exposes start, end and midpoint grips', () => {
     const line = createLine('l1', P, { x: 0, y: 0 }, { x: 100, y: 0 });
     const kinds = gripsFor(line).map((g) => g.kind);

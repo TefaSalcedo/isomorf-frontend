@@ -284,6 +284,7 @@
         "floors": "Slabs & circulation",
         "envelope": "Envelope",
         "draw": "Draw",
+        "annotate": "Annotate",
         "modify": "Modify"
       }
     },
@@ -322,7 +323,17 @@
       "ellipse": "Ellipse",
       "rectangle": "Rectangle",
       "hatch": "Hatch",
-      "block_ref": "Block"
+      "block_ref": "Block",
+      "dimension": "Dimension",
+      "leader": "Leader",
+      "table": "Table",
+      "dimKinds": {
+        "linear": "Linear",
+        "aligned": "Aligned",
+        "angular": "Angular",
+        "radial": "Radial",
+        "diameter": "Diameter"
+      }
     },
     "loadTypes": {
       "dead": "Dead",
@@ -413,6 +424,30 @@
         "openingHint": "An opening is a void in the slab area. Resize it by dragging its corners.",
         "bulkTypeHint": "Select elements of the same type to edit shared dimensions.",
         "radius": "Radius (m)",
+        "dimensionStyle": "Dimension style",
+        "textOverride": "Text override",
+        "dimKinds": {
+          "linear": "Linear",
+          "aligned": "Aligned",
+          "angular": "Angular",
+          "radial": "Radial",
+          "diameter": "Diameter"
+        },
+        "leaderText": "Leader text",
+        "text": "Text",
+        "textHeight": "Text height (mm)",
+        "bold": "Bold",
+        "italic": "Italic",
+        "underline": "Underline",
+        "align": "Alignment",
+        "left": "Left",
+        "center": "Center",
+        "right": "Right",
+        "rows": "Rows",
+        "columns": "Columns",
+        "header": "Header row",
+        "area": "Area",
+        "perimeter": "Perimeter",
         "hatchPattern": "Hatch pattern",
         "hatchAngle": "Hatch angle (°)",
         "hatchPatterns": {
@@ -439,6 +474,8 @@
         "explode": "Explode block into elements",
         "sections": {
           "identity": "Identity",
+          "annotation": "Annotation",
+          "measurement": "Measurement",
           "position": "Position",
           "geometry": "Geometry",
           "material": "Material & section",
@@ -513,6 +550,25 @@
       },
       "settings": {
         "title": "Project settings",
+        "annotationTitle": "Annotation",
+        "annotationScale": "Annotation scale",
+        "styleName": "Style name",
+        "arrowStyle": "Arrow style",
+        "arrowStyles": {
+          "arrow": "Arrow",
+          "tick": "Tick",
+          "dot": "Dot"
+        },
+        "textHeight": "Text height (mm)",
+        "arrowSize": "Arrow size (mm)",
+        "extensionOffset": "Extension offset (mm)",
+        "extensionExtend": "Extension line beyond (mm)",
+        "decimals": "Decimals",
+        "dimensionUnit": "Dimension unit",
+        "angleDecimals": "Angle decimals",
+        "duplicateStyle": "Duplicate style",
+        "deleteStyle": "Delete style",
+        "newStyleName": "New style",
         "displayUnit": "Display unit",
         "meters": "Meters (m)",
         "feet": "Feet (ft)",
@@ -668,6 +724,7 @@
       "projectName": "Untitled"
     },
     "canvas": {
+      "annotationEditor": "Annotation text",
       "label2d": "2D drawing canvas",
       "help2d": "Drawing canvas. Click two points to place an element. Press Escape to cancel. Type a number while drawing to set an exact length.",
       "status": "{elements} elements, {selected} selected",
@@ -728,7 +785,17 @@
         "circle": "Draw circle",
         "ellipse": "Draw ellipse",
         "rectangle": "Draw rectangle",
-        "hatch": "Draw hatch"
+        "hatch": "Draw hatch",
+        "dimension": {
+          "linear": "Linear dimension",
+          "aligned": "Aligned dimension",
+          "angular": "Angular dimension",
+          "radial": "Radial dimension",
+          "diameter": "Diameter dimension"
+        },
+        "leader": "Leader",
+        "text": "Text",
+        "table": "Table"
       },
       "action": {
         "undo": "Undo",
